@@ -3,9 +3,19 @@
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net8.0-windows</TargetFramework>
-    <Nullable>enable</Nullable>
+    <Nullable>disable</Nullable>
     <UseWindowsForms>true</UseWindowsForms>
     <ImplicitUsings>enable</ImplicitUsings>
+
+	  <ApplicationVisualStyles>true</ApplicationVisualStyles>
+	  <ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
+	  <ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
+	  <ApplicationDefaultFont>Microsoft Sans Serif, 9pt</ApplicationDefaultFont>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Domain\Domain.csproj" />
+    <ProjectReference Include="..\Manager\Manager.csproj" />
+  </ItemGroup>
 
 </Project>

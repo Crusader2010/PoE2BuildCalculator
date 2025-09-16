@@ -1,3 +1,5 @@
 <Solution>
+  <Project Path="../Domain/Domain.csproj" />
+  <Project Path="../Manager/Manager.csproj" />
   <Project Path="PoE2BuildCalculator.csproj" />
 </Solution>
