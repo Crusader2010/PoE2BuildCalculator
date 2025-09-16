@@ -33,6 +33,7 @@
             StatusBar = new StatusStrip();
             StatusBarLabel = new ToolStripStatusLabel();
             ButtonParseItemListFile = new Button();
+            button1 = new Button();
             StatusBar.SuspendLayout();
             SuspendLayout();
             // 
@@ -75,11 +76,22 @@
             ButtonParseItemListFile.UseVisualStyleBackColor = true;
             ButtonParseItemListFile.Click += ButtonParseItemListFile_Click;
             // 
+            // button1
+            // 
+            button1.Location = new Point(351, 264);
+            button1.Name = "button1";
+            button1.Size = new Size(75, 23);
+            button1.TabIndex = 3;
+            button1.Text = "button1";
+            button1.UseVisualStyleBackColor = true;
+            button1.Click += Button1_Click;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
             ClientSize = new Size(800, 450);
+            Controls.Add(button1);
             Controls.Add(ButtonParseItemListFile);
             Controls.Add(StatusBar);
             Controls.Add(ButtonOpenItemListFile);
@@ -103,5 +115,6 @@
         private StatusStrip StatusBar;
         private ToolStripStatusLabel StatusBarLabel;
         private Button ButtonParseItemListFile;
+        private Button button1;
     }
 }

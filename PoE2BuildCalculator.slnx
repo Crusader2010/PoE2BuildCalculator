@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+  </Folder>
   <Project Path="Domain/Domain.csproj" />
   <Project Path="Manager/Manager.csproj" />
   <Project Path="PoE2BuildCalculator/PoE2BuildCalculator.csproj" />

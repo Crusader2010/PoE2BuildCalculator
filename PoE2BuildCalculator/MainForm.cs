@@ -187,5 +187,18 @@ namespace PoE2BuildCalculator
         }
 
         #endregion
+
+        private void Button1_Click(object sender, EventArgs e)
+        {
+            var x = _fileParser.GetParsedItems();
+
+            MessageBox.Show($"Parsed {x.Count} items.");
+
+            MessageBox.Show($"Item Ids: {string.Join(",", x.Select(x => x.Id))}");
+
+            MessageBox.Show($"Item Names: {string.Join(",", x.Select(x => x.Name))}");
+
+            MessageBox.Show($"Item Armour: {string.Join(",", x.Select(x => x.ItemStats.ArmourAmount))}");
+        }
     }
 }
