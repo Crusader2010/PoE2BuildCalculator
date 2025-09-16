@@ -1,0 +1,191 @@
+using System;
+using System.Drawing;
+using System.Threading;
+using System.Threading.Tasks;
+using System.Windows.Forms;
+
+namespace PoE2BuildCalculator
+{
+    public partial class MainForm : Form
+    {
+        // Class references
+        private Manager.FileParser _fileParser { get; set; }
+
+        // Progress UI
+        private ToolStripProgressBar _statusProgressBar;
+
+        // Cancellation support
+        private CancellationTokenSource _cts;
+        private ToolStripButton _cancelButton;
+
+        public MainForm()
+        {
+            InitializeComponent();
+        }
+
+        private void MainForm_Load(object sender, EventArgs e)
+        {
+            ConfigureOpenFileDialog();
+
+            ConfigureParserControls();
+        }
+
+
+        private void ButtonOpenItemListFile_Click(object sender, EventArgs e)
+        {
+            OpenPoE2ItemList.ShowDialog();
+            if (!string.IsNullOrWhiteSpace(OpenPoE2ItemList.FileName))
+            {
+                _fileParser = new Manager.FileParser(OpenPoE2ItemList.FileName);
+                StatusBarLabel.Text = $"Loaded file: {OpenPoE2ItemList.FileName}";
+            }
+        }
+
+        private async void ButtonParseItemListFile_Click(object sender, EventArgs e)
+        {
+            if (_fileParser is null)
+            {
+                StatusBarLabel.Text = "No file loaded. Please choose a file first.";
+                return;
+            }
+
+            // Prevent reentrancy from the same button.
+            var parseButton = sender as Control;
+            parseButton!.Enabled = false;
+            ButtonOpenItemListFile.Enabled = false;
+
+            // Create a new CancellationTokenSource for this parse.
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+
+            // Reset UI and start parsing.
+            if (_statusProgressBar != null)
+            {
+                _statusProgressBar.Value = 0;
+                _statusProgressBar.Visible = true;
+            }
+
+            if (_cancelButton != null)
+            {
+                _cancelButton.Enabled = true;
+                _cancelButton.Visible = true;
+            }
+
+            StatusBarLabel.Text = $"Parsing... 0%";
+
+            // Use Progress<int> to marshal updates to the UI thread (captured SynchronizationContext).
+            var progress = new Progress<int>(p =>
+            {
+                if (_statusProgressBar != null) _statusProgressBar.Value = p;
+                StatusBarLabel.Text = $"Parsing file... {p}%";
+            });
+
+            try
+            {
+                // Await the parser directly (no blocking GetResult). This keeps the UI responsive.
+                await _fileParser.ParseFileAsync(progress, _cts.Token).ConfigureAwait(true);
+
+                StatusBarLabel.Text = "Parsing completed.";
+            }
+            catch (OperationCanceledException)
+            {
+                StatusBarLabel.Text = "Parsing cancelled.";
+            }
+            catch (Exception ex)
+            {
+                StatusBarLabel.Text = $"Error: {ex.Message}";
+            }
+            finally
+            {
+                // Restore UI state.
+                if (_statusProgressBar != null)
+                {
+                    _statusProgressBar.Visible = false;
+                    _statusProgressBar.Value = 0;
+                }
+
+                if (_cancelButton != null)
+                {
+                    _cancelButton.Enabled = false;
+                    _cancelButton.Visible = false;
+                }
+
+                parseButton.Enabled = true;
+                ButtonOpenItemListFile.Enabled = true;
+
+                // Dispose and clear the CTS used for this parse.
+                try
+                {
+                    _cts?.Dispose();
+                }
+                catch { }
+                _cts = null;
+            }
+        }
+
+        private void ButtonCancelParse_Click(object sender, EventArgs e)
+        {
+            // If there's no active parse, nothing to do.
+            if (_cts == null)
+                return;
+
+            // Disable to prevent multiple clicks.
+            if (_cancelButton != null) _cancelButton.Enabled = false;
+
+            StatusBarLabel.Text = "Cancelling...";
+            try
+            {
+                // Request cancellation.
+                _cts.Cancel(true);
+            }
+            catch
+            {
+                // ignore exceptions from cancel attempt
+            }
+        }
+
+        #region Prepare controls
+
+        private void ConfigureOpenFileDialog()
+        {
+            OpenPoE2ItemList.Multiselect = false;
+            OpenPoE2ItemList.Title = "Select the PoE2 Item List File";
+            OpenPoE2ItemList.AddToRecent = true;
+            OpenPoE2ItemList.Filter = "Text Files|*.txt|All Files|*.*";
+            OpenPoE2ItemList.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+        }
+
+        private void ConfigureParserControls()
+        {
+            // Create and add a ToolStripProgressBar to the StatusStrip (next to existing StatusBarLabel).
+            var parent = StatusBarLabel.GetCurrentParent();
+            if (parent != null)
+            {
+                _statusProgressBar = new ToolStripProgressBar
+                {
+                    Name = "StatusBarProgressBar",
+                    Minimum = 0,
+                    Maximum = 100,
+                    Value = 0,
+                    Visible = false,
+                    Size = new Size(150, 16)
+                };
+                parent.Items.Add(_statusProgressBar);
+
+                // Add a cancel button to the StatusStrip so the user can cancel parsing.
+                _cancelButton = new ToolStripButton
+                {
+                    Name = "ButtonCancelParse",
+                    Text = "Cancel",
+                    Enabled = false,
+                    Visible = false
+                };
+
+                _cancelButton.Click += ButtonCancelParse_Click;
+                parent.Items.Add(_cancelButton);
+            }
+        }
+
+        #endregion
+    }
+}
