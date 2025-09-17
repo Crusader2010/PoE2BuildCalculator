@@ -30,6 +30,7 @@
         {
             ImportDisplayData = new Button();
             TableDisplayData = new DataGridView();
+            ButtonClose = new Button();
             ((System.ComponentModel.ISupportInitialize)TableDisplayData).BeginInit();
             SuspendLayout();
             // 
@@ -54,6 +55,16 @@
             TableDisplayData.Size = new Size(454, 260);
             TableDisplayData.TabIndex = 2;
             // 
+            // ButtonClose
+            // 
+            ButtonClose.Location = new Point(12, 217);
+            ButtonClose.Name = "ButtonClose";
+            ButtonClose.Size = new Size(75, 55);
+            ButtonClose.TabIndex = 3;
+            ButtonClose.Text = "Close form";
+            ButtonClose.UseVisualStyleBackColor = true;
+            ButtonClose.Click += ButtonClose_Click;
+            // 
             // DataDisplay
             // 
             AutoScaleDimensions = new SizeF(7F, 15F);
@@ -61,6 +72,7 @@
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             ClientSize = new Size(559, 297);
+            Controls.Add(ButtonClose);
             Controls.Add(TableDisplayData);
             Controls.Add(ImportDisplayData);
             DoubleBuffered = true;
@@ -77,5 +89,6 @@
         #endregion
         private Button ImportDisplayData;
         private DataGridView TableDisplayData;
+        private Button ButtonClose;
     }
 }
