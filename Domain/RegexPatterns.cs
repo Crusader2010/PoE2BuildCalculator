@@ -68,10 +68,10 @@ namespace Domain
         [GeneratedRegex(@"^\s*(\d+(?:\.\d+)?)%\s*increased\s*Armour\s*$", RegexOptions.IgnoreCase, "en-US")]
         public static partial Regex ArmourPercentPattern();
 
-        [GeneratedRegex(@"^\s*(\d+(?:\.\d+)?)%\s*increased\s*Mana\s*Regeneration\s*$", RegexOptions.IgnoreCase, "en-US")]
+        [GeneratedRegex(@"^\s*(\d+(?:\.\d+)?)%\s*increased\s*Mana\s*Regeneration\s*rate\s*$", RegexOptions.IgnoreCase, "en-US")]
         public static partial Regex ManaRegenPercentPattern();
 
-        [GeneratedRegex(@"^\s*(\d+(?:\.\d+)?)\s*to\s*Life\s*Regeneration\s*$", RegexOptions.IgnoreCase, "en-US")]
+        [GeneratedRegex(@"^\s*(\d+(?:\.\d+)?)\s*Life\s*Regeneration\s*per\s*second\s*$", RegexOptions.IgnoreCase, "en-US")]
         public static partial Regex LifeRegenAmountPattern();
 
         [GeneratedRegex(@"^\s*(\d+(?:\.\d+)?)%\s*increased\s*Block\s*Chance\s*$", RegexOptions.IgnoreCase, "en-US")]
