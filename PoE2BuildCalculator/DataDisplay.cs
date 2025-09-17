@@ -23,12 +23,10 @@ namespace PoE2BuildCalculator
 
         private void DataDisplay_Load(object sender, EventArgs e)
         {
-            // Turn off AutoSize so the form can be sized by code.
-            this.AutoSize = false;
+            this.AutoSize = false; // Turn off AutoSize so the form can be sized by code.
             this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
 
-            // Remove all columns from TableDisplayData on form load.
-            TableDisplayData.Columns.Clear();
+            TableDisplayData.Columns.Clear(); // Remove all columns from TableDisplayData on form load.
 
             // Make it read-only and adjust sizing behaviour.
             TableDisplayData.ReadOnly = true;
@@ -58,53 +56,49 @@ namespace PoE2BuildCalculator
                 return;
             }
 
-            // Clear any existing columns/rows and ensure base columns exist.
-            TableDisplayData.Columns.Clear();
-            TableDisplayData.Rows.Clear();
-
-            // Add column headers for non-stats
-            var baseColumns = new[] { "Id", "Name", "Class" };
-            foreach (var c in baseColumns)
+            try
             {
-                TableDisplayData.Columns.Add(new DataGridViewTextBoxColumn { Name = c, HeaderText = c });
-            }
+                // Clear any existing columns/rows and ensure base columns exist.
+                TableDisplayData.Columns.Clear();
+                TableDisplayData.Rows.Clear();
 
-            // Efficiently get descriptors (cached, ordered) and compute which are required.
-            // Add stat columns using descriptor.PropertyName as column Name and descriptor.Header as header text.
-            var descriptors = PropertyDescriptionHelper.GetStatDescriptors();
-            foreach (var d in descriptors)
-            {
-                // Ensure unique column name (should be unique by property name).
-                if (!TableDisplayData.Columns.Contains(d.PropertyName))
-                    TableDisplayData.Columns.Add(new DataGridViewTextBoxColumn { Name = d.PropertyName, HeaderText = d.Header });
-            }
+                IReadOnlyList<PropertyDescriptionHelper.StatDescriptor> descriptors = PropertyDescriptionHelper.GetStatDescriptors();
 
-            // Populate rows using PropertyDescriptionHelper.ToDictionary for each item (efficient).
-            foreach (var item in items)
-            {
-                // Build a header->value map for this item's stats.
-                var statsMap = PropertyDescriptionHelper.ToDictionary(item.ItemStats);
+                AddNonStatsColumnHeadersToTable();
+                AddStatsColumnHeadersToTable(descriptors);
 
-                var rowValues = new object[3 + descriptors.Count];
-                rowValues[0] = item.Id;
-                rowValues[1] = item.Name;
-                rowValues[2] = item.Class;
-
-                for (int i = 0; i < descriptors.Count; i++)
+                // Populate rows using PropertyDescriptionHelper.ToDictionary for each item (efficient).
+                foreach (var item in items)
                 {
-                    var d = descriptors[i];
-                    // The dictionary keys are the descriptor.Header values.
-                    if (statsMap.TryGetValue(d.Header, out var v) && PropertyDescriptionHelper.HasValue(v))
-                        rowValues[3 + i] = v;
-                    else
-                        rowValues[3 + i] = 0;
+                    // Build a header->value map for this item's stats.
+                    var statsMap = PropertyDescriptionHelper.ToDictionary(item.ItemStats);
+
+                    var rowValues = new object[4 + descriptors.Count];
+                    rowValues[0] = item.Id;
+                    rowValues[1] = item.Name;
+                    rowValues[2] = item.Class;
+                    rowValues[3] = item.IsMine ? "YES" : "NO";
+
+                    for (int i = 0; i < descriptors.Count; i++)
+                    {
+                        var d = descriptors[i];
+                        if (statsMap.TryGetValue(d.PropertyName, out var v) && PropertyDescriptionHelper.HasValue(v)) // The dictionary keys are the descriptor.Header values.
+                            rowValues[4 + i] = v;
+                        else
+                            rowValues[4 + i] = 0;
+                    }
+
+                    TableDisplayData.Rows.Add(rowValues);
                 }
 
-                TableDisplayData.Rows.Add(rowValues);
+                // Resize columns to fit the content after population.
+                TableDisplayData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
             }
-
-            // Resize columns to fit the content after population.
-            TableDisplayData.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
+            catch (Exception ex)
+            {
+                ErrorManager.ShowError(ex, nameof(ImportDisplayData_Click));
+                throw;
+            }
 
             // Adjust the form size so as much of TableDisplayData as possible is visible.
             AdjustFormSizeToDataGrid();
@@ -115,53 +109,98 @@ namespace PoE2BuildCalculator
         /// </summary>
         private void AdjustFormSizeToDataGrid()
         {
-            if (TableDisplayData.Columns.Count == 0)
-                return;
+            try 
+            { 
+            if (TableDisplayData.Columns.Count == 0) return;
 
             // Ensure layout is up-to-date so column widths are valid.
             TableDisplayData.PerformLayout();
             TableDisplayData.Update();
 
-            // Compute required client size for the grid (width = row header + all column widths; height = column header + sum of row heights).
-            int requiredWidth = TableDisplayData.RowHeadersVisible ? TableDisplayData.RowHeadersWidth : 0;
-            foreach (DataGridViewColumn col in TableDisplayData.Columns)
-                requiredWidth += col.Width;
+ 
+                // Compute required client size for the grid (width = row header + all column widths; height = column header + sum of row heights).
+                int requiredWidth = TableDisplayData.RowHeadersVisible ? TableDisplayData.RowHeadersWidth : 0;
+                foreach (DataGridViewColumn col in TableDisplayData.Columns)
+                    requiredWidth += col.Width;
 
-            int requiredHeight = TableDisplayData.ColumnHeadersHeight;
-            // Sum the heights of rows (handles variable row heights)
-            foreach (DataGridViewRow row in TableDisplayData.Rows)
-                requiredHeight += row.Height;
+                int requiredHeight = TableDisplayData.ColumnHeadersHeight;
+                // Sum the heights of rows (handles variable row heights)
+                foreach (DataGridViewRow row in TableDisplayData.Rows)
+                    requiredHeight += row.Height;
 
-            // Small padding so borders/lines aren't cut off.
-            const int gridPadding = 6;
-            requiredWidth += gridPadding;
-            requiredHeight += gridPadding;
+                // Small padding so borders/lines aren't cut off.
+                const int gridPadding = 6;
+                requiredWidth += gridPadding;
+                requiredHeight += gridPadding;
 
-            // Convert grid client size to a desired form size by adding non-client chrome.
-            int chromeWidth = this.Width - this.ClientSize.Width;
-            int chromeHeight = this.Height - this.ClientSize.Height;
+                // Convert grid client size to a desired form size by adding non-client chrome.
+                int chromeWidth = this.Width - this.ClientSize.Width;
+                int chromeHeight = this.Height - this.ClientSize.Height;
 
-            int desiredFormWidth = requiredWidth + chromeWidth;
-            int desiredFormHeight = requiredHeight + chromeHeight;
+                int desiredFormWidth = requiredWidth + chromeWidth;
+                int desiredFormHeight = requiredHeight + chromeHeight;
 
-            // Clamp to screen working area with a margin so form isn't fullscreen or off-screen.
-            Rectangle wa = Screen.GetWorkingArea(this);
-            const int margin = 36;
-            int maxWidth = Math.Max(wa.Width - margin, 200);
-            int maxHeight = Math.Max(wa.Height - margin, 100);
+                // Clamp to screen working area with a margin so form isn't fullscreen or off-screen.
+                Rectangle wa = Screen.GetWorkingArea(this);
+                const int margin = 36;
+                int maxWidth = Math.Max(wa.Width - margin, 200);
+                int maxHeight = Math.Max(wa.Height - margin, 100);
 
-            desiredFormWidth = Math.Min(desiredFormWidth, maxWidth);
-            desiredFormHeight = Math.Min(desiredFormHeight, maxHeight);
+                desiredFormWidth = Math.Min(desiredFormWidth, maxWidth);
+                desiredFormHeight = Math.Min(desiredFormHeight, maxHeight);
 
-            // Apply new size
-            this.Size = new Size(desiredFormWidth, desiredFormHeight);
+                // Apply new size
+                this.Size = new Size(desiredFormWidth, desiredFormHeight);
 
-            // Ensure form is still on-screen; nudge if necessary.
-            int newX = Math.Min(this.Location.X, wa.Right - this.Width - 10);
-            int newY = Math.Min(this.Location.Y, wa.Bottom - this.Height - 10);
-            newX = Math.Max(newX, wa.Left + 10);
-            newY = Math.Max(newY, wa.Top + 10);
-            this.Location = new Point(newX, newY);
+                // Ensure form is still on-screen; nudge if necessary.
+                int newX = Math.Min(this.Location.X, wa.Right - this.Width - 10);
+                int newY = Math.Min(this.Location.Y, wa.Bottom - this.Height - 10);
+                newX = Math.Max(newX, wa.Left + 10);
+                newY = Math.Max(newY, wa.Top + 10);
+                this.Location = new Point(newX, newY);
+            }
+            catch (Exception ex)
+            {
+                ErrorManager.ShowError(ex, nameof(AdjustFormSizeToDataGrid));
+                throw;
+            }
+        }
+
+        private void AddNonStatsColumnHeadersToTable()
+        {
+            try
+            {
+                // Add column headers for non-stats
+                var baseColumns = new[] { "Id", "Name", "Class", "IsMine" };
+                foreach (var c in baseColumns)
+                {
+                    TableDisplayData.Columns.Add(new DataGridViewTextBoxColumn { Name = c, HeaderText = c });
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        private void AddStatsColumnHeadersToTable(IReadOnlyList<PropertyDescriptionHelper.StatDescriptor> descriptors)
+        {
+            try
+            {
+                if (descriptors == null || descriptors.Count == 0) return;
+
+                // Add stat columns using descriptor.PropertyName as column Name and descriptor.Header as header text.            
+                foreach (var d in descriptors)
+                {
+                    // Ensure unique column name (should be unique by property name).
+                    if (!TableDisplayData.Columns.Contains(d.PropertyName))
+                        TableDisplayData.Columns.Add(new DataGridViewTextBoxColumn { Name = d.PropertyName, HeaderText = d.Header });
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         private void ButtonClose_Click(object sender, EventArgs e)

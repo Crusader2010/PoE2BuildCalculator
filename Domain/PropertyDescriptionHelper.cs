@@ -36,8 +36,8 @@ namespace Domain
         public static IReadOnlyList<StatDescriptor> GetStatDescriptors() => s_descriptors;
 
         /// <summary>
-        /// Build a dictionary mapping header (Description) -> value for the provided ItemStats.
-        /// Keys are the Header strings from descriptors.
+        /// Build a dictionary mapping property name -> value, for the provided ItemStats.
+        /// Keys are the names of the properties from descriptors.
         /// </summary>
         public static IReadOnlyDictionary<string, object> ToDictionary(ItemStats stats)
         {
@@ -47,7 +47,7 @@ namespace Domain
             foreach (var d in s_descriptors)
             {
                 var val = d.Getter(stats);
-                dict[d.Header] = val;
+                dict[d.PropertyName] = val;
             }
 
             return dict;
@@ -57,28 +57,25 @@ namespace Domain
         {
             if (val is null) return false;
             if (val is int iv) return iv > 0;
+            if (val is long lv) return lv > 0;
             if (val is double dv) return dv > 0.0;
-            if (val is string s) return !string.IsNullOrEmpty(s);
+            if (val is string s) return !string.IsNullOrWhiteSpace(s);
             return false;
         }
 
         private static IReadOnlyList<StatDescriptor> BuildDescriptors()
         {
             var list = new List<StatDescriptor>();
-
-            var props = typeof(ItemStats)
-                .GetProperties(BindingFlags.Public | BindingFlags.Instance);
+            var props = typeof(ItemStats).GetProperties(BindingFlags.Public | BindingFlags.Instance | BindingFlags.IgnoreCase);
 
             foreach (var p in props)
             {
-                var t = p.PropertyType;
-                // include numeric and string properties (UI may want Enchant too)
-                if (t != typeof(int) && t != typeof(double) && t != typeof(string))
-                    continue;
+                var t = p.PropertyType;                
+                if (t != typeof(int) && t != typeof(double) && t != typeof(string) && t != typeof(long)) continue; // include numeric and string properties (UI may want Enchant too)
 
                 // Description attribute or fallback
                 var descAttr = p.GetCustomAttribute<DescriptionAttribute>(inherit: false);
-                var header = descAttr.Description ?? "NONE";
+                var header = descAttr.Description ?? Constants.DEFAULT_DESCRIPTION;
 
                 // optional StatColumnAttribute for ordering
                 var orderAttr = p.GetCustomAttribute<StatColumnAttribute>(inherit: false);

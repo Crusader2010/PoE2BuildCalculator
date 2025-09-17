@@ -40,7 +40,7 @@ namespace Manager
                     cancellationToken.ThrowIfCancellationRequested();
 
                     var result = await ProcessFileDataForItems(currentItem, sr, itemId, cancellationToken).ConfigureAwait(false);
-                    if (!result.Continue) break;
+                    if (!result.Success) break;
 
                     // update local references with values returned from the helper
                     currentItem = result.Item;
@@ -347,14 +347,14 @@ namespace Manager
         }
 
         // Return a tuple so the helper can create/replace the current item and increment the id
-        private async Task<(bool Continue, Item Item, int CurrentItemId)> ProcessFileDataForItems(Item item, StreamReader sr, int currentItemId, CancellationToken cancellationToken)
+        private async Task<(bool Success, Item Item, int CurrentItemId)> ProcessFileDataForItems(Item item, StreamReader sr, int currentItemId, CancellationToken cancellationToken)
         {
             // Read one line (async with cancellation)
             string line = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
             if (line is null) return (false, item, currentItemId);
 
             // Item delimiter logic
-            if (line.StartsWith("Item Class:", StringComparison.OrdinalIgnoreCase))
+            if (line.StartsWith(Constants.ITEM_CLASS_TAG, StringComparison.OrdinalIgnoreCase))
             {
                 string name1 = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
                 string name2 = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
@@ -364,6 +364,7 @@ namespace Manager
                 {
                     Id = ++currentItemId,
                     Name = $"{name1.Trim()} {name2.Trim()}",
+                    IsMine = name1.Contains(Constants.ITEM_IS_MINE_TAG, StringComparison.OrdinalIgnoreCase),
                     ItemStats = new ItemStats()
                 };
 
