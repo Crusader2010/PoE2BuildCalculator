@@ -83,9 +83,13 @@ namespace PoE2BuildCalculator
                     {
                         var d = descriptors[i];
                         if (statsMap.TryGetValue(d.PropertyName, out var v) && PropertyDescriptionHelper.HasValue(v)) // The dictionary keys are the descriptor.Header values.
+                        {
                             rowValues[4 + i] = Convert.ChangeType(v, d.PropertyType);
+                        }
                         else
-                            rowValues[4 + i] = Convert.ChangeType(0, d.PropertyType);
+                        {
+                            rowValues[4 + i] = d.PropertyType == typeof(string) ? string.Empty : Convert.ChangeType(0, d.PropertyType);
+                        }
                     }
 
                     TableDisplayData.Rows.Add(rowValues);
