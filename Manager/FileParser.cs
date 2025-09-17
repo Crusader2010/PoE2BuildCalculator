@@ -1,7 +1,6 @@
 ﻿using Domain;
 using System.Collections.Immutable;
 using System.Text;
-using System.Text.RegularExpressions;
 
 namespace Manager
 {
@@ -60,7 +59,6 @@ namespace Manager
                     if (position >= 0 && totalBytes > 0)
                     {
                         int percent = (int)((position * 100L) / totalBytes);
-                        if (percent < 0) percent = 0;
                         if (percent > 100) percent = 100;
 
                         // Only report when changed to reduce UI churn.

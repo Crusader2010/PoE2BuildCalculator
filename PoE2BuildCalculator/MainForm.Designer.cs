@@ -111,7 +111,7 @@
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
             Name = "MainForm";
-            StartPosition = FormStartPosition.CenterParent;
+            StartPosition = FormStartPosition.CenterScreen;
             Text = "PoE2 Build Calculator";
             Load += MainForm_Load;
             StatusBar.ResumeLayout(false);
