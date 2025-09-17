@@ -67,10 +67,10 @@ namespace PoE2BuildCalculator
                 AddNonStatsColumnHeadersToTable();
                 AddStatsColumnHeadersToTable(descriptors);
 
-                // Populate rows using PropertyDescriptionHelper.ToDictionary for each item (efficient).
+                // Populate rows using PropertyDescriptionHelper.ToDictionary for each item.
                 foreach (var item in items)
                 {
-                    // Build a header->value map for this item's stats.
+                    // Build a PropertyName->value map for this item's stats.
                     var statsMap = PropertyDescriptionHelper.ToDictionary(item.ItemStats);
 
                     var rowValues = new object[4 + descriptors.Count];
@@ -82,7 +82,7 @@ namespace PoE2BuildCalculator
                     for (int i = 0; i < descriptors.Count; i++)
                     {
                         var d = descriptors[i];
-                        if (statsMap.TryGetValue(d.PropertyName, out var v) && PropertyDescriptionHelper.HasValue(v)) // The dictionary keys are the descriptor.Header values.
+                        if (statsMap.TryGetValue(d.PropertyName, out var v) && PropertyDescriptionHelper.HasValue(v)) // The dictionary keys are the descriptor.PropertyName values.
                         {
                             rowValues[4 + i] = Convert.ChangeType(v, d.PropertyType);
                         }
