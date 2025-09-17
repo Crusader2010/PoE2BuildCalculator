@@ -39,23 +39,14 @@ namespace Manager
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    var result = await ProcessFileDataForItems(currentItem, sr, itemId, cancellationToken).ConfigureAwait(false);
+                    var result = await ProcessItemsFromFileData(currentItem, sr, itemId, cancellationToken).ConfigureAwait(false);
                     if (!result.Success) break;
 
                     // update local references with values returned from the helper
                     currentItem = result.Item;
                     itemId = result.CurrentItemId;
 
-                    long position;
-                    try
-                    {
-                        position = fs.Position;
-                    }
-                    catch
-                    {
-                        position = -1;
-                    }
-
+                    long position = fs.Position;
                     if (position >= 0 && totalBytes > 0)
                     {
                         int percent = (int)((position * 100L) / totalBytes);
@@ -84,7 +75,7 @@ namespace Manager
             return [.. _items];
         }
 
-        private static void MapItemData(string line, Item item)
+        private static void MapItemStatsForItems(string line, Item item)
         {
             if (item?.ItemStats == null) return;
 
@@ -347,7 +338,7 @@ namespace Manager
         }
 
         // Return a tuple so the helper can create/replace the current item and increment the id
-        private async Task<(bool Success, Item Item, int CurrentItemId)> ProcessFileDataForItems(Item item, StreamReader sr, int currentItemId, CancellationToken cancellationToken)
+        private async Task<(bool Success, Item Item, int CurrentItemId)> ProcessItemsFromFileData(Item item, StreamReader sr, int currentItemId, CancellationToken cancellationToken)
         {
             // Read one line (async with cancellation)
             string line = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
@@ -375,7 +366,7 @@ namespace Manager
             // Map data into the current item
             if (item != null)
             {
-                MapItemData(line, item);
+                MapItemStatsForItems(line, item);
             }
 
             return (true, item, item.Id);
