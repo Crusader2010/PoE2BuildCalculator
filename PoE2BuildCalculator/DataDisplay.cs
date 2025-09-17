@@ -83,9 +83,9 @@ namespace PoE2BuildCalculator
                     {
                         var d = descriptors[i];
                         if (statsMap.TryGetValue(d.PropertyName, out var v) && PropertyDescriptionHelper.HasValue(v)) // The dictionary keys are the descriptor.Header values.
-                            rowValues[4 + i] = v;
+                            rowValues[4 + i] = Convert.ChangeType(v, d.PropertyType);
                         else
-                            rowValues[4 + i] = 0;
+                            rowValues[4 + i] = Convert.ChangeType(0, d.PropertyType);
                     }
 
                     TableDisplayData.Rows.Add(rowValues);
@@ -109,15 +109,15 @@ namespace PoE2BuildCalculator
         /// </summary>
         private void AdjustFormSizeToDataGrid()
         {
-            try 
-            { 
-            if (TableDisplayData.Columns.Count == 0) return;
+            try
+            {
+                if (TableDisplayData.Columns.Count == 0) return;
 
-            // Ensure layout is up-to-date so column widths are valid.
-            TableDisplayData.PerformLayout();
-            TableDisplayData.Update();
+                // Ensure layout is up-to-date so column widths are valid.
+                TableDisplayData.PerformLayout();
+                TableDisplayData.Update();
 
- 
+
                 // Compute required client size for the grid (width = row header + all column widths; height = column header + sum of row heights).
                 int requiredWidth = TableDisplayData.RowHeadersVisible ? TableDisplayData.RowHeadersWidth : 0;
                 foreach (DataGridViewColumn col in TableDisplayData.Columns)
@@ -170,11 +170,27 @@ namespace PoE2BuildCalculator
         {
             try
             {
-                // Add column headers for non-stats
-                var baseColumns = new[] { "Id", "Name", "Class", "IsMine" };
-                foreach (var c in baseColumns)
+                // Add column header for item ID.
+                var idColumn = new DataGridViewTextBoxColumn
                 {
-                    TableDisplayData.Columns.Add(new DataGridViewTextBoxColumn { Name = c, HeaderText = c });
+                    Name = "Id",
+                    HeaderText = "Id",
+                    ValueType = typeof(int)
+                };
+                TableDisplayData.Columns.Add(idColumn);
+
+                // Add column headers for other non-stat properties.
+                var otherBaseColumns = new[] { "Name", "Class", "IsMine" };
+                foreach (var c in otherBaseColumns)
+                {
+                    var col = new DataGridViewTextBoxColumn
+                    {
+                        Name = c,
+                        HeaderText = c,
+                        ValueType = typeof(string)
+                    };
+
+                    TableDisplayData.Columns.Add(col);
                 }
             }
             catch (Exception)
@@ -194,7 +210,16 @@ namespace PoE2BuildCalculator
                 {
                     // Ensure unique column name (should be unique by property name).
                     if (!TableDisplayData.Columns.Contains(d.PropertyName))
-                        TableDisplayData.Columns.Add(new DataGridViewTextBoxColumn { Name = d.PropertyName, HeaderText = d.Header });
+                    {
+                        var col = new DataGridViewTextBoxColumn
+                        {
+                            Name = d.PropertyName,
+                            DataPropertyName = d.PropertyName,
+                            HeaderText = d.Header,
+                            ValueType = d.PropertyType
+                        };
+                        TableDisplayData.Columns.Add(col);
+                    }
                 }
             }
             catch (Exception)

@@ -70,7 +70,7 @@ namespace Domain
 
             foreach (var p in props)
             {
-                var t = p.PropertyType;                
+                var t = p.PropertyType;
                 if (t != typeof(int) && t != typeof(double) && t != typeof(string) && t != typeof(long)) continue; // include numeric and string properties (UI may want Enchant too)
 
                 // Description attribute or fallback

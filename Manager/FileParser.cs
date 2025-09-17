@@ -365,7 +365,7 @@ namespace Manager
                     Id = ++currentItemId,
                     Name = $"{name1.Trim()} {name2.Trim()}",
                     IsMine = name1.Contains(Constants.ITEM_IS_MINE_TAG, StringComparison.OrdinalIgnoreCase),
-                    ItemStats = new ItemStats()
+                    ItemStats = new()
                 };
 
                 _items.Add(newItem);
