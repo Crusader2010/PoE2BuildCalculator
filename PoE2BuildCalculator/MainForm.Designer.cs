@@ -34,6 +34,7 @@
             StatusBarLabel = new ToolStripStatusLabel();
             ButtonParseItemListFile = new Button();
             button1 = new Button();
+            ShowItemsDataButton = new Button();
             StatusBar.SuspendLayout();
             SuspendLayout();
             // 
@@ -44,7 +45,7 @@
             // 
             // ButtonOpenItemListFile
             // 
-            ButtonOpenItemListFile.Location = new Point(200, 110);
+            ButtonOpenItemListFile.Location = new Point(294, 127);
             ButtonOpenItemListFile.Name = "ButtonOpenItemListFile";
             ButtonOpenItemListFile.Size = new Size(126, 58);
             ButtonOpenItemListFile.TabIndex = 0;
@@ -68,7 +69,7 @@
             // 
             // ButtonParseItemListFile
             // 
-            ButtonParseItemListFile.Location = new Point(425, 110);
+            ButtonParseItemListFile.Location = new Point(478, 127);
             ButtonParseItemListFile.Name = "ButtonParseItemListFile";
             ButtonParseItemListFile.Size = new Size(126, 58);
             ButtonParseItemListFile.TabIndex = 2;
@@ -78,7 +79,7 @@
             // 
             // button1
             // 
-            button1.Location = new Point(351, 264);
+            button1.Location = new Point(411, 237);
             button1.Name = "button1";
             button1.Size = new Size(75, 23);
             button1.TabIndex = 3;
@@ -86,11 +87,22 @@
             button1.UseVisualStyleBackColor = true;
             button1.Click += Button1_Click;
             // 
+            // ShowItemsDataButton
+            // 
+            ShowItemsDataButton.Location = new Point(153, 255);
+            ShowItemsDataButton.Name = "ShowItemsDataButton";
+            ShowItemsDataButton.Size = new Size(137, 73);
+            ShowItemsDataButton.TabIndex = 4;
+            ShowItemsDataButton.Text = "Display items data";
+            ShowItemsDataButton.UseVisualStyleBackColor = true;
+            ShowItemsDataButton.Click += ShowItemsDataButton_Click;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
             ClientSize = new Size(800, 450);
+            Controls.Add(ShowItemsDataButton);
             Controls.Add(button1);
             Controls.Add(ButtonParseItemListFile);
             Controls.Add(StatusBar);
@@ -116,5 +128,6 @@
         private ToolStripStatusLabel StatusBarLabel;
         private Button ButtonParseItemListFile;
         private Button button1;
+        private Button ShowItemsDataButton;
     }
 }

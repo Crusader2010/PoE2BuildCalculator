@@ -11,7 +11,7 @@ namespace Manager
     public partial class FileParser(string filePath) : IFileParser
     {
         private readonly string _filePath = filePath ?? throw new ArgumentNullException(nameof(filePath));
-        private readonly List<Item> _items = [];
+        private List<Item> _items = [];
 
         public async Task ParseFileAsync(IProgress<int> progress = null, CancellationToken cancellationToken = default)
         {
@@ -25,6 +25,8 @@ namespace Manager
                 throw new FileNotFoundException("The specified file does not exist.", _filePath);
             }
 
+            _items = []; // reset item list whenever we parse
+
             // Open as async stream. Enable useAsync for IO.
             await using var fs = new FileStream(_filePath, FileMode.Open, FileAccess.Read, FileShare.Read, 4096, useAsync: true);
             using (var sr = new StreamReader(fs, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, bufferSize: 4096, leaveOpen: true))
@@ -32,13 +34,18 @@ namespace Manager
                 long totalBytes = fs.Length;
                 int lastReported = -1;
                 int itemId = 0;
-                var item = new Item();
+                Item currentItem = null;
 
                 while (!sr.EndOfStream)
                 {
                     cancellationToken.ThrowIfCancellationRequested();
 
-                    if (!await ProcessFileDataForItems(item, sr, itemId, cancellationToken)) break;
+                    var result = await ProcessFileDataForItems(currentItem, sr, itemId, cancellationToken).ConfigureAwait(false);
+                    if (!result.Continue) break;
+
+                    // update local references with values returned from the helper
+                    currentItem = result.Item;
+                    itemId = result.CurrentItemId;
 
                     long position;
                     try
@@ -65,7 +72,7 @@ namespace Manager
                     }
 
                     // Yield occasionally to keep responsiveness.
-                    if ((position % 5) == 0) await Task.Yield();
+                    if (position >= 0 && (position % 8) == 0) await Task.Yield();
                 }
 
                 // Ensure final 100% report.
@@ -81,32 +88,298 @@ namespace Manager
 
         private static void MapItemData(string line, Item item)
         {
-            var m1 = RegexPatterns.ItemClassPattern().Match(line);
-            if (m1.Success) item.Class = m1.Groups[1].Value.Trim();
+            if (item?.ItemStats == null) return;
 
-            var m2 = RegexPatterns.ArmourAmountPattern().Match(line);
-            if (m2.Success) item.ItemStats.ArmourAmount = Int32.Parse(m2.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None);
+            var regex = RegexPatterns.ItemClassPattern().Match(line);
+            if (regex.Success) item.Class = regex.Groups[1].Value.Trim();
+
+            regex = RegexPatterns.ArmourAmountImplicitPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var armourImplicit)))
+            {
+                item.ItemStats.ArmourAmountImplicit = armourImplicit;
+            }
+
+            regex = RegexPatterns.ArmourAmountExplicitPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var armourExplicit)))
+            {
+                item.ItemStats.ArmourAmountExplicit = armourExplicit;
+            }
+
+            regex = RegexPatterns.EnergyShieldAmountImplicitPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var esImplicit)))
+            {
+                item.ItemStats.EnergyShieldAmount = esImplicit;
+            }
+
+            regex = RegexPatterns.MaximumLifeAmountPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var maximumLife)))
+            {
+                item.ItemStats.MaximumLifeAmount = maximumLife;
+            }
+
+            regex = RegexPatterns.MaximumManaAmountPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var maximumMana)))
+            {
+                item.ItemStats.MaximumManaAmount = maximumMana;
+            }
+
+            regex = RegexPatterns.SpiritAmountPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var spirit)))
+            {
+                item.ItemStats.SpiritAmount = spirit;
+            }
+
+            regex = RegexPatterns.StunThresholdAmountPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var stun)))
+            {
+                item.ItemStats.StunThresholdAmount = stun;
+            }
+
+            regex = RegexPatterns.PhysicalThornsRangePattern().Match(line);
+            if (regex.Success)
+            {
+                if (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var thMin)
+                    && Int32.TryParse(regex.Groups[2].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var thMax))
+                {
+                    item.ItemStats.PhysicalThornsMinDamageAmount = thMin;
+                    item.ItemStats.PhysicalThornsMaxDamageAmount = thMax;
+                }
+            }
+
+
+            // Spell skills
+            regex = RegexPatterns.ColdSpellSkillsLevelPattern().Match(line);
+            if (regex.Success && Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var lc))
+            {
+                item.ItemStats.ColdSpellSkillsLevel = lc;
+            }
+
+            regex = RegexPatterns.FireSpellSkillsLevelPattern().Match(line);
+            if (regex.Success && Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var lf))
+            {
+                item.ItemStats.FireSpellSkillsLevel = lf;
+            }
+
+            regex = RegexPatterns.LightningSpellSkillsLevelPattern().Match(line);
+            if (regex.Success && Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var ll))
+            {
+                item.ItemStats.LightningSpellSkillsLevel = ll;
+            }
+
+            regex = RegexPatterns.ChaosSpellSkillsLevelPattern().Match(line);
+            if (regex.Success && Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var lcha))
+            {
+                item.ItemStats.ChaosSpellSkillsLevel = lcha;
+            }
+            // ----
+
+            // Attributes
+            regex = RegexPatterns.StrengthAmountPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var str)))
+            {
+                item.ItemStats.Strength = str;
+            }
+
+            regex = RegexPatterns.DexterityAmountPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var dex)))
+            {
+                item.ItemStats.Dexterity = dex;
+            }
+
+            regex = RegexPatterns.IntelligenceAmountPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var intel)))
+            {
+                item.ItemStats.Intelligence = intel;
+            }
+
+            regex = RegexPatterns.AllAttributesAmountPattern().Match(line);
+            if (regex.Success && (Int32.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var allAttrib)))
+            {
+                item.ItemStats.AllAttributes = allAttrib;
+            }
+            // ----
+
+            // Resistances
+            regex = RegexPatterns.FireResistancePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var fireRes))
+            {
+                item.ItemStats.FireResistancePercent = fireRes;
+            }
+
+            regex = RegexPatterns.LightningResistancePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var lightningRes))
+            {
+                item.ItemStats.LightningResistancePercent = lightningRes;
+            }
+
+            regex = RegexPatterns.ColdResistancePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var coldRes))
+            {
+                item.ItemStats.ColdResistancePercent = coldRes;
+            }
+
+            regex = RegexPatterns.ChaosResistancePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var chaosRes))
+            {
+                item.ItemStats.ChaosResistancePercent = chaosRes;
+            }
+
+            regex = RegexPatterns.AllElementalResistancesPercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var allElemRes))
+            {
+                item.ItemStats.AllElementalResistancesPercent = allElemRes;
+            }
+
+            // ----
+
+            // Damage %s
+            regex = RegexPatterns.FireDamagePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var fireDmg))
+            {
+                item.ItemStats.FireDamagePercent = fireDmg;
+            }
+
+            regex = RegexPatterns.LightningDamagePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var lightningDmg))
+            {
+                item.ItemStats.LightningDamagePercent = lightningDmg;
+            }
+
+            regex = RegexPatterns.ColdDamagePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var coldDmg))
+            {
+                item.ItemStats.ColdDamagePercent = coldDmg;
+            }
+
+            regex = RegexPatterns.ChaosDamagePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var chaosDmg))
+            {
+                item.ItemStats.ChaosDamagePercent = chaosDmg;
+            }
+
+            regex = RegexPatterns.AllDamagePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var allDmg))
+            {
+                item.ItemStats.AllDamagePercent = allDmg;
+            }
+
+            regex = RegexPatterns.PhysicalDamagePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var physDmg))
+            {
+                item.ItemStats.PhysicalDamagePercent = physDmg;
+            }
+
+            regex = RegexPatterns.SpellDamagePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var spellDmg))
+            {
+                item.ItemStats.SpellDamagePercent = spellDmg;
+            }
+            // ----
+
+            // Other %
+            regex = RegexPatterns.MaximumLifePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var maxLife))
+            {
+                item.ItemStats.MaximumLifePercent = maxLife;
+            }
+
+            regex = RegexPatterns.EnergyShieldPercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var energyShieldPercent))
+            {
+                item.ItemStats.EnergyShieldPercent = energyShieldPercent;
+            }
+
+            regex = RegexPatterns.ArmourPercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var armourPercent))
+            {
+                item.ItemStats.ArmourPercent = armourPercent;
+            }
+
+            regex = RegexPatterns.ManaRegenPercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var manaRegenPercent))
+            {
+                item.ItemStats.ManaRegenPercent = manaRegenPercent;
+            }
+
+            regex = RegexPatterns.LifeRegenAmountPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var lifeRegenAmount))
+            {
+                item.ItemStats.LifeRegenAmount = lifeRegenAmount;
+            }
+
+            regex = RegexPatterns.BlockChancePercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var blockChance))
+            {
+                item.ItemStats.BlockChancePercent = blockChance;
+            }
+
+            regex = RegexPatterns.PhysicalDamageReductionPercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var phyDamageReductionPercent))
+            {
+                item.ItemStats.PhysicalDamageReductionPercent = phyDamageReductionPercent;
+            }
+
+            // ----
+
+            // Speed / Rarity
+            regex = RegexPatterns.CastSpeedPercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var castSpeed))
+            {
+                item.ItemStats.CastSpeedPercent = castSpeed;
+            }
+
+            regex = RegexPatterns.AttackSpeedPercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var attackSpeed))
+            {
+                item.ItemStats.AttackSpeedPercent = attackSpeed;
+            }
+
+            regex = RegexPatterns.RarityPercentPattern().Match(line);
+            if (regex.Success && double.TryParse(regex.Groups[1].Value.Trim(), System.Globalization.NumberStyles.AllowDecimalPoint, System.Globalization.CultureInfo.InvariantCulture, out var rarity))
+            {
+                item.ItemStats.RarityPercent = rarity;
+            }
+
+            // Enchant / custom string field
+            regex = RegexPatterns.EnchantPattern().Match(line);
+            if (regex.Success)
+            {
+                item.ItemStats.Enchant = regex.Groups[1].Value.Trim();
+            }
         }
 
-        private async Task<bool> ProcessFileDataForItems(Item item, StreamReader sr, int currentItemId, CancellationToken cancellationToken)
+        // Return a tuple so the helper can create/replace the current item and increment the id
+        private async Task<(bool Continue, Item Item, int CurrentItemId)> ProcessFileDataForItems(Item item, StreamReader sr, int currentItemId, CancellationToken cancellationToken)
         {
             // Read one line (async with cancellation)
             string line = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-            if (line is null) return false;
+            if (line is null) return (false, item, currentItemId);
 
             // Item delimiter logic
             if (line.StartsWith("Item Class:", StringComparison.OrdinalIgnoreCase))
             {
                 string name1 = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
                 string name2 = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
-                if (name1 is null || name2 is null) return false;
+                if (name1 is null || name2 is null) return (false, item, currentItemId);
 
-                item = new Item() { Id = ++currentItemId, Name = $"{name1.Trim()} {name2.Trim()}", ItemStats = new() };
-                _items.Add(item);
+                var newItem = new Item()
+                {
+                    Id = ++currentItemId,
+                    Name = $"{name1.Trim()} {name2.Trim()}",
+                    ItemStats = new ItemStats()
+                };
+
+                _items.Add(newItem);
+                item = newItem;
             }
 
-            MapItemData(line, item);
-            return true;
+            // Map data into the current item
+            if (item != null)
+            {
+                MapItemData(line, item);
+            }
+
+            return (true, item, item.Id);
         }
     }
 }

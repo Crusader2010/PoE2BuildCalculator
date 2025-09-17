@@ -198,7 +198,25 @@ namespace PoE2BuildCalculator
 
             MessageBox.Show($"Item Names: {string.Join(",", x.Select(x => x.Name))}");
 
-            MessageBox.Show($"Item Armour: {string.Join(",", x.Select(x => x.ItemStats.ArmourAmount))}");
+            MessageBox.Show($"Item Armour: {string.Join(",", x.Select(x => x.ItemStats.ArmourAmountImplicit))}");
+        }
+
+        private void ShowItemsDataButton_Click(object sender, EventArgs e)
+        {
+            if (_fileParser == null)
+            {
+                StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
+                return;
+            }
+
+            var display = new DataDisplay
+            {
+                // pass parser to the dialog before showing it
+                _fileParser = _fileParser
+            };
+
+            // show modal so caller waits for the user to close it
+            display.ShowDialog(this);
         }
     }
 }
