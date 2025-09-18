@@ -188,17 +188,13 @@ namespace PoE2BuildCalculator
 
         #endregion
 
-        private void Button1_Click(object sender, EventArgs e)
+        private void TierManagerButton_Click(object sender, EventArgs e)
         {
-            var x = _fileParser.GetParsedItems();
+            var compute = new Compute
+            {
+            };
 
-            MessageBox.Show($"Parsed {x.Count} items.");
-
-            MessageBox.Show($"Item Ids: {string.Join(",", x.Select(x => x.Id))}");
-
-            MessageBox.Show($"Item Names: {string.Join(",", x.Select(x => x.Name))}");
-
-            MessageBox.Show($"Item Armour: {string.Join(",", x.Select(x => x.ItemStats.ArmourAmountImplicit))}");
+            compute.Show(this);
         }
 
         private void ShowItemsDataButton_Click(object sender, EventArgs e)
@@ -216,7 +212,7 @@ namespace PoE2BuildCalculator
             };
 
             // show modal so caller waits for the user to close it
-            display.ShowDialog(this);
+            display.Show(this);
         }
     }
 }

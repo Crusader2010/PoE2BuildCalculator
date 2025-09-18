@@ -38,10 +38,10 @@ namespace PoE2BuildCalculator
             // Anchor the grid on all sides so when the form grows the grid expands to use the space.
             TableDisplayData.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
 
-            ImportDisplayData_Click(sender, e);
+            ImportDataToDisplay_Click(sender, e);
         }
 
-        private void ImportDisplayData_Click(object sender, EventArgs e)
+        private void ImportDataToDisplay_Click(object sender, EventArgs e)
         {
             if (_fileParser == null)
             {
@@ -62,7 +62,7 @@ namespace PoE2BuildCalculator
                 TableDisplayData.Columns.Clear();
                 TableDisplayData.Rows.Clear();
 
-                IReadOnlyList<PropertyDescriptionHelper.StatDescriptor> descriptors = PropertyDescriptionHelper.GetStatDescriptors();
+                IReadOnlyList<ItemStatsHelper.StatDescriptor> descriptors = ItemStatsHelper.GetStatDescriptors();
 
                 AddNonStatsColumnHeadersToTable();
                 AddStatsColumnHeadersToTable(descriptors);
@@ -71,7 +71,7 @@ namespace PoE2BuildCalculator
                 foreach (var item in items)
                 {
                     // Build a PropertyName->value map for this item's stats.
-                    var statsMap = PropertyDescriptionHelper.ToDictionary(item.ItemStats);
+                    var statsMap = ItemStatsHelper.ToDictionary(item.ItemStats);
 
                     var rowValues = new object[4 + descriptors.Count];
                     rowValues[0] = item.Id;
@@ -82,14 +82,7 @@ namespace PoE2BuildCalculator
                     for (int i = 0; i < descriptors.Count; i++)
                     {
                         var d = descriptors[i];
-                        if (statsMap.TryGetValue(d.PropertyName, out var v) && PropertyDescriptionHelper.HasValue(v)) // The dictionary keys are the descriptor.PropertyName values.
-                        {
-                            rowValues[4 + i] = Convert.ChangeType(v, d.PropertyType);
-                        }
-                        else
-                        {
-                            rowValues[4 + i] = d.PropertyType == typeof(string) ? string.Empty : Convert.ChangeType(0, d.PropertyType);
-                        }
+                        rowValues[4 + i] = statsMap.TryGetValue(d.PropertyName, out var v) ? v : GetEmptyValueForTableRow(d.PropertyType);
                     }
 
                     TableDisplayData.Rows.Add(rowValues);
@@ -100,12 +93,89 @@ namespace PoE2BuildCalculator
             }
             catch (Exception ex)
             {
-                ErrorManager.ShowError(ex, nameof(ImportDisplayData_Click));
+                ErrorHelper.ShowError(ex, nameof(ImportDataToDisplay_Click));
                 throw;
             }
 
             // Adjust the form size so as much of TableDisplayData as possible is visible.
             AdjustFormSizeToDataGrid();
+        }
+
+        private void ButtonClose_Click(object sender, EventArgs e)
+        {
+            this.Close();
+            this.Dispose();
+        }
+
+
+
+        #region Private helpers
+
+        private static object GetEmptyValueForTableRow(Type propertyType)
+        {
+            return propertyType == typeof(string) ? string.Empty : ItemStatsHelper.ConvertToType(propertyType, 0);
+        }
+
+        private void AddNonStatsColumnHeadersToTable()
+        {
+            try
+            {
+                // Add column header for item ID.
+                var idColumn = new DataGridViewTextBoxColumn
+                {
+                    Name = "Id",
+                    HeaderText = "Id",
+                    ValueType = typeof(int)
+                };
+                TableDisplayData.Columns.Add(idColumn);
+
+                // Add column headers for other non-stat properties.
+                var otherBaseColumns = new[] { "Name", "Class", "IsMine" };
+                foreach (var c in otherBaseColumns)
+                {
+                    var col = new DataGridViewTextBoxColumn
+                    {
+                        Name = c,
+                        HeaderText = c,
+                        ValueType = typeof(string)
+                    };
+
+                    TableDisplayData.Columns.Add(col);
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
+        }
+
+        private void AddStatsColumnHeadersToTable(IReadOnlyList<ItemStatsHelper.StatDescriptor> descriptors)
+        {
+            try
+            {
+                if (descriptors == null || descriptors.Count == 0) return;
+
+                // Add stat columns using descriptor.PropertyName as column Name and descriptor.Header as header text.            
+                foreach (var d in descriptors)
+                {
+                    // Ensure unique column name (should be unique by property name).
+                    if (!TableDisplayData.Columns.Contains(d.PropertyName))
+                    {
+                        var col = new DataGridViewTextBoxColumn
+                        {
+                            Name = d.PropertyName,
+                            DataPropertyName = d.PropertyName,
+                            HeaderText = d.Header,
+                            ValueType = d.PropertyType
+                        };
+                        TableDisplayData.Columns.Add(col);
+                    }
+                }
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         /// <summary>
@@ -165,77 +235,11 @@ namespace PoE2BuildCalculator
             }
             catch (Exception ex)
             {
-                ErrorManager.ShowError(ex, nameof(AdjustFormSizeToDataGrid));
+                ErrorHelper.ShowError(ex, $"{nameof(DataDisplay)} - {nameof(AdjustFormSizeToDataGrid)}");
                 throw;
             }
         }
 
-        private void AddNonStatsColumnHeadersToTable()
-        {
-            try
-            {
-                // Add column header for item ID.
-                var idColumn = new DataGridViewTextBoxColumn
-                {
-                    Name = "Id",
-                    HeaderText = "Id",
-                    ValueType = typeof(int)
-                };
-                TableDisplayData.Columns.Add(idColumn);
-
-                // Add column headers for other non-stat properties.
-                var otherBaseColumns = new[] { "Name", "Class", "IsMine" };
-                foreach (var c in otherBaseColumns)
-                {
-                    var col = new DataGridViewTextBoxColumn
-                    {
-                        Name = c,
-                        HeaderText = c,
-                        ValueType = typeof(string)
-                    };
-
-                    TableDisplayData.Columns.Add(col);
-                }
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-        }
-
-        private void AddStatsColumnHeadersToTable(IReadOnlyList<PropertyDescriptionHelper.StatDescriptor> descriptors)
-        {
-            try
-            {
-                if (descriptors == null || descriptors.Count == 0) return;
-
-                // Add stat columns using descriptor.PropertyName as column Name and descriptor.Header as header text.            
-                foreach (var d in descriptors)
-                {
-                    // Ensure unique column name (should be unique by property name).
-                    if (!TableDisplayData.Columns.Contains(d.PropertyName))
-                    {
-                        var col = new DataGridViewTextBoxColumn
-                        {
-                            Name = d.PropertyName,
-                            DataPropertyName = d.PropertyName,
-                            HeaderText = d.Header,
-                            ValueType = d.PropertyType
-                        };
-                        TableDisplayData.Columns.Add(col);
-                    }
-                }
-            }
-            catch (Exception)
-            {
-                throw;
-            }
-        }
-
-        private void ButtonClose_Click(object sender, EventArgs e)
-        {
-            this.Close();
-            this.Dispose();
-        }
+        #endregion  
     }
 }

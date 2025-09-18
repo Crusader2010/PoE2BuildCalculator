@@ -42,7 +42,7 @@
             ImportDisplayData.TabIndex = 1;
             ImportDisplayData.Text = "Import Data";
             ImportDisplayData.UseVisualStyleBackColor = true;
-            ImportDisplayData.Click += ImportDisplayData_Click;
+            ImportDisplayData.Click += ImportDataToDisplay_Click;
             // 
             // TableDisplayData
             // 
@@ -52,6 +52,7 @@
             TableDisplayData.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             TableDisplayData.Location = new Point(93, 12);
             TableDisplayData.Name = "TableDisplayData";
+            TableDisplayData.ReadOnly = true;
             TableDisplayData.Size = new Size(454, 260);
             TableDisplayData.TabIndex = 2;
             // 

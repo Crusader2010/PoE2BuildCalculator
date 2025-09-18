@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.DirectoryServices.ActiveDirectory;
 using System.Linq.Expressions;
 using System.Reflection;
 using System.Text.RegularExpressions;
@@ -11,7 +12,7 @@ namespace Domain
     /// Also declares <see cref="StatColumnAttribute"/> which can be applied to properties
     /// in <see cref="ItemStats"/> to control ordering (optional).
     /// </summary>
-    public static class PropertyDescriptionHelper
+    public static class ItemStatsHelper
     {
         // Descriptor exposed to callers
         public sealed class StatDescriptor
@@ -47,20 +48,22 @@ namespace Domain
             foreach (var d in s_descriptors)
             {
                 var val = d.Getter(stats);
-                dict[d.PropertyName] = val;
+                dict[d.PropertyName] = ConvertToType(d.PropertyType, val);
             }
 
             return dict;
         }
 
-        public static bool HasValue(object val)
+        public static object ConvertToType(Type propertyType, object value)
         {
-            if (val is null) return false;
-            if (val is int iv) return iv > 0;
-            if (val is long lv) return lv > 0;
-            if (val is double dv) return dv > 0.0;
-            if (val is string s) return !string.IsNullOrWhiteSpace(s);
-            return false;
+            return Type.GetTypeCode(propertyType) switch
+            {
+                TypeCode.Double => Convert.ChangeType(value, typeof(double)) ?? 0.0d,
+                TypeCode.Int32 => Convert.ChangeType(value, typeof(int)) ?? 0,
+                TypeCode.Int64 => Convert.ChangeType(value, typeof(long)) ?? 0,
+                TypeCode.String => Convert.ChangeType(value, typeof(string)) ?? string.Empty,
+                _ => value,
+            };
         }
 
         private static IReadOnlyList<StatDescriptor> BuildDescriptors()

@@ -33,7 +33,7 @@
             StatusBar = new StatusStrip();
             StatusBarLabel = new ToolStripStatusLabel();
             ButtonParseItemListFile = new Button();
-            button1 = new Button();
+            TierManagerButton = new Button();
             ShowItemsDataButton = new Button();
             StatusBar.SuspendLayout();
             SuspendLayout();
@@ -77,19 +77,19 @@
             ButtonParseItemListFile.UseVisualStyleBackColor = true;
             ButtonParseItemListFile.Click += ButtonParseItemListFile_Click;
             // 
-            // button1
+            // TierManagerButton
             // 
-            button1.Location = new Point(411, 237);
-            button1.Name = "button1";
-            button1.Size = new Size(75, 23);
-            button1.TabIndex = 3;
-            button1.Text = "button1";
-            button1.UseVisualStyleBackColor = true;
-            button1.Click += Button1_Click;
+            TierManagerButton.Location = new Point(411, 237);
+            TierManagerButton.Name = "TierManagerButton";
+            TierManagerButton.Size = new Size(172, 68);
+            TierManagerButton.TabIndex = 3;
+            TierManagerButton.Text = "Manage tiers and weights";
+            TierManagerButton.UseVisualStyleBackColor = true;
+            TierManagerButton.Click += TierManagerButton_Click;
             // 
             // ShowItemsDataButton
             // 
-            ShowItemsDataButton.Location = new Point(153, 255);
+            ShowItemsDataButton.Location = new Point(199, 235);
             ShowItemsDataButton.Name = "ShowItemsDataButton";
             ShowItemsDataButton.Size = new Size(137, 73);
             ShowItemsDataButton.TabIndex = 4;
@@ -103,7 +103,7 @@
             AutoScaleMode = AutoScaleMode.Dpi;
             ClientSize = new Size(800, 450);
             Controls.Add(ShowItemsDataButton);
-            Controls.Add(button1);
+            Controls.Add(TierManagerButton);
             Controls.Add(ButtonParseItemListFile);
             Controls.Add(StatusBar);
             Controls.Add(ButtonOpenItemListFile);
@@ -127,7 +127,7 @@
         private StatusStrip StatusBar;
         private ToolStripStatusLabel StatusBarLabel;
         private Button ButtonParseItemListFile;
-        private Button button1;
+        private Button TierManagerButton;
         private Button ShowItemsDataButton;
     }
 }

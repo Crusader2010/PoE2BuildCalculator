@@ -1,6 +1,6 @@
 namespace Domain
 {
-    public static class ErrorManager
+    public static class ErrorHelper
     {
         /// <summary>
         /// Shows an error message in a message box with copy-paste support.
