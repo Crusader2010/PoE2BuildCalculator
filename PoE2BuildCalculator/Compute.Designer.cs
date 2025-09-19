@@ -65,6 +65,7 @@
             TableTiers.ReadOnly = true;
             TableTiers.Size = new Size(454, 213);
             TableTiers.TabIndex = 6;
+            TableTiers.CellFormatting += TableTiers_CellFormatting;
             TableTiers.CellValidating += TableTiers_CellValidating;
             TableTiers.CellValueChanged += TableTiers_CellValueChanged;
             TableTiers.UserDeletingRow += TableTiers_UserDeletingRow;
