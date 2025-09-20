@@ -1,6 +1,7 @@
 ﻿using Domain;
 using Manager;
 using System.Data;
+using System.Windows.Forms;
 
 namespace PoE2BuildCalculator
 {
@@ -11,10 +12,9 @@ namespace PoE2BuildCalculator
         private int _minFormSize;
         private readonly DataGridViewCellStyle _defaultCellStyle = new()
         {
-            Format = "0.00",
             Alignment = DataGridViewContentAlignment.MiddleCenter,
-            DataSourceNullValue = 0.0d,
-            NullValue = 0.0d,
+            DataSourceNullValue = string.Empty,
+            NullValue = string.Empty,
             FormatProvider = System.Globalization.CultureInfo.InvariantCulture
         };
 
@@ -42,27 +42,27 @@ namespace PoE2BuildCalculator
             var newTier = new Tier
             {
                 TierId = TableTiers.Rows.Count + 1,
-                TierName = string.Empty,
-                TierWeight = 0,
+                TierName = $"Tier {TableTiers.Rows.Count + 1}",
+                TierWeight = 0.0d,
                 StatWeights = new Dictionary<string, double>()
             };
 
             // Initialize StatWeights with 0 for all possible stats
             foreach (var descriptor in _itemStatsDescriptors)
             {
-                newTier.StatWeights.Add(descriptor.PropertyName, 0.0);
+                newTier.StatWeights.Add(descriptor.PropertyName, 0.0d);
             }
 
             _tiers.Add(newTier);
             TableTiers.SuspendLayout();
 
-            object[] rowValues = new object[TableTiers.Columns.Count];
-            rowValues[0] = newTier.TierId;
+            string[] rowValues = new string[TableTiers.Columns.Count];
+            rowValues[0] = newTier.TierId.ToString();
             rowValues[1] = newTier.TierName;
-            rowValues[2] = newTier.TierWeight;
+            rowValues[2] = newTier.TierWeight.ToString("0.00");
             for (int i = 3; i < rowValues.Length; i++)
             {
-                rowValues[i] = 0.0d;
+                rowValues[i] = "0.00";
             }
 
             // Add the row by passing the values directly. This is the most reliable method.
@@ -78,11 +78,13 @@ namespace PoE2BuildCalculator
             if (e.ColumnIndex <= 1) return; // Skip validation for TierId and TierName columns
 
             // Validate numeric columns (TierWeight and StatWeights)
-            if (!double.TryParse(e.FormattedValue.ToString(), out _))
+            if (!double.TryParse(e.FormattedValue?.ToString(), out double value))
             {
                 e.Cancel = true;
                 MessageBox.Show("Please enter a valid floating point number.", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
             }
+
+            TableTiers.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = value.ToString("0.00");
         }
 
         private void TableTiers_UserDeletingRow(object sender, DataGridViewRowCancelEventArgs e)
@@ -103,6 +105,15 @@ namespace PoE2BuildCalculator
 
         private void TableTiers_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
+        }
+
+        private void TableTiers_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                TableTiers.EndEdit(); // trigger cell validation after pressing Enter
+            }
         }
 
         #region Private helpers
@@ -224,13 +235,13 @@ namespace PoE2BuildCalculator
             // Configure the DataGridView
             TableTiers.AllowUserToAddRows = false;
             TableTiers.AllowUserToDeleteRows = false;
+            TableTiers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             TableTiers.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
             TableTiers.ShowEditingIcon = true;
             TableTiers.MultiSelect = true;
             TableTiers.AutoGenerateColumns = false;
             TableTiers.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
-            TableTiers.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
-            TableTiers.SelectionMode = DataGridViewSelectionMode.CellSelect;
+            TableTiers.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             TableTiers.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             TableTiers.DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.InvariantCulture;
             TableTiers.RowTemplate.DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.InvariantCulture;
@@ -243,9 +254,9 @@ namespace PoE2BuildCalculator
                 Name = "TierId",
                 HeaderText = "Tier ID",
                 //DataPropertyName = "TierId",
-                ValueType = typeof(int),
+                ValueType = typeof(string),
                 ReadOnly = true,
-                DefaultCellStyle = new DataGridViewCellStyle { Format = "0", Alignment = DataGridViewContentAlignment.MiddleCenter, FormatProvider = System.Globalization.CultureInfo.InvariantCulture }
+                DefaultCellStyle = _defaultCellStyle
             };
 
             var nameColumn = new DataGridViewTextBoxColumn
@@ -255,8 +266,8 @@ namespace PoE2BuildCalculator
                 //DataPropertyName = "TierName",
                 ValueType = typeof(string),
                 ReadOnly = false,
-                DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter, DataSourceNullValue = string.Empty, NullValue = string.Empty, FormatProvider = System.Globalization.CultureInfo.InvariantCulture },
-                HeaderCell = { ToolTipText = "Tier name" }
+                DefaultCellStyle = _defaultCellStyle,
+                HeaderCell = { ToolTipText = "Tier name" },
             };
 
             var weightColumn = new DataGridViewTextBoxColumn
@@ -264,7 +275,7 @@ namespace PoE2BuildCalculator
                 Name = "TierWeight",
                 HeaderText = "Tier Weight",
                 //DataPropertyName = "TierWeight",
-                ValueType = typeof(double),
+                ValueType = typeof(string),
                 ReadOnly = false,
                 DefaultCellStyle = _defaultCellStyle,
                 HeaderCell = { ToolTipText = "Weight of the tier" }
@@ -280,7 +291,7 @@ namespace PoE2BuildCalculator
                     Name = descriptor.PropertyName,
                     HeaderText = descriptor.Header,
                     //DataPropertyName = $"StatWeights[{descriptor.PropertyName}]",
-                    ValueType = typeof(double),
+                    ValueType = typeof(string),
                     ReadOnly = false,
                     DefaultCellStyle = _defaultCellStyle,
                     HeaderCell = { ToolTipText = descriptor.Header }

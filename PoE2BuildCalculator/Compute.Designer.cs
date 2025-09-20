@@ -59,16 +59,19 @@
             TableTiers.AllowUserToAddRows = false;
             TableTiers.AllowUserToDeleteRows = false;
             TableTiers.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.ColumnHeader;
+            TableTiers.CellBorderStyle = DataGridViewCellBorderStyle.Sunken;
             TableTiers.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             TableTiers.Location = new Point(94, 12);
             TableTiers.Name = "TableTiers";
-            TableTiers.ReadOnly = true;
+            TableTiers.RowTemplate.Resizable = DataGridViewTriState.False;
+            TableTiers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             TableTiers.Size = new Size(454, 213);
             TableTiers.TabIndex = 6;
             TableTiers.CellFormatting += TableTiers_CellFormatting;
             TableTiers.CellValidating += TableTiers_CellValidating;
             TableTiers.CellValueChanged += TableTiers_CellValueChanged;
             TableTiers.UserDeletingRow += TableTiers_UserDeletingRow;
+            TableTiers.KeyDown += TableTiers_KeyDown;
             // 
             // Compute
             // 
