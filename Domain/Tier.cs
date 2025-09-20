@@ -11,6 +11,8 @@ namespace Domain
     {
         private IDictionary<string, double> _statWeights = new Dictionary<string, double>();
         private int _tierId;
+        private string _tierName;
+        private double _tierWeight;
 
         public int TierId
         {
@@ -22,10 +24,25 @@ namespace Domain
             }
         }
 
+        public string TierName
+        {
+            get { return _tierName; }
+            set
+            {
+                _tierName = value;
+                OnPropertyChanged(nameof(TierName));
+            }
+        }
 
-        public string TierName { get; set; }
-
-        public double TierWeight { get; set; }
+        public double TierWeight
+        {
+            get { return _tierWeight; }
+            set
+            {
+                _tierWeight = value;
+                OnPropertyChanged(nameof(TierWeight));
+            }
+        }
 
         /// <summary>
         /// A dictionary with the weight of each item stat (by PropertyName).

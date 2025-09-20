@@ -30,7 +30,7 @@
         {
             AddTierButton = new Button();
             RemoveTierButton = new Button();
-            TableTiers = new DataGridView();
+            TableTiers = new CustomDataGridView();
             TableStatsWeightSum = new DataGridView();
             ((System.ComponentModel.ISupportInitialize)TableTiers).BeginInit();
             ((System.ComponentModel.ISupportInitialize)TableStatsWeightSum).BeginInit();
@@ -38,7 +38,7 @@
             // 
             // AddTierButton
             // 
-            AddTierButton.Location = new Point(118, 12);
+            AddTierButton.Location = new Point(151, 12);
             AddTierButton.Name = "AddTierButton";
             AddTierButton.Size = new Size(76, 54);
             AddTierButton.TabIndex = 4;
@@ -63,17 +63,16 @@
             TableTiers.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.ColumnHeader;
             TableTiers.CellBorderStyle = DataGridViewCellBorderStyle.Sunken;
             TableTiers.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            TableTiers.Location = new Point(209, 12);
+            TableTiers.Location = new Point(244, 12);
             TableTiers.Name = "TableTiers";
             TableTiers.RowTemplate.Resizable = DataGridViewTriState.False;
             TableTiers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-            TableTiers.Size = new Size(903, 383);
+            TableTiers.Size = new Size(868, 383);
             TableTiers.TabIndex = 6;
-            TableTiers.CellFormatting += TableTiers_CellFormatting;
+            TableTiers.CellPainting += TableTiers_CellPainting;
             TableTiers.CellValidating += TableTiers_CellValidating;
             TableTiers.CellValueChanged += TableTiers_CellValueChanged;
             TableTiers.UserDeletingRow += TableTiers_UserDeletingRow;
-            TableTiers.KeyDown += TableTiers_KeyDown;
             // 
             // TableStatsWeightSum
             // 
@@ -87,7 +86,7 @@
             TableStatsWeightSum.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             TableStatsWeightSum.Location = new Point(12, 104);
             TableStatsWeightSum.Name = "TableStatsWeightSum";
-            TableStatsWeightSum.Size = new Size(182, 291);
+            TableStatsWeightSum.Size = new Size(215, 291);
             TableStatsWeightSum.TabIndex = 7;
             // 
             // Compute
@@ -104,6 +103,7 @@
             Name = "Compute";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Compute";
+            FormClosing += Compute_FormClosing;
             Load += Compute_Load;
             ((System.ComponentModel.ISupportInitialize)TableTiers).EndInit();
             ((System.ComponentModel.ISupportInitialize)TableStatsWeightSum).EndInit();
@@ -113,7 +113,7 @@
         #endregion
         private Button AddTierButton;
         private Button RemoveTierButton;
-        private DataGridView TableTiers;
         private DataGridView TableStatsWeightSum;
+        private CustomDataGridView TableTiers;
     }
 }

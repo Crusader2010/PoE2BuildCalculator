@@ -30,7 +30,10 @@ namespace PoE2BuildCalculator
             InitializeComponent();
             InitializeTableTiers();
             InitializeTableStatsWeightSum();
+
             this.Load += Compute_Load;
+            this.FormClosing += Compute_FormClosing; // Add this line
+            this.TableTiers.CellValidating += TableTiers_CellValidating;
         }
 
         private void Compute_Load(object sender, EventArgs e)
@@ -78,35 +81,9 @@ namespace PoE2BuildCalculator
 
         private void TableTiers_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
         {
-            if (e.ColumnIndex <= 1) return; // Skip validation for TierId and TierName columns
-
-            // Validate numeric columns (TierWeight and StatWeights)
-            if (!double.TryParse(e.FormattedValue?.ToString() ?? "0.00", out double value))
+            if (!ValidateAndCommitTierData(e.RowIndex, e.ColumnIndex, e.FormattedValue, TableTiers, true))
             {
-                e.Cancel = true;
-                MessageBox.Show("Please enter a valid floating point number.", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            else if (value < 0.00d || value > 100.00d)
-            {
-                e.Cancel = true;
-                MessageBox.Show("The value of the weight needs to be between 0.00 and 100.00", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-
-            string formattedValue = value.ToString("0.00");
-            TableTiers.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = formattedValue; // update the cell value with decimals even if the user didn't type them
-
-            var tier = _tiers[e.RowIndex];
-            if (e.ColumnIndex == TableTiers.Columns[nameof(Tier.TierWeight)].Index) //TierWeight column
-            {
-                tier.TierWeight = value;
-            }
-            else
-            {
-                // StatWeights columns
-                var columnName = TableTiers.Columns[e.ColumnIndex].Name;
-                tier.StatWeights[columnName] = value;
-                // Notify that TotalStatWeight has changed
-                tier.TriggerPropertyChange(nameof(Tier.TotalStatWeight));
+                e.Cancel = true; // Cancel the event if validation fails.
             }
         }
 
@@ -122,12 +99,12 @@ namespace PoE2BuildCalculator
         {
             if (e.RowIndex < 0 || e.ColumnIndex <= 0) return; // Ignore header changes and TierId column
 
-            var row = TableTiers.Rows[e.RowIndex];
-            var tier = _tiers[e.RowIndex];
-
             if (TableTiers.Columns[e.ColumnIndex].Name == nameof(Tier.TierName))
             {
+                var row = TableTiers.Rows[e.RowIndex];
+                var tier = _tiers[e.RowIndex];
                 tier.TierName = row.Cells[nameof(Tier.TierName)].FormattedValue?.ToString() ?? string.Empty;
+                tier.TriggerPropertyChange(nameof(Tier.TierName));
             }
         }
 
@@ -136,20 +113,94 @@ namespace PoE2BuildCalculator
             RemoveSelectedGridRows();
         }
 
-        private void TableTiers_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        private void TableTiers_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
         {
-        }
+            // Make sure we are in a valid cell and not a header
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
 
-        private void TableTiers_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter)
+            // Check if the current cell is the selected one
+            if ((e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected &&
+                TableTiers.CurrentCell.RowIndex == e.RowIndex &&
+                TableTiers.CurrentCell.ColumnIndex == e.ColumnIndex)
             {
-                e.SuppressKeyPress = true;
-                TableTiers.EndEdit(); // trigger cell validation after pressing Enter
+                // Define your custom colors
+                Color selectedBackColor = Color.SpringGreen;
+                Color selectedForeColor = Color.IndianRed;
+
+                // Erase the default background
+                e.PaintBackground(e.ClipBounds, false);
+
+                // Draw the custom background
+                using (SolidBrush backBrush = new(selectedBackColor))
+                {
+                    e.Graphics.FillRectangle(backBrush, e.CellBounds);
+                }
+
+                // Create a StringFormat object for alignment
+                StringFormat stringFormat = new()
+                {
+                    Alignment = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center,
+                    Trimming = StringTrimming.EllipsisCharacter
+                };
+
+                // Now, draw the cell content (text, etc.)
+                using (SolidBrush foreBrush = new(selectedForeColor))
+                {
+                    e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, stringFormat);
+                }
+
+                // Prevent the default cell painting
+                e.Handled = true;
+            }
+            else
+            {
+                // Let the default painting occur for non-selected cells
+                e.Handled = false;
             }
         }
 
         #region Private helpers
+
+        internal bool ValidateAndCommitTierData(int rowIndex, int colIndex, object formattedValue, DataGridView grid, bool performCellValueFormat)
+        {
+            // Skip validation for TierId and TierName columns
+            if (colIndex <= 1) return true;
+
+            // Validate numeric columns
+            if (!double.TryParse(formattedValue?.ToString() ?? "0.00", out double value))
+            {
+                MessageBox.Show("Please enter a valid floating point number.", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+            else if (value < 0.00d || value > 100.00d)
+            {
+                MessageBox.Show("The value of the weight needs to be between 0.00 and 100.00", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return false;
+            }
+
+            // Update the cell value with decimals even if the user didn't type them
+            if (performCellValueFormat)
+            {
+                string formattedString = value.ToString("0.00");
+                SetFormattedCellValue(grid, rowIndex, colIndex, formattedString);
+            }
+
+            var tier = _tiers[rowIndex];
+            if (colIndex == grid.Columns[nameof(Tier.TierWeight)].Index)
+            {
+                tier.TierWeight = value;
+                tier.TriggerPropertyChange(nameof(Tier.TierWeight));
+            }
+            else
+            {
+                var columnName = grid.Columns[colIndex].Name;
+                tier.StatWeights[columnName] = value;
+                tier.TriggerPropertyChange(nameof(Tier.TotalStatWeight));
+            }
+
+            return true; // Validation and commit successful
+        }
 
         private void RefreshTierIds()
         {
@@ -269,6 +320,8 @@ namespace PoE2BuildCalculator
 
         private void InitializeTableTiers()
         {
+            TableTiers.SuspendLayout();
+
             // Clear any existing columns/rows and ensure base columns exist.
             TableTiers.Columns.Clear();
             TableTiers.Rows.Clear();
@@ -287,8 +340,6 @@ namespace PoE2BuildCalculator
             TableTiers.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             TableTiers.DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.InvariantCulture;
             TableTiers.RowTemplate.DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.InvariantCulture;
-
-            TableTiers.SuspendLayout();
 
             // Add basic columns
             var idColumn = new DataGridViewTextBoxColumn
@@ -405,6 +456,68 @@ namespace PoE2BuildCalculator
             TableStatsWeightSum.ResumeLayout(true);
         }
 
+        internal void SetFormattedCellValue(DataGridView grid, int rowIndex, int colIndex, string formattedValue)
+        {
+            if (rowIndex < 0 || rowIndex >= grid.Rows.Count) return;
+            if (colIndex < 0 || colIndex >= grid.Columns.Count) return;
+
+            grid.SuspendLayout();
+            grid.Rows[rowIndex].Cells[colIndex].Value = formattedValue;
+            grid.UpdateCellValue(colIndex, rowIndex);
+            grid.ResumeLayout(true);
+        }
+
         #endregion
+
+        internal class CustomDataGridView : DataGridView
+        {
+            protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+            {
+                if (keyData == Keys.Enter || keyData == Keys.Return)
+                {
+                    if (this.IsCurrentCellInEditMode)
+                    {
+                        // Find the parent form to call its validation method
+                        if (this.FindForm() is Compute computeForm)
+                        {
+                            var cell = this.CurrentCell;
+                            // Get the text directly from the editing control
+                            var editedValue = this.EditingControl.Text;
+
+                            // Manually invoke the form's validation logic.
+                            // If it passes, we then commit the edit.
+                            // If it fails, the message box is shown and we do nothing, which leaves the cell in edit mode.
+                            if (computeForm.ValidateAndCommitTierData(cell.RowIndex, cell.ColumnIndex, editedValue, this, false))
+                            {
+                                this.EndEdit();
+                                string formattedString = double.Parse(editedValue).ToString("0.00");
+                                computeForm.SetFormattedCellValue(this, cell.RowIndex, cell.ColumnIndex, formattedString); // Update the cell value with decimals even if the user didn't type them
+                            }
+                        }
+                        else
+                        {
+                            // Fallback to default behavior if form isn't found for some reason
+                            this.EndEdit();
+                        }
+
+                        return true; // The Enter key has been handled.
+                    }
+                    else if (this.CurrentCell != null)
+                    {
+                        this.BeginEdit(true);
+                        return true;
+                    }
+                }
+
+                // Allow other keys to be processed normally
+                return base.ProcessCmdKey(ref msg, keyData);
+            }
+        }
+
+        private void Compute_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // Detach the event handler to prevent validation during form closure
+            this.TableTiers.CellValidating -= TableTiers_CellValidating;
+        }
     }
 }
