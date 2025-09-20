@@ -1,5 +1,6 @@
 ﻿using Domain;
 using Manager;
+using System.ComponentModel;
 using System.Data;
 using System.Windows.Forms;
 
@@ -8,8 +9,10 @@ namespace PoE2BuildCalculator
     public partial class Compute : Form
     {
         private readonly List<Tier> _tiers = [];
-        private readonly IReadOnlyList<ItemStatsHelper.StatDescriptor> _itemStatsDescriptors;
+        private readonly BindingList<Tier> _bindingTiers = [];
         private int _minFormSize;
+
+        private readonly IReadOnlyList<ItemStatsHelper.StatDescriptor> _itemStatsDescriptors;
         private readonly DataGridViewCellStyle _defaultCellStyle = new()
         {
             Alignment = DataGridViewContentAlignment.MiddleCenter,
@@ -18,12 +21,15 @@ namespace PoE2BuildCalculator
             FormatProvider = System.Globalization.CultureInfo.InvariantCulture
         };
 
+        private double _totalTierWeight => _tiers.Sum(t => t.TierWeight);
+
         public Compute()
         {
             _itemStatsDescriptors = ItemStatsHelper.GetStatDescriptors();
 
             InitializeComponent();
-            InitializeCustomComponents();
+            InitializeTableTiers();
+            InitializeTableStatsWeightSum();
             this.Load += Compute_Load;
         }
 
@@ -38,7 +44,6 @@ namespace PoE2BuildCalculator
 
         private void AddTierButton_Click(object sender, EventArgs e)
         {
-            TableTiers.DataSource = null;
             var newTier = new Tier
             {
                 TierId = TableTiers.Rows.Count + 1,
@@ -54,8 +59,9 @@ namespace PoE2BuildCalculator
             }
 
             _tiers.Add(newTier);
-            TableTiers.SuspendLayout();
+            _bindingTiers.Add(newTier);
 
+            TableTiers.SuspendLayout();
             string[] rowValues = new string[TableTiers.Columns.Count];
             rowValues[0] = newTier.TierId.ToString();
             rowValues[1] = newTier.TierName;
@@ -67,10 +73,7 @@ namespace PoE2BuildCalculator
 
             // Add the row by passing the values directly. This is the most reliable method.
             TableTiers.Rows.Add(rowValues);
-
             TableTiers.ResumeLayout(true);
-            TableTiers.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
-            //AdjustFormSizeToDataGrid();
         }
 
         private void TableTiers_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
@@ -78,24 +81,54 @@ namespace PoE2BuildCalculator
             if (e.ColumnIndex <= 1) return; // Skip validation for TierId and TierName columns
 
             // Validate numeric columns (TierWeight and StatWeights)
-            if (!double.TryParse(e.FormattedValue?.ToString(), out double value))
+            if (!double.TryParse(e.FormattedValue?.ToString() ?? "0.00", out double value))
             {
                 e.Cancel = true;
-                MessageBox.Show("Please enter a valid floating point number.", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Please enter a valid floating point number.", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            else if (value < 0.00d || value > 100.00d)
+            {
+                e.Cancel = true;
+                MessageBox.Show("The value of the weight needs to be between 0.00 and 100.00", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
 
-            TableTiers.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = value.ToString("0.00");
+            string formattedValue = value.ToString("0.00");
+            TableTiers.Rows[e.RowIndex].Cells[e.ColumnIndex].Value = formattedValue; // update the cell value with decimals even if the user didn't type them
+
+            var tier = _tiers[e.RowIndex];
+            if (e.ColumnIndex == TableTiers.Columns[nameof(Tier.TierWeight)].Index) //TierWeight column
+            {
+                tier.TierWeight = value;
+            }
+            else
+            {
+                // StatWeights columns
+                var columnName = TableTiers.Columns[e.ColumnIndex].Name;
+                tier.StatWeights[columnName] = value;
+                // Notify that TotalStatWeight has changed
+                tier.TriggerPropertyChange(nameof(Tier.TotalStatWeight));
+            }
         }
 
         private void TableTiers_UserDeletingRow(object sender, DataGridViewRowCancelEventArgs e)
         {
             var index = e.Row.Index;
             _tiers.RemoveAt(index);
+            _bindingTiers.RemoveAt(index);
             RefreshTierIds();
         }
 
         private void TableTiers_CellValueChanged(object sender, DataGridViewCellEventArgs e)
         {
+            if (e.RowIndex < 0 || e.ColumnIndex <= 0) return; // Ignore header changes and TierId column
+
+            var row = TableTiers.Rows[e.RowIndex];
+            var tier = _tiers[e.RowIndex];
+
+            if (TableTiers.Columns[e.ColumnIndex].Name == nameof(Tier.TierName))
+            {
+                tier.TierName = row.Cells[nameof(Tier.TierName)].FormattedValue?.ToString() ?? string.Empty;
+            }
         }
 
         private void RemoveTierButton_Click(object sender, EventArgs e)
@@ -122,10 +155,11 @@ namespace PoE2BuildCalculator
         {
             for (int i = 0; i < TableTiers.Rows.Count; i++)
             {
-                TableTiers.Rows[i].Cells["TierId"].Value = i + 1;
+                TableTiers.Rows[i].Cells[nameof(Tier.TierId)].Value = i + 1;
                 if (i < _tiers.Count)
                 {
                     _tiers[i].TierId = i + 1;
+                    _tiers[i].TriggerPropertyChange(nameof(Tier.TierId));
                 }
             }
         }
@@ -197,7 +231,7 @@ namespace PoE2BuildCalculator
         private int ComputeMinRequiredFormHeight()
         {
             int maxY = 0;
-            int offset = 36;
+            int offset = 136;
 
             if (this.Controls.Count > 0)
             {
@@ -215,9 +249,16 @@ namespace PoE2BuildCalculator
         {
             if (TableTiers.SelectedRows.Count > 0)
             {
-                for (int i = 0; i < TableTiers.SelectedRows.Count; i++)
+                var tiersDictionary = _tiers.ToDictionary(x => x.TierId, x => x);
+
+                for (int i = TableTiers.SelectedRows.Count - 1; i >= 0; i--) // must be in reverse for list update
                 {
-                    TableTiers.Rows.Remove(TableTiers.SelectedRows[i]);
+                    var row = TableTiers.SelectedRows[i];
+                    var tierId = int.Parse(row.Cells[nameof(Tier.TierId)].Value?.ToString() ?? "0");
+
+                    _tiers.Remove(tiersDictionary[tierId]);
+                    _bindingTiers.Remove(tiersDictionary[tierId]);
+                    TableTiers.Rows.Remove(row);
                 }
 
                 RefreshTierIds();
@@ -226,13 +267,14 @@ namespace PoE2BuildCalculator
 
         }
 
-        private void InitializeCustomComponents()
+        private void InitializeTableTiers()
         {
             // Clear any existing columns/rows and ensure base columns exist.
             TableTiers.Columns.Clear();
             TableTiers.Rows.Clear();
 
             // Configure the DataGridView
+            TableTiers.DataSource = null;
             TableTiers.AllowUserToAddRows = false;
             TableTiers.AllowUserToDeleteRows = false;
             TableTiers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
@@ -251,7 +293,7 @@ namespace PoE2BuildCalculator
             // Add basic columns
             var idColumn = new DataGridViewTextBoxColumn
             {
-                Name = "TierId",
+                Name = nameof(Tier.TierId),
                 HeaderText = "Tier ID",
                 //DataPropertyName = "TierId",
                 ValueType = typeof(string),
@@ -261,7 +303,7 @@ namespace PoE2BuildCalculator
 
             var nameColumn = new DataGridViewTextBoxColumn
             {
-                Name = "TierName",
+                Name = nameof(Tier.TierName),
                 HeaderText = "Tier Name",
                 //DataPropertyName = "TierName",
                 ValueType = typeof(string),
@@ -272,7 +314,7 @@ namespace PoE2BuildCalculator
 
             var weightColumn = new DataGridViewTextBoxColumn
             {
-                Name = "TierWeight",
+                Name = nameof(Tier.TierWeight),
                 HeaderText = "Tier Weight",
                 //DataPropertyName = "TierWeight",
                 ValueType = typeof(string),
@@ -318,6 +360,49 @@ namespace PoE2BuildCalculator
 
             TableTiers.ResumeLayout(true);
             AdjustFormSizeToDataGrid();
+        }
+
+        private void InitializeTableStatsWeightSum()
+        {
+            TableStatsWeightSum.SuspendLayout();
+
+            TableStatsWeightSum.Columns.Clear();
+            TableStatsWeightSum.Rows.Clear();
+            TableStatsWeightSum.AllowUserToAddRows = false;
+            TableStatsWeightSum.AllowUserToDeleteRows = false;
+            TableStatsWeightSum.SelectionMode = DataGridViewSelectionMode.CellSelect;
+            TableStatsWeightSum.ReadOnly = true;
+            TableStatsWeightSum.MultiSelect = false;
+            TableStatsWeightSum.AutoGenerateColumns = false;
+            TableStatsWeightSum.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+            TableStatsWeightSum.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+            TableStatsWeightSum.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right | AnchorStyles.Top;
+            TableStatsWeightSum.DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.InvariantCulture;
+            TableStatsWeightSum.RowTemplate.DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.InvariantCulture;
+
+            var tierIdColumn = new DataGridViewTextBoxColumn
+            {
+                Name = nameof(Tier.TierId),
+                HeaderText = "Tier Id",
+                ValueType = typeof(string),
+                ReadOnly = true,
+                DataPropertyName = nameof(Tier.TierId),
+                DefaultCellStyle = _defaultCellStyle // new DataGridViewCellStyle() { Format = "0", Alignment = DataGridViewContentAlignment.MiddleCenter, DataSourceNullValue = 0, NullValue = 0, FormatProvider = System.Globalization.CultureInfo.InvariantCulture }
+            };
+
+            var weightColumn = new DataGridViewTextBoxColumn
+            {
+                Name = nameof(Tier.TotalStatWeight),
+                HeaderText = "Total Stat Weight",
+                ValueType = typeof(string),
+                ReadOnly = true,
+                DataPropertyName = nameof(Tier.TotalStatWeight),
+                DefaultCellStyle = _defaultCellStyle // new DataGridViewCellStyle() { Format = "0.00", Alignment = DataGridViewContentAlignment.MiddleCenter, DataSourceNullValue = 0.0d, NullValue = 0.0d, FormatProvider = System.Globalization.CultureInfo.InvariantCulture }
+            };
+            TableStatsWeightSum.Columns.AddRange([tierIdColumn, weightColumn]);
+
+            TableStatsWeightSum.DataSource = _bindingTiers;
+            TableStatsWeightSum.ResumeLayout(true);
         }
 
         #endregion
