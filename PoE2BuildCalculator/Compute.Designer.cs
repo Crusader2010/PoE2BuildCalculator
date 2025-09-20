@@ -75,8 +75,8 @@
             TableTiers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             TableTiers.Size = new Size(1031, 371);
             TableTiers.TabIndex = 6;
-            TableTiers.CellLeave += TableTiers_CellLeave;
             TableTiers.CellPainting += TableTiers_CellPainting;
+            TableTiers.CellValidated += TableTiers_CellValidated;
             TableTiers.CellValidating += TableTiers_CellValidating;
             TableTiers.CellValueChanged += TableTiers_CellValueChanged;
             TableTiers.UserDeletingRow += TableTiers_UserDeletingRow;

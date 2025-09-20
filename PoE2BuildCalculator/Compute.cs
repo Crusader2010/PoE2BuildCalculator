@@ -82,9 +82,10 @@ namespace PoE2BuildCalculator
 
         private void TableTiers_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
         {
-            if (!ValidateAndCommitTierData(e.RowIndex, e.ColumnIndex, e.FormattedValue, TableTiers, true))
+            if (!ValidateAndCommitTierData(e.RowIndex, e.ColumnIndex, e.FormattedValue, TableTiers))
             {
                 e.Cancel = true; // Cancel the event if validation fails.
+                return;
             }
         }
 
@@ -167,17 +168,13 @@ namespace PoE2BuildCalculator
             this.TableTiers.CellValidating -= TableTiers_CellValidating;
         }
 
-        private void TableTiers_CellLeave(object sender, DataGridViewCellEventArgs e)
-        {
-        }
-
 
 
 
 
         #region Private helpers
 
-        internal bool ValidateAndCommitTierData(int rowIndex, int colIndex, object formattedValue, DataGridView grid, bool performCellValueFormat)
+        internal bool ValidateAndCommitTierData(int rowIndex, int colIndex, object formattedValue, DataGridView grid)
         {
             // Skip validation for TierId and TierName columns
             if (colIndex <= 1) return true;
@@ -192,12 +189,6 @@ namespace PoE2BuildCalculator
             {
                 MessageBox.Show("The value of the weight needs to be between 0.00 and 100.00", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 return false;
-            }
-
-            // Update the cell value with decimals even if the user didn't type them
-            if (performCellValueFormat)
-            {
-                SetFormattedCellValue(grid, rowIndex, colIndex, value);
             }
 
             var tier = _tiers[rowIndex];
@@ -509,6 +500,7 @@ namespace PoE2BuildCalculator
 
             grid.UpdateCellValue(colIndex, rowIndex);
             grid.ResumeLayout(true);
+
         }
 
         #endregion
@@ -531,10 +523,10 @@ namespace PoE2BuildCalculator
                             // Manually invoke the form's validation logic.
                             // If it passes, we then commit the edit.
                             // If it fails, the message box is shown and we do nothing, which leaves the cell in edit mode.
-                            if (computeForm.ValidateAndCommitTierData(cell.RowIndex, cell.ColumnIndex, editedValue, this, false))
+                            if (computeForm.ValidateAndCommitTierData(cell.RowIndex, cell.ColumnIndex, editedValue, this))
                             {
                                 this.EndEdit();
-                                SetFormattedCellValue(this, cell.RowIndex, cell.ColumnIndex, editedValue); // Update the cell value with decimals even if the user didn't type them
+                                SetFormattedCellValue(this, cell.RowIndex, cell.ColumnIndex, editedValue);
                             }
                         }
                         else
@@ -547,7 +539,7 @@ namespace PoE2BuildCalculator
                     }
                     else if (this.CurrentCell != null)
                     {
-                        this.BeginEdit(true);
+                        this.BeginEdit(false);
                         return true;
                     }
                 }
@@ -555,6 +547,11 @@ namespace PoE2BuildCalculator
                 // Allow other keys to be processed normally
                 return base.ProcessCmdKey(ref msg, keyData);
             }
+        }
+
+        private void TableTiers_CellValidated(object sender, DataGridViewCellEventArgs e)
+        {
+            SetFormattedCellValue(TableTiers, e.RowIndex, e.ColumnIndex, TableTiers.Rows[e.RowIndex].Cells[e.ColumnIndex].Value);
         }
     }
 }
