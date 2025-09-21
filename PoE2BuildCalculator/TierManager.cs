@@ -6,7 +6,7 @@ using System.Windows.Forms;
 
 namespace PoE2BuildCalculator
 {
-    public partial class Compute : Form
+    public partial class TierManager : Form
     {
         private readonly List<Tier> _tiers = [];
         private readonly BindingList<Tier> _bindingTiers = [];
@@ -23,17 +23,17 @@ namespace PoE2BuildCalculator
 
         private double _totalTierWeight => _tiers.Sum(t => t.TierWeight);
 
-        public Compute()
+        public TierManager()
         {
             _itemStatsDescriptors = ItemStatsHelper.GetStatDescriptors();
             InitializeComponent();
 
-            this.Load += Compute_Load;
-            this.FormClosing += Compute_FormClosing; // Add this line
+            this.Load += TierManager_Load;
+            this.FormClosing += TierManager_FormClosing; // Add this line
             this.TableTiers.CellValidating += TableTiers_CellValidating;
         }
 
-        private void Compute_Load(object sender, EventArgs e)
+        private void TierManager_Load(object sender, EventArgs e)
         {
             this.AutoSize = false; // Turn off AutoSize so the form can be sized by code.
             this.AutoSizeMode = AutoSizeMode.GrowAndShrink;
@@ -44,6 +44,9 @@ namespace PoE2BuildCalculator
 
             _minFormSize = ComputeMinRequiredFormHeight();
             AdjustFormSizeToDataGrid();
+
+            this.TextboxTotalTierWeights.Enabled = true;
+            this.TextboxTotalTierWeights.ForeColor = Color.Lime;
         }
 
         private void AddTierButton_Click(object sender, EventArgs e)
@@ -162,13 +165,16 @@ namespace PoE2BuildCalculator
             }
         }
 
-        private void Compute_FormClosing(object sender, FormClosingEventArgs e)
+        private void TierManager_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Detach the event handler to prevent validation during form closure
             this.TableTiers.CellValidating -= TableTiers_CellValidating;
         }
 
-
+        private void TextboxTotalTierWeights_TextChanged(object sender, EventArgs e)
+        {
+            TextboxTotalTierWeights.ForeColor = Color.Lime;
+        }
 
 
 
@@ -292,7 +298,7 @@ namespace PoE2BuildCalculator
             }
             catch (Exception ex)
             {
-                ErrorHelper.ShowError(ex, $"{nameof(Compute)} - {nameof(AdjustFormSizeToDataGrid)}");
+                ErrorHelper.ShowError(ex, $"{nameof(TierManager)} - {nameof(AdjustFormSizeToDataGrid)}");
                 throw;
             }
         }
@@ -514,7 +520,7 @@ namespace PoE2BuildCalculator
                     if (this.IsCurrentCellInEditMode)
                     {
                         // Find the parent form to call its validation method
-                        if (this.FindForm() is Compute computeForm)
+                        if (this.FindForm() is TierManager computeForm)
                         {
                             var cell = this.CurrentCell;
                             // Get the text directly from the editing control

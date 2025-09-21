@@ -10,6 +10,7 @@ namespace PoE2BuildCalculator
     {
         // Class references
         private Manager.FileParser _fileParser { get; set; }
+        private TierManager _formTierManager { get; set; }
 
         // Progress UI
         private ToolStripProgressBar _statusProgressBar;
@@ -189,11 +190,10 @@ namespace PoE2BuildCalculator
 
         private void TierManagerButton_Click(object sender, EventArgs e)
         {
-            var compute = new Compute
-            {
-            };
+            var tierManager = new TierManager();
+            _formTierManager = tierManager;
 
-            compute.Show(this);
+            tierManager.Show(this);
         }
 
         private void ShowItemsDataButton_Click(object sender, EventArgs e)

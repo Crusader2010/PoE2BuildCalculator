@@ -1,6 +1,6 @@
 ﻿namespace PoE2BuildCalculator
 {
-    partial class Compute
+    partial class TierManager
     {
         /// <summary>
         /// Required designer variable.
@@ -28,9 +28,9 @@
         /// </summary>
         private void InitializeComponent()
         {
-            DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
-            DataGridViewCellStyle dataGridViewCellStyle3 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle7 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle8 = new DataGridViewCellStyle();
+            DataGridViewCellStyle dataGridViewCellStyle9 = new DataGridViewCellStyle();
             AddTierButton = new Button();
             RemoveTierButton = new Button();
             TableTiers = new CustomDataGridView();
@@ -91,31 +91,31 @@
             TableStatsWeightSum.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.DisplayedCells;
             TableStatsWeightSum.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.DisplayedCells;
             TableStatsWeightSum.CausesValidation = false;
-            dataGridViewCellStyle1.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle1.BackColor = SystemColors.Control;
-            dataGridViewCellStyle1.Font = new Font("Microsoft Sans Serif", 9F);
-            dataGridViewCellStyle1.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle1.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle1.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle1.WrapMode = DataGridViewTriState.True;
-            TableStatsWeightSum.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle1;
+            dataGridViewCellStyle7.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle7.BackColor = SystemColors.Control;
+            dataGridViewCellStyle7.Font = new Font("Microsoft Sans Serif", 9F);
+            dataGridViewCellStyle7.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle7.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle7.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle7.WrapMode = DataGridViewTriState.True;
+            TableStatsWeightSum.ColumnHeadersDefaultCellStyle = dataGridViewCellStyle7;
             TableStatsWeightSum.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
             TableStatsWeightSum.Location = new Point(12, 77);
             TableStatsWeightSum.MultiSelect = false;
             TableStatsWeightSum.Name = "TableStatsWeightSum";
             TableStatsWeightSum.ReadOnly = true;
-            dataGridViewCellStyle2.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle2.BackColor = SystemColors.Control;
-            dataGridViewCellStyle2.Font = new Font("Microsoft Sans Serif", 9F);
-            dataGridViewCellStyle2.ForeColor = SystemColors.WindowText;
-            dataGridViewCellStyle2.SelectionBackColor = SystemColors.Highlight;
-            dataGridViewCellStyle2.SelectionForeColor = SystemColors.HighlightText;
-            dataGridViewCellStyle2.WrapMode = DataGridViewTriState.False;
-            TableStatsWeightSum.RowHeadersDefaultCellStyle = dataGridViewCellStyle2;
+            dataGridViewCellStyle8.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle8.BackColor = SystemColors.Control;
+            dataGridViewCellStyle8.Font = new Font("Microsoft Sans Serif", 9F);
+            dataGridViewCellStyle8.ForeColor = SystemColors.WindowText;
+            dataGridViewCellStyle8.SelectionBackColor = SystemColors.Highlight;
+            dataGridViewCellStyle8.SelectionForeColor = SystemColors.HighlightText;
+            dataGridViewCellStyle8.WrapMode = DataGridViewTriState.False;
+            TableStatsWeightSum.RowHeadersDefaultCellStyle = dataGridViewCellStyle8;
             TableStatsWeightSum.RowHeadersWidthSizeMode = DataGridViewRowHeadersWidthSizeMode.AutoSizeToDisplayedHeaders;
-            dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dataGridViewCellStyle3.WrapMode = DataGridViewTriState.True;
-            TableStatsWeightSum.RowsDefaultCellStyle = dataGridViewCellStyle3;
+            dataGridViewCellStyle9.Alignment = DataGridViewContentAlignment.MiddleCenter;
+            dataGridViewCellStyle9.WrapMode = DataGridViewTriState.True;
+            TableStatsWeightSum.RowsDefaultCellStyle = dataGridViewCellStyle9;
             TableStatsWeightSum.RowTemplate.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             TableStatsWeightSum.RowTemplate.DefaultCellStyle.WrapMode = DataGridViewTriState.False;
             TableStatsWeightSum.SelectionMode = DataGridViewSelectionMode.CellSelect;
@@ -125,15 +125,16 @@
             // 
             // TextboxTotalTierWeights
             // 
-            TextboxTotalTierWeights.CausesValidation = false;
+            TextboxTotalTierWeights.Font = new Font("Microsoft Sans Serif", 9F, FontStyle.Bold);
+            TextboxTotalTierWeights.ForeColor = SystemColors.WindowText;
             TextboxTotalTierWeights.Location = new Point(12, 50);
             TextboxTotalTierWeights.Name = "TextboxTotalTierWeights";
             TextboxTotalTierWeights.ReadOnly = true;
-            TextboxTotalTierWeights.ScrollBars = ScrollBars.Both;
-            TextboxTotalTierWeights.ShortcutsEnabled = false;
             TextboxTotalTierWeights.Size = new Size(99, 21);
             TextboxTotalTierWeights.TabIndex = 8;
+            TextboxTotalTierWeights.Text = "test";
             TextboxTotalTierWeights.TextAlign = HorizontalAlignment.Center;
+            TextboxTotalTierWeights.TextChanged += TextboxTotalTierWeights_TextChanged;
             // 
             // label1
             // 
@@ -145,7 +146,7 @@
             label1.TabIndex = 9;
             label1.Text = "Total tier weights";
             // 
-            // Compute
+            // TierManager
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
@@ -158,11 +159,11 @@
             Controls.Add(RemoveTierButton);
             Controls.Add(AddTierButton);
             DoubleBuffered = true;
-            Name = "Compute";
+            Name = "TierManager";
             StartPosition = FormStartPosition.CenterScreen;
             Text = "Manage tiers";
-            FormClosing += Compute_FormClosing;
-            Load += Compute_Load;
+            FormClosing += TierManager_FormClosing;
+            Load += TierManager_Load;
             ((System.ComponentModel.ISupportInitialize)TableTiers).EndInit();
             ((System.ComponentModel.ISupportInitialize)TableStatsWeightSum).EndInit();
             ResumeLayout(false);
