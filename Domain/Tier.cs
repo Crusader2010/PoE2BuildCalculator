@@ -19,6 +19,7 @@ namespace Domain
             get { return _tierId; }
             set
             {
+                if (_tierId == value) return;
                 _tierId = value;
                 OnPropertyChanged(nameof(TierId));
             }
@@ -29,6 +30,7 @@ namespace Domain
             get { return _tierName; }
             set
             {
+                if (_tierName == value) return;
                 _tierName = value;
                 OnPropertyChanged(nameof(TierName));
             }
@@ -39,6 +41,7 @@ namespace Domain
             get { return _tierWeight; }
             set
             {
+                if (_tierWeight == value) return;
                 _tierWeight = value;
                 OnPropertyChanged(nameof(TierWeight));
             }
@@ -64,12 +67,19 @@ namespace Domain
         /// </summary>
         public double TotalStatWeight
         {
-            get { return StatWeights.Values.Sum(); }
+            get { return StatWeights.Values.Count == 0 ? 0.0d : StatWeights.Values.Sum(); }
         }
 
-        public void TriggerPropertyChange(string propertyName)
+        // This method provides a clean way to update a stat weight and ensures
+        // the UI is notified that the TotalStatWeight needs to be refreshed.
+        public void SetStatWeight(string statName, double value)
         {
-            OnPropertyChanged(propertyName);
+            if (StatWeights.TryGetValue(statName, out double valueDict) && valueDict != value)
+            {
+                StatWeights[statName] = value;
+                OnPropertyChanged(nameof(StatWeights));
+                OnPropertyChanged(nameof(TotalStatWeight));
+            }
         }
 
         public event PropertyChangedEventHandler PropertyChanged;

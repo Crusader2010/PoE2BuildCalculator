@@ -3,17 +3,30 @@ using Manager;
 using System.ComponentModel;
 using System.Data;
 using System.Windows.Forms;
+using static System.Windows.Forms.VisualStyles.VisualStyleElement;
 
 namespace PoE2BuildCalculator
 {
     public partial class TierManager : Form
     {
-        private readonly List<Tier> _tiers = [];
+        private Color _validationBackColorSuccess;
+        private Color _validationForeColorSuccess;
+
         private readonly BindingList<Tier> _bindingTiers = [];
         private int _minFormSize;
+        private DataGridViewCell _previousSelectedCell;
 
         private readonly IReadOnlyList<ItemStatsHelper.StatDescriptor> _itemStatsDescriptors;
-        private readonly DataGridViewCellStyle _defaultCellStyle = new()
+        private readonly DataGridViewCellStyle _defaultDoubleCellStyle = new()
+        {
+            Format = "0.00",
+            Alignment = DataGridViewContentAlignment.MiddleCenter,
+            DataSourceNullValue = 0.0d,
+            NullValue = 0.0d,
+            FormatProvider = System.Globalization.CultureInfo.InvariantCulture
+        };
+
+        private readonly DataGridViewCellStyle _defaultStringCellStyle = new()
         {
             Alignment = DataGridViewContentAlignment.MiddleCenter,
             DataSourceNullValue = string.Empty,
@@ -21,7 +34,7 @@ namespace PoE2BuildCalculator
             FormatProvider = System.Globalization.CultureInfo.InvariantCulture
         };
 
-        private double _totalTierWeight => _tiers.Sum(t => t.TierWeight);
+        private double _totalTierWeight => _bindingTiers.Sum(t => t.TierWeight);
 
         public TierManager()
         {
@@ -29,8 +42,14 @@ namespace PoE2BuildCalculator
             InitializeComponent();
 
             this.Load += TierManager_Load;
-            this.FormClosing += TierManager_FormClosing; // Add this line
+            this.FormClosing += TierManager_FormClosing;
             this.TableTiers.CellValidating += TableTiers_CellValidating;
+            this.TableTiers.CellFormatting += TableTiers_CellFormatting;
+            this.TableTiers.KeyDown += TableTiers_KeyDown;
+            this.TableStatsWeightSum.CellFormatting += TableStatsWeightSum_CellFormatting;
+            this.TableTiers.CellPainting += TableTiers_CellPainting;
+            this.TableTiers.EditingControlShowing += TableTiers_EditingControlShowing;
+            this.TableTiers.SelectionChanged += TableTiers_SelectionChanged;
         }
 
         private void TierManager_Load(object sender, EventArgs e)
@@ -40,21 +59,23 @@ namespace PoE2BuildCalculator
 
             InitializeTableTiers();
             InitializeTableStatsWeightSum();
-            SetTotalTierWeights();
 
             _minFormSize = ComputeMinRequiredFormHeight();
             AdjustFormSizeToDataGrid();
 
             this.TextboxTotalTierWeights.Enabled = true;
-            this.TextboxTotalTierWeights.ForeColor = Color.Lime;
+            this.TextboxTotalTierWeights.BackColor = this.TextboxTotalTierWeights.BackColor; // this is needed for the stupid textbox to start considering the Forecolor :/
+            this.TextboxTotalTierWeights.ForeColor = this.TextboxTotalTierWeights.ForeColor;
+
+            SetTotalTierWeights();
         }
 
         private void AddTierButton_Click(object sender, EventArgs e)
         {
             var newTier = new Tier
             {
-                TierId = TableTiers.Rows.Count + 1,
-                TierName = $"Tier {TableTiers.Rows.Count + 1}",
+                TierId = _bindingTiers.Count + 1,
+                TierName = $"Tier {_bindingTiers.Count + 1}",
                 TierWeight = 0.0d,
                 StatWeights = new Dictionary<string, double>()
             };
@@ -65,51 +86,44 @@ namespace PoE2BuildCalculator
                 newTier.StatWeights.Add(descriptor.PropertyName, 0.0d);
             }
 
-            _tiers.Add(newTier);
+            //_tiers.Add(newTier);
             _bindingTiers.Add(newTier);
+            SetTotalTierWeights();
 
-            TableTiers.SuspendLayout();
-            string[] rowValues = new string[TableTiers.Columns.Count];
-            rowValues[0] = newTier.TierId.ToString();
-            rowValues[1] = newTier.TierName;
-            rowValues[2] = newTier.TierWeight.ToString("0.00");
-            for (int i = 3; i < rowValues.Length; i++)
-            {
-                rowValues[i] = "0.00";
-            }
-
-            // Add the row by passing the values directly. This is the most reliable method.
-            TableTiers.Rows.Add(rowValues);
-            TableTiers.ResumeLayout(true);
+            if (TableTiers.RowCount > 0) TableTiers.FirstDisplayedScrollingRowIndex = TableTiers.RowCount - 1;
         }
 
         private void TableTiers_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
         {
-            if (!ValidateAndCommitTierData(e.RowIndex, e.ColumnIndex, e.FormattedValue, TableTiers))
+            var grid = (DataGridView)sender;
+            if (!grid.IsCurrentCellDirty || e.ColumnIndex <= 1) return; // Skip validation if the cell is not dirty or for non-editable columns
+
+            var (isValid, errorMessage) = ValidateAndCommitTierData(e.RowIndex, e.ColumnIndex, e.FormattedValue);
+            if (grid.EditingControl is Control editingControl) // Handle the validation highlighting for the editing control            {
             {
-                e.Cancel = true; // Cancel the event if validation fails.
-                return;
+                if (!isValid)
+                {
+                    _validationBackColorSuccess = editingControl.BackColor;
+                    _validationForeColorSuccess = editingControl.ForeColor;
+                    editingControl.BackColor = Color.LightCoral;
+                    editingControl.ForeColor = Color.Black;
+                }
+                else
+                {
+                    // Reset to the cell's default style colors on success
+                    editingControl.BackColor = _validationBackColorSuccess;
+                    editingControl.ForeColor = _validationForeColorSuccess;
+                }
             }
-        }
 
-        private void TableTiers_UserDeletingRow(object sender, DataGridViewRowCancelEventArgs e)
-        {
-            var index = e.Row.Index;
-            _tiers.RemoveAt(index);
-            _bindingTiers.RemoveAt(index);
-            RefreshTierIds();
-        }
-
-        private void TableTiers_CellValueChanged(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex <= 0) return; // Ignore header changes and TierId column
-
-            if (TableTiers.Columns[e.ColumnIndex].Name == nameof(Tier.TierName))
+            if (!isValid)
             {
-                var row = TableTiers.Rows[e.RowIndex];
-                var tier = _tiers[e.RowIndex];
-                tier.TierName = row.Cells[nameof(Tier.TierName)].FormattedValue?.ToString() ?? string.Empty;
-                tier.TriggerPropertyChange(nameof(Tier.TierName));
+                grid.Rows[e.RowIndex].ErrorText = errorMessage;
+                e.Cancel = true; // Prevent leaving the cell
+            }
+            else
+            {
+                grid.Rows[e.RowIndex].ErrorText = null; // Clear error on success
             }
         }
 
@@ -118,130 +132,72 @@ namespace PoE2BuildCalculator
             RemoveSelectedGridRows();
         }
 
-        private void TableTiers_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
-        {
-            // Make sure we are in a valid cell and not a header
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-
-            // Check if the current cell is the selected one
-            if ((e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected &&
-                TableTiers.CurrentCell.RowIndex == e.RowIndex &&
-                TableTiers.CurrentCell.ColumnIndex == e.ColumnIndex)
-            {
-                // Define your custom colors
-                Color selectedBackColor = Color.SpringGreen;
-                Color selectedForeColor = Color.IndianRed;
-
-                // Erase the default background
-                e.PaintBackground(e.ClipBounds, false);
-
-                // Draw the custom background
-                using (SolidBrush backBrush = new(selectedBackColor))
-                {
-                    e.Graphics.FillRectangle(backBrush, e.CellBounds);
-                }
-
-                // Create a StringFormat object for alignment
-                StringFormat stringFormat = new()
-                {
-                    Alignment = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center,
-                    Trimming = StringTrimming.EllipsisCharacter
-                };
-
-                // Now, draw the cell content (text, etc.)
-                using (SolidBrush foreBrush = new(selectedForeColor))
-                {
-                    e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, stringFormat);
-                }
-
-                // Prevent the default cell painting
-                e.Handled = true;
-            }
-            else
-            {
-                // Let the default painting occur for non-selected cells
-                e.Handled = false;
-            }
-        }
-
         private void TierManager_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Detach the event handler to prevent validation during form closure
             this.TableTiers.CellValidating -= TableTiers_CellValidating;
+            this.TableTiers.CellFormatting -= TableTiers_CellFormatting;
+            this.TableTiers.KeyDown -= TableTiers_KeyDown;
+            this.TableStatsWeightSum.CellFormatting -= TableStatsWeightSum_CellFormatting;
         }
-
-        private void TextboxTotalTierWeights_TextChanged(object sender, EventArgs e)
-        {
-            TextboxTotalTierWeights.ForeColor = Color.Lime;
-        }
-
-
 
         #region Private helpers
 
-        internal bool ValidateAndCommitTierData(int rowIndex, int colIndex, object formattedValue, DataGridView grid)
+        internal (bool Result, string ErrorMessage) ValidateAndCommitTierData(int rowIndex, int colIndex, object formattedValue)
         {
             // Skip validation for TierId and TierName columns
-            if (colIndex <= 1) return true;
+            if (colIndex <= 1) return (true, string.Empty);
 
             // Validate numeric columns
             if (!double.TryParse(formattedValue?.ToString() ?? "0.00", out double value))
             {
-                MessageBox.Show("Please enter a valid floating point number.", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
-            }
-            else if (value < 0.00d || value > 100.00d)
-            {
-                MessageBox.Show("The value of the weight needs to be between 0.00 and 100.00", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                return false;
+                return (false, "Please enter a valid floating point number.");
             }
 
-            var tier = _tiers[rowIndex];
-            if (colIndex == grid.Columns[nameof(Tier.TierWeight)].Index)
+            if (value < 0.00d || value > 100.00d)
+            {
+                return (false, "The value of the weight needs to be between 0.00 and 100.00");
+            }
+
+            var tier = _bindingTiers[rowIndex];
+            var columnName = TableTiers.Columns[colIndex].Name;
+
+            if (string.Equals(columnName, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase))
             {
                 if (_totalTierWeight - tier.TierWeight + value > 100.00d)
                 {
-                    MessageBox.Show("The total value of tier weights cannot exceed 100%", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
+                    return (false, "The total value of tier weights cannot exceed 100%");
                 }
 
                 tier.TierWeight = value;
-                tier.TriggerPropertyChange(nameof(Tier.TierWeight));
                 SetTotalTierWeights();
+                TableStatsWeightSum.Refresh();
             }
-            else
+            else // It's a StatWeight
             {
-                var columnName = grid.Columns[colIndex].Name;
                 if (tier.TotalStatWeight - tier.StatWeights[columnName] + value > 100.00d)
                 {
-                    MessageBox.Show($"The total value of stats' weights for '{tier.TierName}' (ID: {tier.TierId}) cannot exceed 100%", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
+                    return (false, $"The total value of stats' weights for '{tier.TierName}' (ID: {tier.TierId}) cannot exceed 100%");
                 }
 
-                tier.StatWeights[columnName] = value;
-                tier.TriggerPropertyChange(nameof(Tier.TotalStatWeight));
+                tier.SetStatWeight(columnName, value);
+                TableStatsWeightSum.Refresh();
             }
 
-            return true; // Validation and commit successful
+            return (true, string.Empty); // Validation and commit successful
         }
 
         private void RefreshTierIds()
         {
-            for (int i = 0; i < TableTiers.Rows.Count; i++)
+            for (int i = 0; i < _bindingTiers.Count; i++)
             {
-                TableTiers.Rows[i].Cells[nameof(Tier.TierId)].Value = i + 1;
-                if (i < _tiers.Count)
-                {
-                    _tiers[i].TierId = i + 1;
-                    _tiers[i].TriggerPropertyChange(nameof(Tier.TierId));
-                }
+                _bindingTiers[i].TierId = i + 1;
             }
         }
 
         public List<Tier> GetTiers()
         {
-            return [.. _tiers.OrderBy(t => t.TierId)];
+            return [.. _bindingTiers.OrderBy(t => t.TierId)];
         }
 
         private void AdjustFormSizeToDataGrid()
@@ -299,7 +255,6 @@ namespace PoE2BuildCalculator
             catch (Exception ex)
             {
                 ErrorHelper.ShowError(ex, $"{nameof(TierManager)} - {nameof(AdjustFormSizeToDataGrid)}");
-                throw;
             }
         }
 
@@ -322,22 +277,21 @@ namespace PoE2BuildCalculator
 
         private void RemoveSelectedGridRows()
         {
-            if (TableTiers.SelectedRows.Count > 0)
+            if (TableTiers.SelectedCells.Count > 0)
             {
-                var tiersDictionary = _tiers.ToDictionary(x => x.TierId, x => x);
+                var tiersToRemove = TableTiers.SelectedRows
+                    .Cast<DataGridViewRow>()
+                    .Select(row => row.DataBoundItem as Tier)
+                    .Where(tier => tier != null)
+                    .ToList();
 
-                for (int i = TableTiers.SelectedRows.Count - 1; i >= 0; i--) // must be in reverse for list update
+                foreach (var tier in tiersToRemove)
                 {
-                    var row = TableTiers.SelectedRows[i];
-                    var tierId = int.Parse(row.Cells[nameof(Tier.TierId)].Value?.ToString() ?? "0");
-
-                    _tiers.Remove(tiersDictionary[tierId]);
-                    _bindingTiers.Remove(tiersDictionary[tierId]);
-                    TableTiers.Rows.Remove(row);
+                    _bindingTiers.Remove(tier);
                 }
 
                 RefreshTierIds();
-                TableTiers.ClearSelection();
+                SetTotalTierWeights();
             }
         }
 
@@ -345,16 +299,17 @@ namespace PoE2BuildCalculator
         {
             TableTiers.SuspendLayout();
 
-            // Configure the DataGridView
+            // Configure the DataGridView            
             TableTiers.AutoGenerateColumns = false;
-            TableTiers.DataSource = null;
             TableTiers.Columns.Clear();
-            TableTiers.Rows.Clear();
+            TableTiers.DataSource = _bindingTiers;
+            TableTiers.ShowEditingIcon = true;
+            TableTiers.ShowCellErrors = true;
+            TableTiers.ShowRowErrors = true;
             TableTiers.AllowUserToAddRows = false;
             TableTiers.AllowUserToDeleteRows = false;
             TableTiers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             TableTiers.EditMode = DataGridViewEditMode.EditOnKeystrokeOrF2;
-            TableTiers.ShowEditingIcon = true;
             TableTiers.MultiSelect = true;
             TableTiers.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
             TableTiers.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
@@ -367,20 +322,20 @@ namespace PoE2BuildCalculator
             {
                 Name = nameof(Tier.TierId),
                 HeaderText = "Tier ID",
-                //DataPropertyName = "TierId",
-                ValueType = typeof(string),
+                DataPropertyName = nameof(Tier.TierId),
+                ValueType = typeof(int),
                 ReadOnly = true,
-                DefaultCellStyle = _defaultCellStyle
+                DefaultCellStyle = new DataGridViewCellStyle { Format = "0", Alignment = DataGridViewContentAlignment.MiddleCenter, FormatProvider = System.Globalization.CultureInfo.InvariantCulture }
             };
 
             var nameColumn = new DataGridViewTextBoxColumn
             {
                 Name = nameof(Tier.TierName),
                 HeaderText = "Tier Name",
-                //DataPropertyName = "TierName",
+                DataPropertyName = nameof(Tier.TierName),
                 ValueType = typeof(string),
                 ReadOnly = false,
-                DefaultCellStyle = _defaultCellStyle,
+                DefaultCellStyle = _defaultStringCellStyle,
                 HeaderCell = { ToolTipText = "Tier name" },
             };
 
@@ -388,10 +343,10 @@ namespace PoE2BuildCalculator
             {
                 Name = nameof(Tier.TierWeight),
                 HeaderText = "Tier Weight",
-                //DataPropertyName = "TierWeight",
-                ValueType = typeof(string),
+                DataPropertyName = nameof(Tier.TierWeight),
+                ValueType = typeof(double),
                 ReadOnly = false,
-                DefaultCellStyle = _defaultCellStyle,
+                DefaultCellStyle = _defaultDoubleCellStyle,
                 HeaderCell = { ToolTipText = "Weight of the tier" }
             };
 
@@ -404,10 +359,10 @@ namespace PoE2BuildCalculator
                 {
                     Name = descriptor.PropertyName,
                     HeaderText = descriptor.Header,
-                    //DataPropertyName = $"StatWeights[{descriptor.PropertyName}]",
-                    ValueType = typeof(string),
+                    DataPropertyName = descriptor.PropertyName,
+                    ValueType = typeof(double),
                     ReadOnly = false,
-                    DefaultCellStyle = _defaultCellStyle,
+                    DefaultCellStyle = _defaultDoubleCellStyle,
                     HeaderCell = { ToolTipText = descriptor.Header }
                 };
                 TableTiers.Columns.Add(statColumn);
@@ -438,9 +393,8 @@ namespace PoE2BuildCalculator
             TableStatsWeightSum.SuspendLayout();
 
             TableStatsWeightSum.AutoGenerateColumns = false;
-            TableStatsWeightSum.DataSource = null;
             TableStatsWeightSum.Columns.Clear();
-            TableStatsWeightSum.Rows.Clear();
+            TableStatsWeightSum.DataSource = _bindingTiers;
             TableStatsWeightSum.AutoSize = false;
             TableStatsWeightSum.AllowUserToAddRows = false;
             TableStatsWeightSum.AllowUserToDeleteRows = false;
@@ -460,26 +414,24 @@ namespace PoE2BuildCalculator
             {
                 Name = nameof(Tier.TierId),
                 HeaderText = "Tier Id",
-                ValueType = typeof(string),
                 ReadOnly = true,
+                ValueType = typeof(int),
                 DataPropertyName = nameof(Tier.TierId),
-                DefaultCellStyle = _defaultCellStyle
+                DefaultCellStyle = new DataGridViewCellStyle() { Alignment = DataGridViewContentAlignment.MiddleCenter }
             };
 
             var weightColumn = new DataGridViewTextBoxColumn
             {
                 Name = nameof(Tier.TotalStatWeight),
                 HeaderText = "Total Stat Weight (%)",
-                ValueType = typeof(string),
                 ReadOnly = true,
+                ValueType = typeof(double),
                 DataPropertyName = nameof(Tier.TotalStatWeight),
-                DefaultCellStyle = _defaultCellStyle
+                DefaultCellStyle = _defaultDoubleCellStyle
             };
             TableStatsWeightSum.Columns.AddRange([tierIdColumn, weightColumn]);
 
-            TableStatsWeightSum.DataSource = _bindingTiers;
             TableStatsWeightSum.ResumeLayout(true);
-            TableStatsWeightSum.Update();
         }
 
         private void SetTotalTierWeights()
@@ -487,77 +439,158 @@ namespace PoE2BuildCalculator
             TextboxTotalTierWeights.Text = _totalTierWeight.ToString("0.00") + " %";
         }
 
-        internal static void SetFormattedCellValue(DataGridView grid, int rowIndex, int colIndex, object unformattedValue)
+        #endregion
+
+        private void TableTiers_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
-            if (rowIndex < 0 || rowIndex >= grid.Rows.Count) return;
-            if (colIndex < 0 || colIndex >= grid.Columns.Count) return;
+            if (e.RowIndex < 0 || e.ColumnIndex <= 1) return; // ignore tier id, name
 
-            grid.SuspendLayout();
+            var grid = (DataGridView)sender;
+            string statName = grid.Columns[e.ColumnIndex].DataPropertyName;
 
-            var cell = grid.Rows[rowIndex].Cells[colIndex];
-            if (cell.ValueType != typeof(string))
+            if (grid.Rows[e.RowIndex].DataBoundItem is Tier tier)
             {
-                cell.Value = ItemStatsHelper.ConvertToType(cell.ValueType, unformattedValue); // set the value directly
+                if (string.Equals(statName, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase))
+                {
+                    e.Value = tier.TierWeight.ToString(_defaultDoubleCellStyle.Format);
+                }
+                else if (tier.StatWeights.TryGetValue(statName, out double value))
+                {
+                    e.Value = value.ToString(_defaultDoubleCellStyle.Format);
+                    e.FormattingApplied = true;
+                }
+                else
+                {
+                    e.Value = (0.0d).ToString(_defaultDoubleCellStyle.Format);
+                    e.FormattingApplied = true;
+                }
+            }
+        }
+
+        private void TableTiers_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Return)
+            {
+                // This is the key change: we use BeginInvoke to ensure the edit starts after the KeyDown event has been fully processed.
+                // This is a more robust way to trigger edit mode manually.
+                if (!TableTiers.IsCurrentCellInEditMode)
+                {
+                    if (TableTiers.CurrentCell != null && !TableTiers.CurrentCell.ReadOnly)
+                    {
+                        TableTiers.BeginInvoke(new Action(() =>
+                        {
+                            TableTiers.BeginEdit(true);
+                        }));
+                    }
+                }
+                else
+                {
+                    // If already in edit mode, commit the changes.
+                    TableTiers.EndEdit();
+                }
+
+                // Mark the event as handled to prevent the default behavior (moving to the next row).
+                e.Handled = true;
+            }
+        }
+
+        private void TableStatsWeightSum_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            var grid = (DataGridView)sender;
+            string statName = grid.Columns[e.ColumnIndex].DataPropertyName;
+
+            if (e.RowIndex >= 0
+                && grid.Rows[e.RowIndex].DataBoundItem is Tier tier
+                && string.Equals(statName, nameof(Tier.TotalStatWeight), StringComparison.OrdinalIgnoreCase))
+            {
+                e.Value = tier.TotalStatWeight.ToString(_defaultDoubleCellStyle.Format);
+                e.FormattingApplied = true;
+            }
+        }
+
+        private void TableTiers_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            // Make sure we are in a valid cell and not a header
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            // Check if the current cell is the selected one
+            if ((e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected &&
+                TableTiers.CurrentCell.RowIndex == e.RowIndex &&
+                TableTiers.CurrentCell.ColumnIndex == e.ColumnIndex)
+            {
+                // Define your custom colors
+                Color selectedBackColor = Color.SpringGreen;
+                Color selectedForeColor = Color.IndianRed;
+
+                // Erase the default background
+                e.PaintBackground(e.ClipBounds, false);
+
+                // Draw the custom background
+                using (SolidBrush backBrush = new(selectedBackColor))
+                {
+                    e.Graphics.FillRectangle(backBrush, e.CellBounds);
+                }
+
+                // Create a StringFormat object for alignment
+                StringFormat stringFormat = new()
+                {
+                    Alignment = StringAlignment.Center,
+                    LineAlignment = StringAlignment.Center,
+                    Trimming = StringTrimming.EllipsisCharacter
+                };
+
+                // Now, draw the cell content (text, etc.)
+                using (SolidBrush foreBrush = new(selectedForeColor))
+                {
+                    e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, stringFormat);
+                }
+
+                // Prevent the default cell painting
+                e.Handled = true;
             }
             else
             {
-                cell.Value = Convert.ToDouble(unformattedValue).ToString("0.00"); // force double value with decimals
+                // Let the default painting occur for non-selected cells
+                e.Handled = false;
             }
-
-            grid.UpdateCellValue(colIndex, rowIndex);
-            grid.ResumeLayout(true);
-
         }
 
-        #endregion
-
-        internal class CustomDataGridView : DataGridView
+        private void TableTiers_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
         {
-            protected override bool ProcessCmdKey(ref Message msg, Keys keyData)
+            if (e.Control is DataGridViewTextBoxEditingControl textBox)
             {
-                if (keyData == Keys.Enter || keyData == Keys.Return)
+                // Use BeginInvoke to ensure the color changes are applied after the control is fully ready.
+                // This prevents the DataGridView from overriding the colors.
+                BeginInvoke(new Action(() =>
                 {
-                    if (this.IsCurrentCellInEditMode)
-                    {
-                        // Find the parent form to call its validation method
-                        if (this.FindForm() is TierManager computeForm)
-                        {
-                            var cell = this.CurrentCell;
-                            // Get the text directly from the editing control
-                            var editedValue = this.EditingControl.Text;
-
-                            // Manually invoke the form's validation logic.
-                            // If it passes, we then commit the edit.
-                            // If it fails, the message box is shown and we do nothing, which leaves the cell in edit mode.
-                            if (computeForm.ValidateAndCommitTierData(cell.RowIndex, cell.ColumnIndex, editedValue, this))
-                            {
-                                this.EndEdit();
-                                SetFormattedCellValue(this, cell.RowIndex, cell.ColumnIndex, editedValue);
-                            }
-                        }
-                        else
-                        {
-                            // Fallback to default behavior if form isn't found for some reason
-                            this.EndEdit();
-                        }
-
-                        return true; // The Enter key has been handled.
-                    }
-                    else if (this.CurrentCell != null)
-                    {
-                        this.BeginEdit(false);
-                        return true;
-                    }
-                }
-
-                // Allow other keys to be processed normally
-                return base.ProcessCmdKey(ref msg, keyData);
+                    textBox.BackColor = Color.LightGreen;
+                    textBox.ForeColor = Color.Red;
+                }));
             }
         }
 
-        private void TableTiers_CellValidated(object sender, DataGridViewCellEventArgs e)
+        private void TableTiers_SelectionChanged(object sender, EventArgs e)
         {
-            SetFormattedCellValue(TableTiers, e.RowIndex, e.ColumnIndex, TableTiers.Rows[e.RowIndex].Cells[e.ColumnIndex].Value);
+            // Store the current cell before the selection changes to a new cell
+            var oldSelectedCell = _previousSelectedCell;
+
+            // Get the new current cell and store it for the next selection change
+            if (TableTiers.CurrentCell != null)
+            {
+                _previousSelectedCell = TableTiers.CurrentCell;
+            }
+
+            // Invalidate the old cell to remove the custom painting
+            if (oldSelectedCell != null)
+            {
+                TableTiers.InvalidateCell(oldSelectedCell);
+            }
+
+            // Invalidate the new current cell to trigger repainting
+            if (TableTiers.CurrentCell != null)
+            {
+                TableTiers.InvalidateCell(TableTiers.CurrentCell);
+            }
         }
     }
 }
