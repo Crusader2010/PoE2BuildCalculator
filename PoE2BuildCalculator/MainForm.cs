@@ -30,7 +30,6 @@ namespace PoE2BuildCalculator
             ConfigureParserControls();
         }
 
-
         private void ButtonOpenItemListFile_Click(object sender, EventArgs e)
         {
             OpenPoE2ItemList.ShowDialog();

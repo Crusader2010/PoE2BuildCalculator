@@ -68,8 +68,9 @@
             // 
             // DataDisplay
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
-            AutoScaleMode = AutoScaleMode.Font;
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            AutoScroll = true;
             AutoSize = true;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             ClientSize = new Size(559, 297);
@@ -78,8 +79,6 @@
             Controls.Add(ImportDisplayData);
             DoubleBuffered = true;
             FormBorderStyle = FormBorderStyle.Fixed3D;
-            MaximizeBox = false;
-            MinimizeBox = false;
             Name = "DataDisplay";
             StartPosition = FormStartPosition.CenterParent;
             Text = "DataDisplay";
