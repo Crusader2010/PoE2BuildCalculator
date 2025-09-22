@@ -11,6 +11,12 @@ namespace PoE2BuildCalculator
     {
         private Color _validationBackColorSuccess;
         private Color _validationForeColorSuccess;
+        private readonly StringFormat _cellPaintingStringFormat = new()
+        {
+            Alignment = StringAlignment.Center,
+            LineAlignment = StringAlignment.Center,
+            Trimming = StringTrimming.EllipsisCharacter
+        };
 
         private readonly BindingList<Tier> _bindingTiers = [];
         private int _minFormSize;
@@ -531,18 +537,10 @@ namespace PoE2BuildCalculator
                     e.Graphics.FillRectangle(backBrush, e.CellBounds);
                 }
 
-                // Create a StringFormat object for alignment
-                StringFormat stringFormat = new()
-                {
-                    Alignment = StringAlignment.Center,
-                    LineAlignment = StringAlignment.Center,
-                    Trimming = StringTrimming.EllipsisCharacter
-                };
-
                 // Now, draw the cell content (text, etc.)
                 using (SolidBrush foreBrush = new(selectedForeColor))
                 {
-                    e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, stringFormat);
+                    e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, _cellPaintingStringFormat);
                 }
 
                 // Prevent the default cell painting
@@ -563,8 +561,11 @@ namespace PoE2BuildCalculator
                 // This prevents the DataGridView from overriding the colors.
                 BeginInvoke(new Action(() =>
                 {
+                    textBox.Margin = new Padding(0);
+                    textBox.BorderStyle = BorderStyle.None;
                     textBox.BackColor = Color.LightGreen;
                     textBox.ForeColor = Color.Red;
+                    textBox.Refresh();
                 }));
             }
         }
