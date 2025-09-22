@@ -77,6 +77,7 @@
             TableTiers.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
             TableTiers.Size = new Size(1031, 373);
             TableTiers.TabIndex = 6;
+            TableTiers.CellEndEdit += TableTiers_CellEndEdit;
             TableTiers.CellFormatting += TableTiers_CellFormatting;
             TableTiers.CellPainting += TableTiers_CellPainting;
             TableTiers.CellValidating += TableTiers_CellValidating;

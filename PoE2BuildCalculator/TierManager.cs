@@ -11,6 +11,10 @@ namespace PoE2BuildCalculator
     {
         private Color _validationBackColorSuccess;
         private Color _validationForeColorSuccess;
+        private Color _validationCellBackColorSuccess;
+        private int _minFormSize;
+        private DataGridViewCell _previousSelectedCell;
+
         private readonly StringFormat _cellPaintingStringFormat = new()
         {
             Alignment = StringAlignment.Center,
@@ -19,9 +23,6 @@ namespace PoE2BuildCalculator
         };
 
         private readonly BindingList<Tier> _bindingTiers = [];
-        private int _minFormSize;
-        private DataGridViewCell _previousSelectedCell;
-
         private readonly IReadOnlyList<ItemStatsHelper.StatDescriptor> _itemStatsDescriptors;
         private readonly DataGridViewCellStyle _defaultDoubleCellStyle = new()
         {
@@ -56,6 +57,11 @@ namespace PoE2BuildCalculator
             this.TableTiers.CellPainting += TableTiers_CellPainting;
             this.TableTiers.EditingControlShowing += TableTiers_EditingControlShowing;
             this.TableTiers.SelectionChanged += TableTiers_SelectionChanged;
+        }
+
+        public List<Tier> GetTiers()
+        {
+            return [.. _bindingTiers.OrderBy(t => t.TierId)];
         }
 
         private void TierManager_Load(object sender, EventArgs e)
@@ -104,23 +110,8 @@ namespace PoE2BuildCalculator
             var grid = (DataGridView)sender;
             if (!grid.IsCurrentCellDirty || e.ColumnIndex <= 1) return; // Skip validation if the cell is not dirty or for non-editable columns
 
+            var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
             var (isValid, errorMessage) = ValidateAndCommitTierData(e.RowIndex, e.ColumnIndex, e.FormattedValue);
-            if (grid.EditingControl is Control editingControl) // Handle the validation highlighting for the editing control            {
-            {
-                if (!isValid)
-                {
-                    _validationBackColorSuccess = editingControl.BackColor;
-                    _validationForeColorSuccess = editingControl.ForeColor;
-                    editingControl.BackColor = Color.LightCoral;
-                    editingControl.ForeColor = Color.Black;
-                }
-                else
-                {
-                    // Reset to the cell's default style colors on success
-                    editingControl.BackColor = _validationBackColorSuccess;
-                    editingControl.ForeColor = _validationForeColorSuccess;
-                }
-            }
 
             if (!isValid)
             {
@@ -129,7 +120,24 @@ namespace PoE2BuildCalculator
             }
             else
             {
-                grid.Rows[e.RowIndex].ErrorText = null; // Clear error on success
+                grid.Rows[e.RowIndex].ErrorText = string.Empty; // Clear error on success
+            }
+
+            if (grid.EditingControl is System.Windows.Forms.TextBox editingControl) // Handle the validation highlighting for the editing control            {
+            {
+                if (!isValid)
+                {
+                    _validationBackColorSuccess = editingControl.BackColor;
+                    _validationForeColorSuccess = editingControl.ForeColor;
+                    editingControl.BackColor = Color.MistyRose;
+                    editingControl.ForeColor = Color.Black;
+                }
+                else
+                {
+                    // Reset to the cell's default style colors on success
+                    editingControl.BackColor = _validationBackColorSuccess;
+                    editingControl.ForeColor = _validationForeColorSuccess;
+                }
             }
         }
 
@@ -143,9 +151,182 @@ namespace PoE2BuildCalculator
             // Detach the event handler to prevent validation during form closure
             this.TableTiers.CellValidating -= TableTiers_CellValidating;
             this.TableTiers.CellFormatting -= TableTiers_CellFormatting;
+            this.TableTiers.CellPainting -= TableTiers_CellPainting;
             this.TableTiers.KeyDown -= TableTiers_KeyDown;
             this.TableStatsWeightSum.CellFormatting -= TableStatsWeightSum_CellFormatting;
+            this.TableTiers.SelectionChanged -= TableTiers_SelectionChanged;
         }
+
+        #region TableTiers events
+
+        private void TableTiers_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
+        {
+            if (e.RowIndex < 0 || e.ColumnIndex <= 1) return; // ignore tier id, name
+
+            var grid = (DataGridView)sender;
+            string statName = grid.Columns[e.ColumnIndex].DataPropertyName;
+
+            if (grid.Rows[e.RowIndex].DataBoundItem is Tier tier)
+            {
+                if (string.Equals(statName, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase))
+                {
+                    e.Value = tier.TierWeight.ToString(_defaultDoubleCellStyle.Format);
+                }
+                else if (tier.StatWeights.TryGetValue(statName, out double value))
+                {
+                    e.Value = value.ToString(_defaultDoubleCellStyle.Format);
+                    e.FormattingApplied = true;
+                }
+                else
+                {
+                    e.Value = (0.0d).ToString(_defaultDoubleCellStyle.Format);
+                    e.FormattingApplied = true;
+                }
+            }
+        }
+
+        private void TableTiers_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Return)
+            {
+                // This is the key change: we use BeginInvoke to ensure the edit starts after the KeyDown event has been fully processed.
+                // This is a more robust way to trigger edit mode manually.
+                if (!TableTiers.IsCurrentCellInEditMode)
+                {
+                    if (TableTiers.CurrentCell != null && !TableTiers.CurrentCell.ReadOnly)
+                    {
+                        TableTiers.BeginInvoke(new Action(() =>
+                        {
+                            TableTiers.BeginEdit(true);
+                        }));
+                    }
+                }
+                else
+                {
+                    // If already in edit mode, commit the changes.
+                    TableTiers.EndEdit();
+                }
+
+                // Mark the event as handled to prevent the default behavior (moving to the next row).
+                e.Handled = true;
+            }
+        }
+
+        private void TableTiers_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            // Make sure we are in a valid cell and not a header
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+            var grid = (DataGridView)sender;
+            var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            bool isCurrentCell = (grid.CurrentCell != null && grid.CurrentCell.RowIndex == e.RowIndex && grid.CurrentCell.ColumnIndex == e.ColumnIndex);
+
+
+            Color backColor = Color.Empty;
+            bool isColorSet;
+
+            // State 1: Cell is in Edit Mode
+            if (isCurrentCell && cell.IsInEditMode)
+            {
+                // Check if there is a validation error on the row
+                backColor = string.IsNullOrWhiteSpace(grid.Rows[e.RowIndex].ErrorText)
+                    ? Color.LightGreen // Normal edit color
+                    : Color.MistyRose;   // Error edit color
+                isColorSet = true;
+            }
+            // State 2: Cell is selected but NOT in Edit Mode
+            else if (isCurrentCell && (e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected)
+            {
+                backColor = Color.SpringGreen; // Your original selection color
+                isColorSet = true;
+            }
+            else
+            {
+                isColorSet = false;
+            }
+
+            // If we have a custom color, paint the background and content
+            if (isColorSet)
+            {
+                // Paint the background with the determined color
+                e.PaintBackground(e.ClipBounds, true);
+                using (SolidBrush backBrush = new(backColor))
+                {
+                    e.Graphics.FillRectangle(backBrush, e.CellBounds);
+                }
+
+                // We only draw the text if NOT in edit mode, as the TextBox control handles it then.
+                if (!cell.IsInEditMode)
+                {
+                    using (SolidBrush foreBrush = new(Color.IndianRed)) // Your original ForeColor
+                    {
+                        // Manually paint the text content
+                        if (e.FormattedValue != null)
+                        {
+                            e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, _cellPaintingStringFormat);
+                        }
+                    }
+                }
+
+                e.Paint(e.ClipBounds, DataGridViewPaintParts.Border);
+                e.Handled = true;
+            }
+            else
+            {
+                e.Handled = false;
+            }
+        }
+
+        private void TableTiers_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
+        {
+            if (e.Control is DataGridViewTextBoxEditingControl textBox)
+            {
+                // Use BeginInvoke to ensure the color changes are applied after the control is fully ready.
+                // This prevents the DataGridView from overriding the colors.
+                BeginInvoke(new Action(() =>
+                {
+                    textBox.Margin = new Padding(0);
+                    textBox.BorderStyle = BorderStyle.None;
+                    textBox.BackColor = Color.LightGreen;
+                    textBox.ForeColor = Color.Red;
+                    textBox.Refresh();
+                }));
+            }
+        }
+
+        private void TableTiers_SelectionChanged(object sender, EventArgs e)
+        {
+            // Store the current cell before the selection changes to a new cell
+            var oldSelectedCell = _previousSelectedCell;
+
+            // Get the new current cell and store it for the next selection change
+            if (TableTiers.CurrentCell != null)
+            {
+                _previousSelectedCell = TableTiers.CurrentCell;
+            }
+
+            // Invalidate the old cell to remove the custom painting
+            if (oldSelectedCell != null)
+            {
+                TableTiers.InvalidateCell(oldSelectedCell);
+            }
+
+            // Invalidate the new current cell to trigger repainting
+            if (TableTiers.CurrentCell != null)
+            {
+                TableTiers.InvalidateCell(TableTiers.CurrentCell);
+            }
+        }
+
+        private void TableTiers_CellEndEdit(object sender, DataGridViewCellEventArgs e)
+        {
+            var grid = (DataGridView)sender;
+            var row = grid.Rows[e.RowIndex];
+
+            // Clear the error text for the row
+            row.ErrorText = string.Empty;
+        }
+
+        #endregion
 
         #region Private helpers
 
@@ -172,7 +353,7 @@ namespace PoE2BuildCalculator
             {
                 if (_totalTierWeight - tier.TierWeight + value > 100.00d)
                 {
-                    return (false, "The total value of tier weights cannot exceed 100%");
+                    return (false, $"The total value of tier weights cannot exceed 100%. Attempted value: {_totalTierWeight - tier.TierWeight + value}");
                 }
 
                 tier.TierWeight = value;
@@ -183,7 +364,7 @@ namespace PoE2BuildCalculator
             {
                 if (tier.TotalStatWeight - tier.StatWeights[columnName] + value > 100.00d)
                 {
-                    return (false, $"The total value of stats' weights for '{tier.TierName}' (ID: {tier.TierId}) cannot exceed 100%");
+                    return (false, $"The total value of stats' weights for '{tier.TierName}' (ID: {tier.TierId}) cannot exceed 100%. Attempted value: {tier.TotalStatWeight - tier.StatWeights[columnName] + value}");
                 }
 
                 tier.SetStatWeight(columnName, value);
@@ -199,11 +380,6 @@ namespace PoE2BuildCalculator
             {
                 _bindingTiers[i].TierId = i + 1;
             }
-        }
-
-        public List<Tier> GetTiers()
-        {
-            return [.. _bindingTiers.OrderBy(t => t.TierId)];
         }
 
         private void AdjustFormSizeToDataGrid()
@@ -447,58 +623,7 @@ namespace PoE2BuildCalculator
 
         #endregion
 
-        private void TableTiers_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex <= 1) return; // ignore tier id, name
-
-            var grid = (DataGridView)sender;
-            string statName = grid.Columns[e.ColumnIndex].DataPropertyName;
-
-            if (grid.Rows[e.RowIndex].DataBoundItem is Tier tier)
-            {
-                if (string.Equals(statName, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase))
-                {
-                    e.Value = tier.TierWeight.ToString(_defaultDoubleCellStyle.Format);
-                }
-                else if (tier.StatWeights.TryGetValue(statName, out double value))
-                {
-                    e.Value = value.ToString(_defaultDoubleCellStyle.Format);
-                    e.FormattingApplied = true;
-                }
-                else
-                {
-                    e.Value = (0.0d).ToString(_defaultDoubleCellStyle.Format);
-                    e.FormattingApplied = true;
-                }
-            }
-        }
-
-        private void TableTiers_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Return)
-            {
-                // This is the key change: we use BeginInvoke to ensure the edit starts after the KeyDown event has been fully processed.
-                // This is a more robust way to trigger edit mode manually.
-                if (!TableTiers.IsCurrentCellInEditMode)
-                {
-                    if (TableTiers.CurrentCell != null && !TableTiers.CurrentCell.ReadOnly)
-                    {
-                        TableTiers.BeginInvoke(new Action(() =>
-                        {
-                            TableTiers.BeginEdit(true);
-                        }));
-                    }
-                }
-                else
-                {
-                    // If already in edit mode, commit the changes.
-                    TableTiers.EndEdit();
-                }
-
-                // Mark the event as handled to prevent the default behavior (moving to the next row).
-                e.Handled = true;
-            }
-        }
+        #region TableStatsWeightSum events
 
         private void TableStatsWeightSum_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
@@ -514,84 +639,6 @@ namespace PoE2BuildCalculator
             }
         }
 
-        private void TableTiers_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
-        {
-            // Make sure we are in a valid cell and not a header
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-
-            // Check if the current cell is the selected one
-            if ((e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected &&
-                TableTiers.CurrentCell.RowIndex == e.RowIndex &&
-                TableTiers.CurrentCell.ColumnIndex == e.ColumnIndex)
-            {
-                // Define your custom colors
-                Color selectedBackColor = Color.SpringGreen;
-                Color selectedForeColor = Color.IndianRed;
-
-                // Erase the default background
-                e.PaintBackground(e.ClipBounds, false);
-
-                // Draw the custom background
-                using (SolidBrush backBrush = new(selectedBackColor))
-                {
-                    e.Graphics.FillRectangle(backBrush, e.CellBounds);
-                }
-
-                // Now, draw the cell content (text, etc.)
-                using (SolidBrush foreBrush = new(selectedForeColor))
-                {
-                    e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, _cellPaintingStringFormat);
-                }
-
-                // Prevent the default cell painting
-                e.Handled = true;
-            }
-            else
-            {
-                // Let the default painting occur for non-selected cells
-                e.Handled = false;
-            }
-        }
-
-        private void TableTiers_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
-        {
-            if (e.Control is DataGridViewTextBoxEditingControl textBox)
-            {
-                // Use BeginInvoke to ensure the color changes are applied after the control is fully ready.
-                // This prevents the DataGridView from overriding the colors.
-                BeginInvoke(new Action(() =>
-                {
-                    textBox.Margin = new Padding(0);
-                    textBox.BorderStyle = BorderStyle.None;
-                    textBox.BackColor = Color.LightGreen;
-                    textBox.ForeColor = Color.Red;
-                    textBox.Refresh();
-                }));
-            }
-        }
-
-        private void TableTiers_SelectionChanged(object sender, EventArgs e)
-        {
-            // Store the current cell before the selection changes to a new cell
-            var oldSelectedCell = _previousSelectedCell;
-
-            // Get the new current cell and store it for the next selection change
-            if (TableTiers.CurrentCell != null)
-            {
-                _previousSelectedCell = TableTiers.CurrentCell;
-            }
-
-            // Invalidate the old cell to remove the custom painting
-            if (oldSelectedCell != null)
-            {
-                TableTiers.InvalidateCell(oldSelectedCell);
-            }
-
-            // Invalidate the new current cell to trigger repainting
-            if (TableTiers.CurrentCell != null)
-            {
-                TableTiers.InvalidateCell(TableTiers.CurrentCell);
-            }
-        }
+        #endregion
     }
 }
