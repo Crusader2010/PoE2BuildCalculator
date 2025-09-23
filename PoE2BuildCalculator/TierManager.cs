@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Data;
 using System.Windows.Forms;
 using static System.Windows.Forms.VisualStyles.VisualStyleElement;
+using TextBox = System.Windows.Forms.TextBox;
 
 namespace PoE2BuildCalculator
 {
@@ -11,7 +12,6 @@ namespace PoE2BuildCalculator
     {
         private Color _validationBackColorSuccess;
         private Color _validationForeColorSuccess;
-        private Color _validationCellBackColorSuccess;
         private int _minFormSize;
         private DataGridViewCell _previousSelectedCell;
 
@@ -105,42 +105,6 @@ namespace PoE2BuildCalculator
             if (TableTiers.RowCount > 0) TableTiers.FirstDisplayedScrollingRowIndex = TableTiers.RowCount - 1;
         }
 
-        private void TableTiers_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
-        {
-            var grid = (DataGridView)sender;
-            if (!grid.IsCurrentCellDirty || e.ColumnIndex <= 1) return; // Skip validation if the cell is not dirty or for non-editable columns
-
-            var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
-            var (isValid, errorMessage) = ValidateAndCommitTierData(e.RowIndex, e.ColumnIndex, e.FormattedValue);
-
-            if (!isValid)
-            {
-                grid.Rows[e.RowIndex].ErrorText = errorMessage;
-                e.Cancel = true; // Prevent leaving the cell
-            }
-            else
-            {
-                grid.Rows[e.RowIndex].ErrorText = string.Empty; // Clear error on success
-            }
-
-            if (grid.EditingControl is System.Windows.Forms.TextBox editingControl) // Handle the validation highlighting for the editing control            {
-            {
-                if (!isValid)
-                {
-                    _validationBackColorSuccess = editingControl.BackColor;
-                    _validationForeColorSuccess = editingControl.ForeColor;
-                    editingControl.BackColor = Color.MistyRose;
-                    editingControl.ForeColor = Color.Black;
-                }
-                else
-                {
-                    // Reset to the cell's default style colors on success
-                    editingControl.BackColor = _validationBackColorSuccess;
-                    editingControl.ForeColor = _validationForeColorSuccess;
-                }
-            }
-        }
-
         private void RemoveTierButton_Click(object sender, EventArgs e)
         {
             RemoveSelectedGridRows();
@@ -158,6 +122,43 @@ namespace PoE2BuildCalculator
         }
 
         #region TableTiers events
+
+        private void TableTiers_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
+        {
+            var grid = (DataGridView)sender;
+            if (!grid.IsCurrentCellDirty || e.ColumnIndex <= 1 || e.ColumnIndex >= grid.Columns.Count || e.RowIndex < 0 || e.RowIndex >= _bindingTiers.Count || e.RowIndex >= grid.Rows.Count) return; // Skip validation if the cell is not dirty or for non-editable columns
+
+            //var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            var (isValid, errorMessage) = ValidateAndCommitTierData(e.RowIndex, e.ColumnIndex, e.FormattedValue);
+
+            if (!isValid)
+            {
+                grid.Rows[e.RowIndex].ErrorText = errorMessage;
+                e.Cancel = true; // Prevent leaving the cell
+            }
+            else
+            {
+                grid.Rows[e.RowIndex].ErrorText = string.Empty; // Clear error on success
+            }
+
+            if (grid.EditingControl is TextBox editingControl) // Handle the validation highlighting for the editing control            {
+            {
+                if (!isValid)
+                {
+                    _validationBackColorSuccess = editingControl.BackColor;
+                    _validationForeColorSuccess = editingControl.ForeColor;
+                    editingControl.BackColor = Color.MistyRose;
+                    editingControl.ForeColor = Color.Black;
+                    grid.RefreshEdit(); //resets the faulty value to the previously inserted valid value, or 0.00.
+                }
+                else
+                {
+                    // Reset to the cell's default style colors on success
+                    editingControl.BackColor = _validationBackColorSuccess;
+                    editingControl.ForeColor = _validationForeColorSuccess;
+                }
+            }
+        }
 
         private void TableTiers_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
@@ -320,10 +321,10 @@ namespace PoE2BuildCalculator
         private void TableTiers_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
             var grid = (DataGridView)sender;
-            var row = grid.Rows[e.RowIndex];
+            if (e.ColumnIndex < 0 || e.ColumnIndex >= grid.Columns.Count || e.RowIndex < 0 || e.RowIndex >= grid.Rows.Count) return;
 
-            // Clear the error text for the row
-            row.ErrorText = string.Empty;
+            var row = grid.Rows[e.RowIndex];
+            row.ErrorText = string.Empty; // Clear the error text for the row
         }
 
         #endregion
@@ -333,7 +334,7 @@ namespace PoE2BuildCalculator
         internal (bool Result, string ErrorMessage) ValidateAndCommitTierData(int rowIndex, int colIndex, object formattedValue)
         {
             // Skip validation for TierId and TierName columns
-            if (colIndex <= 1) return (true, string.Empty);
+            if (colIndex <= 1 || rowIndex < 0 || rowIndex >= _bindingTiers.Count) return (true, string.Empty);
 
             // Validate numeric columns
             if (!double.TryParse(formattedValue?.ToString() ?? "0.00", out double value))
