@@ -12,6 +12,7 @@
 		<ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
 		<ApplicationDefaultFont>Microsoft Sans Serif, 9pt</ApplicationDefaultFont>
 		<BaseOutputPath>$(SolutionDir)bin</BaseOutputPath>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
