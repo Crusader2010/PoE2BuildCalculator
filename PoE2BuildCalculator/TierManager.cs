@@ -51,16 +51,6 @@ namespace PoE2BuildCalculator
         {
             _itemStatsDescriptors = ItemStatsHelper.GetStatDescriptors();
             InitializeComponent();
-
-            this.Load += TierManager_Load;
-            this.FormClosing += TierManager_FormClosing;
-            this.TableTiers.CellValidating += TableTiers_CellValidating;
-            this.TableTiers.CellFormatting += TableTiers_CellFormatting;
-            this.TableTiers.KeyDown += TableTiers_KeyDown;
-            this.TableStatsWeightSum.CellFormatting += TableStatsWeightSum_CellFormatting;
-            this.TableTiers.CellPainting += TableTiers_CellPainting;
-            this.TableTiers.EditingControlShowing += TableTiers_EditingControlShowing;
-            this.TableTiers.SelectionChanged += TableTiers_SelectionChanged;
         }
 
         public List<Tier> GetTiers()
@@ -115,13 +105,23 @@ namespace PoE2BuildCalculator
 
         private void TierManager_FormClosing(object sender, FormClosingEventArgs e)
         {
-            // Detach the event handler to prevent validation during form closure
-            this.TableTiers.CellValidating -= TableTiers_CellValidating;
-            this.TableTiers.CellFormatting -= TableTiers_CellFormatting;
-            this.TableTiers.CellPainting -= TableTiers_CellPainting;
-            this.TableTiers.KeyDown -= TableTiers_KeyDown;
-            this.TableStatsWeightSum.CellFormatting -= TableStatsWeightSum_CellFormatting;
-            this.TableTiers.SelectionChanged -= TableTiers_SelectionChanged;
+            // Detach handlers that Designer may have attached in InitializeComponent
+            try
+            {
+                this.TableTiers.CellValidating -= TableTiers_CellValidating;
+                this.TableTiers.CellFormatting -= TableTiers_CellFormatting;
+                this.TableTiers.CellPainting -= TableTiers_CellPainting;
+                this.TableTiers.KeyDown -= TableTiers_KeyDown;
+                this.TableTiers.SelectionChanged -= TableTiers_SelectionChanged;
+                this.TableTiers.EditingControlShowing -= TableTiers_EditingControlShowing;
+                this.TableTiers.CellEndEdit -= TableTiers_CellEndEdit;
+
+                this.TableStatsWeightSum.CellFormatting -= TableStatsWeightSum_CellFormatting;
+            }
+            catch
+            {
+                // ignore any detach errors on shutdown
+            }
         }
 
         #region TableTiers events
@@ -146,30 +146,10 @@ namespace PoE2BuildCalculator
 
             if (grid.EditingControl is TextBox editingControl)
             {
-                // compute color from the current row error state which we already set above
-                var desiredBack = string.IsNullOrWhiteSpace(grid.Rows[e.RowIndex].ErrorText) ? _editBackColor : _editInvalidBackColor;
+                var desiredBack = GetCellEditBackColor(grid, e.RowIndex, true, false);
+                ApplyEditingControlStyling(editingControl, desiredBack);
 
-                // save old colors so you can restore later as before
-                _validationBackColorSuccess = editingControl.BackColor;
-                _validationForeColorSuccess = editingControl.ForeColor;
-
-                // set both editing control and its host background to avoid any white edges
-                editingControl.BackColor = desiredBack;
-                editingControl.ForeColor = _textColor;
-                editingControl.Multiline = false;
-                editingControl.TextAlign = HorizontalAlignment.Center;
-
-                if (editingControl.Parent != null)
-                {
-                    editingControl.Parent.BackColor = desiredBack;
-                    editingControl.Parent.Padding = Padding.Empty;
-                    editingControl.Parent.Margin = Padding.Empty;
-                }
-
-                // Do NOT call grid.RefreshEdit() — it can recreate the editing control and cause flicker/position loss.
-                // Instead perform a local refresh for the editing control and invalidate the specific cell.
-                editingControl.Invalidate();
-                editingControl.Refresh();
+                // Invalidate the specific cell to ensure borders are drawn correctly
                 grid.InvalidateCell(e.ColumnIndex, e.RowIndex);
             }
         }
@@ -229,33 +209,23 @@ namespace PoE2BuildCalculator
 
         private void TableTiers_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
         {
-            // Make sure we are in a valid cell and not a header
             if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
             var grid = (DataGridView)sender;
             var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
             bool isCurrentCell = (grid.CurrentCell != null && grid.CurrentCell.RowIndex == e.RowIndex && grid.CurrentCell.ColumnIndex == e.ColumnIndex);
 
             Color backColor = Color.Empty;
-            bool isColorSet;
+            bool isColorSet = false;
 
-            // State 1: Cell is in Edit Mode
             if (isCurrentCell && cell.IsInEditMode)
             {
-                // Check if there is a validation error on the row
-                backColor = string.IsNullOrWhiteSpace(grid.Rows[e.RowIndex].ErrorText)
-                    ? _editBackColor // Normal edit color
-                    : _editInvalidBackColor;   // Error edit color
+                backColor = GetCellEditBackColor(grid, e.RowIndex, true, false);
                 isColorSet = true;
             }
-            // State 2: Cell is selected but NOT in Edit Mode
             else if (isCurrentCell && (e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected)
             {
-                backColor = _selectionColor; // selection color
+                backColor = GetCellEditBackColor(grid, e.RowIndex, false, true);
                 isColorSet = true;
-            }
-            else
-            {
-                isColorSet = false;
             }
 
             if (!isColorSet)
@@ -264,8 +234,7 @@ namespace PoE2BuildCalculator
                 return;
             }
 
-            // Paint the background ourselves — do NOT call e.PaintBackground (it can introduce small gaps).
-            // Expand height by 1 to be defensive against 1px artifacts on some themes/DPI combos.
+            // Paint full background; +1 pixel height is defensive against 1px artifacts on some themes/DPI.
             var fillRect = e.CellBounds;
             fillRect.Height += 1;
 
@@ -274,20 +243,16 @@ namespace PoE2BuildCalculator
                 e.Graphics.FillRectangle(backBrush, fillRect);
             }
 
-            // Only draw text if NOT in edit mode (editing control paints text)
-            if (!cell.IsInEditMode)
+            // Only draw text when not editing (editing control draws it)
+            if (!cell.IsInEditMode && e.FormattedValue != null)
             {
-                var foreColor = _textColor;
-                using (var foreBrush = new SolidBrush(foreColor))
+                using (var foreBrush = new SolidBrush(_textColor))
                 {
-                    if (e.FormattedValue != null)
-                    {
-                        e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, _cellPaintingStringFormat);
-                    }
+                    e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, _cellPaintingStringFormat);
                 }
             }
 
-            // Draw the cell border on top of our painting
+            // Draw borders on top
             e.Paint(e.CellBounds, DataGridViewPaintParts.Border);
             e.Handled = true;
         }
@@ -302,60 +267,17 @@ namespace PoE2BuildCalculator
                     try
                     {
                         var dgv = TableTiers;
+                        if (dgv.CurrentCell == null) return;
 
-                        // determine the desired background based on row error state (if any)
-                        Color desiredBack = _editBackColor;
-                        if (dgv.CurrentCell != null)
-                        {
-                            var r = dgv.Rows[dgv.CurrentCell.RowIndex];
-                            if (!string.IsNullOrWhiteSpace(r.ErrorText))
-                            {
-                                desiredBack = _editInvalidBackColor;
-                            }
-                        }
+                        var desiredBack = GetCellEditBackColor(dgv, dgv.CurrentCell.RowIndex, true, false);
+                        ApplyEditingControlStyling(textBox, desiredBack);
 
-                        // Make parent (editing host) use the same background and remove padding/margins
-                        var host = textBox.Parent;
-                        if (host != null)
-                        {
-                            host.Margin = Padding.Empty;
-                            host.Padding = Padding.Empty;
-                            host.BackColor = desiredBack;
-                        }
-
-                        // Remove textbox chrome and make it fill the host client area exactly
-                        textBox.Margin = Padding.Empty;
-                        textBox.BorderStyle = BorderStyle.FixedSingle;
-                        if (host != null)
-                        {
-                            textBox.Location = new Point(0, 0);
-                            textBox.Size = host.ClientSize; // fill host exactly
-                        }
-                        else
-                        {
-                            textBox.Dock = DockStyle.Fill;
-                        }
-
-                        // Set colors with high-contrast foreground to avoid invisible text
-                        textBox.BackColor = desiredBack;
-                        textBox.ForeColor = _textColor;
-                        textBox.Multiline = false;
-                        textBox.TextAlign = HorizontalAlignment.Center;
-
-                        // Bring to front to avoid painting order issues, then refresh only the editing control.
-                        textBox.BringToFront();
-                        textBox.Invalidate();
-                        textBox.Refresh();
-
-                        // Invalidate the cell to force a consistent repaint of borders
-                        if (dgv.CurrentCell != null)
-                        {
-                            dgv.InvalidateCell(dgv.CurrentCell.ColumnIndex, dgv.CurrentCell.RowIndex);
-                        }
+                        // Ensure cell repainted so our background/border alignment is correct
+                        dgv.InvalidateCell(dgv.CurrentCell.ColumnIndex, dgv.CurrentCell.RowIndex);
                     }
                     catch
                     {
-                        // swallow exceptions to keep editing flow stable
+                        // swallow — do not break edit flow
                     }
                 }));
             }
@@ -440,6 +362,59 @@ namespace PoE2BuildCalculator
             }
 
             return (true, string.Empty); // Validation and commit successful
+        }
+
+        private Color GetCellEditBackColor(DataGridView grid, int rowIndex, bool isEditing, bool isSelected)
+        {
+            if (isEditing)
+            {
+                return string.IsNullOrWhiteSpace(grid.Rows[rowIndex].ErrorText) ? _editBackColor : _editInvalidBackColor;
+            }
+            else if (isSelected)
+            {
+                return _selectionColor;
+            }
+
+            return Color.Empty;
+        }
+
+        /// <summary>
+        /// Ensures the editing TextBox and its host share the same background and remove inner padding.
+        /// Keeps the control filling the host client area (avoids repositioning host which causes flicker).
+        /// </summary>
+        private void ApplyEditingControlStyling(TextBox editingControl, Color desiredBack)
+        {
+            if (editingControl == null) return;
+
+            // save original colors for restoration (existing fields used elsewhere)
+            _validationBackColorSuccess = editingControl.BackColor;
+            _validationForeColorSuccess = editingControl.ForeColor;
+
+            editingControl.BackColor = desiredBack;
+            editingControl.ForeColor = _textColor;
+            editingControl.Margin = Padding.Empty;
+            editingControl.BorderStyle = BorderStyle.FixedSingle; // keeps vertical text alignment correct
+            editingControl.Multiline = false;
+            editingControl.TextAlign = HorizontalAlignment.Center;
+
+            if (editingControl.Parent != null)
+            {
+                editingControl.Parent.BackColor = desiredBack;
+                editingControl.Parent.Padding = Padding.Empty;
+                editingControl.Parent.Margin = Padding.Empty;
+
+                // make editing control exactly fill the host client area
+                editingControl.Location = new Point(0, 0);
+                editingControl.Size = editingControl.Parent.ClientSize;
+            }
+            else
+            {
+                editingControl.Dock = DockStyle.Fill;
+            }
+
+            // Do a localized refresh — avoid grid.RefreshEdit()
+            editingControl.Invalidate();
+            editingControl.Refresh();
         }
 
         private void RefreshTierIds()
@@ -565,8 +540,18 @@ namespace PoE2BuildCalculator
             TableTiers.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
             TableTiers.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             TableTiers.DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.InvariantCulture;
+            TableTiers.DefaultCellStyle.Padding = Padding.Empty;
+            TableTiers.RowTemplate.DefaultCellStyle.Padding = Padding.Empty;
             TableTiers.RowTemplate.DefaultCellStyle.FormatProvider = System.Globalization.CultureInfo.InvariantCulture;
-            typeof(DataGridView).GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic).SetValue(TableTiers, true);
+
+            try
+            {
+                typeof(DataGridView).GetProperty("DoubleBuffered", BindingFlags.Instance | BindingFlags.NonPublic)?.SetValue(TableTiers, true);
+            }
+            catch
+            {
+                // ignore; double-buffering is a best-effort optimization
+            }
 
             // Add basic columns
             var idColumn = new DataGridViewTextBoxColumn
