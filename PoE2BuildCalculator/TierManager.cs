@@ -4,20 +4,29 @@ using System.ComponentModel;
 using System.Data;
 using TextBox = System.Windows.Forms.TextBox;
 using System.Reflection;
+using Timer = System.Windows.Forms.Timer;
 
 namespace PoE2BuildCalculator
 {
     public partial class TierManager : Form
     {
+        private double _totalTierWeight => _bindingTiers.Sum(t => t.TierWeight);
+
         private Color _validationBackColorSuccess;
         private Color _validationForeColorSuccess;
         private int _minFormSize;
         private DataGridViewCell _previousSelectedCell;
+        private Timer _flashTimer;
+        private DateTime _flashStartTime;
+        private Color _originalBackColor;
 
         private readonly Color _editBackColor = Color.LightGreen;
         private readonly Color _editInvalidBackColor = Color.MistyRose;
         private readonly Color _selectionColor = Color.SpringGreen;
         private readonly Color _textColor = Color.IndianRed;
+
+        private readonly BindingList<Tier> _bindingTiers = [];
+        private readonly IReadOnlyList<ItemStatsHelper.StatDescriptor> _itemStatsDescriptors;
 
         private readonly StringFormat _cellPaintingStringFormat = new()
         {
@@ -25,9 +34,6 @@ namespace PoE2BuildCalculator
             LineAlignment = StringAlignment.Center,
             Trimming = StringTrimming.EllipsisCharacter
         };
-
-        private readonly BindingList<Tier> _bindingTiers = [];
-        private readonly IReadOnlyList<ItemStatsHelper.StatDescriptor> _itemStatsDescriptors;
         private readonly DataGridViewCellStyle _defaultDoubleCellStyle = new()
         {
             Format = "0.00",
@@ -36,7 +42,6 @@ namespace PoE2BuildCalculator
             NullValue = 0.0d,
             FormatProvider = System.Globalization.CultureInfo.InvariantCulture
         };
-
         private readonly DataGridViewCellStyle _defaultStringCellStyle = new()
         {
             Alignment = DataGridViewContentAlignment.MiddleCenter,
@@ -44,8 +49,6 @@ namespace PoE2BuildCalculator
             NullValue = string.Empty,
             FormatProvider = System.Globalization.CultureInfo.InvariantCulture
         };
-
-        private double _totalTierWeight => _bindingTiers.Sum(t => t.TierWeight);
 
         public TierManager()
         {
@@ -57,7 +60,6 @@ namespace PoE2BuildCalculator
         {
             return [.. _bindingTiers.OrderBy(t => t.TierId)];
         }
-
         private void TierManager_Load(object sender, EventArgs e)
         {
             this.AutoSize = false; // Turn off AutoSize so the form can be sized by code.
@@ -75,7 +77,6 @@ namespace PoE2BuildCalculator
 
             SetTotalTierWeights();
         }
-
         private void AddTierButton_Click(object sender, EventArgs e)
         {
             var newTier = new Tier
@@ -97,12 +98,10 @@ namespace PoE2BuildCalculator
 
             if (TableTiers.RowCount > 0) TableTiers.FirstDisplayedScrollingRowIndex = TableTiers.RowCount - 1;
         }
-
         private void RemoveTierButton_Click(object sender, EventArgs e)
         {
             RemoveSelectedGridRows();
         }
-
         private void TierManager_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Detach handlers that Designer may have attached in InitializeComponent
@@ -123,6 +122,13 @@ namespace PoE2BuildCalculator
                 // ignore any detach errors on shutdown
             }
         }
+        private void TextboxTotalTierWeights_TextChanged(object sender, EventArgs e)
+        {
+            StartFlashingIfNeeded();
+        }
+
+
+
 
         #region TableTiers events
 
@@ -317,6 +323,9 @@ namespace PoE2BuildCalculator
         }
 
         #endregion
+
+
+
 
         #region Private helpers
 
@@ -675,7 +684,48 @@ namespace PoE2BuildCalculator
             TextboxTotalTierWeights.Text = _totalTierWeight.ToString("0.00") + " %";
         }
 
+        private void StartFlashingIfNeeded()
+        {
+            var raw = TextboxTotalTierWeights.Text[..^2]; // ignore last 2 characters " %"
+
+            if (!double.TryParse(raw, out double value) || value <= 80.00d) return;
+
+            if (_flashTimer == null)
+            {
+                _originalBackColor = TextboxTotalTierWeights.BackColor;
+                _flashTimer = new Timer
+                {
+                    Interval = 500 // toggle every 0.5 seconds
+                };
+
+                _flashTimer.Tick += FlashTimer_Tick;
+            }
+
+            _flashStartTime = DateTime.Now;
+            _flashTimer.Start();
+        }
+
+        private void FlashTimer_Tick(object sender, EventArgs e)
+        {
+            // Stop after 10 seconds
+            if ((DateTime.Now - _flashStartTime).TotalSeconds > 10)
+            {
+                _flashTimer.Stop();
+                TextboxTotalTierWeights.BackColor = _originalBackColor;
+                return;
+            }
+
+            // Toggle between original and light reddish
+            TextboxTotalTierWeights.BackColor =
+                TextboxTotalTierWeights.BackColor == _originalBackColor
+                ? Color.Red
+                : _originalBackColor;
+        }
+
         #endregion
+
+
+
 
         #region TableStatsWeightSum events
 

@@ -140,6 +140,7 @@
             TextboxTotalTierWeights.TabIndex = 8;
             TextboxTotalTierWeights.Text = "test";
             TextboxTotalTierWeights.TextAlign = HorizontalAlignment.Center;
+            TextboxTotalTierWeights.TextChanged += TextboxTotalTierWeights_TextChanged;
             // 
             // label1
             // 
