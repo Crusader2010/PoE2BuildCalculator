@@ -39,6 +39,7 @@
             TextboxTotalTierWeights = new TextBox();
             label1 = new Label();
             ErrorTooltip = new ToolTip(components);
+            label2 = new Label();
             ((System.ComponentModel.ISupportInitialize)TableTiers).BeginInit();
             ((System.ComponentModel.ISupportInitialize)TableStatsWeightSum).BeginInit();
             SuspendLayout();
@@ -161,12 +162,23 @@
             ErrorTooltip.ToolTipIcon = ToolTipIcon.Error;
             ErrorTooltip.ToolTipTitle = "Invalid input";
             // 
+            // label2
+            // 
+            label2.AutoSize = true;
+            label2.CausesValidation = false;
+            label2.Location = new Point(260, 86);
+            label2.Name = "label2";
+            label2.Size = new Size(368, 15);
+            label2.TabIndex = 10;
+            label2.Text = "List of tiers - each tier's stats weights and the weight of the tier itself";
+            // 
             // TierManager
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
             ClientSize = new Size(1303, 498);
+            Controls.Add(label2);
             Controls.Add(label1);
             Controls.Add(TextboxTotalTierWeights);
             Controls.Add(TableStatsWeightSum);
@@ -194,5 +206,6 @@
         private TextBox TextboxTotalTierWeights;
         private Label label1;
         private ToolTip ErrorTooltip;
+        private Label label2;
     }
 }

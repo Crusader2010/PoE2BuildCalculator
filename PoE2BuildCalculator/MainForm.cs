@@ -1,9 +1,3 @@
-using System;
-using System.Drawing;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Forms;
-
 namespace PoE2BuildCalculator
 {
     public partial class MainForm : Form

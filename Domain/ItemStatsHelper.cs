@@ -1,8 +1,6 @@
 using System.ComponentModel;
-using System.DirectoryServices.ActiveDirectory;
 using System.Linq.Expressions;
 using System.Reflection;
-using System.Text.RegularExpressions;
 
 namespace Domain
 {
@@ -106,7 +104,7 @@ namespace Domain
             return [.. list
                 .OrderBy(d => d.Order)
                 .ThenBy(d => d.Property.MetadataToken)
-                .ThenBy(d => d.PropertyName, StringComparer.Ordinal)];
+                .ThenBy(d => d.PropertyName, StringComparer.OrdinalIgnoreCase)];
         }
     }
 }

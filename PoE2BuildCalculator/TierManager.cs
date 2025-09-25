@@ -1,9 +1,8 @@
 ﻿using Domain;
-using Manager;
 using System.ComponentModel;
 using System.Data;
-using TextBox = System.Windows.Forms.TextBox;
 using System.Reflection;
+using TextBox = System.Windows.Forms.TextBox;
 using Timer = System.Windows.Forms.Timer;
 
 namespace PoE2BuildCalculator
@@ -21,9 +20,11 @@ namespace PoE2BuildCalculator
         private Color _originalBackColor;
 
         private readonly Color _editBackColor = Color.LightGreen;
-        private readonly Color _editInvalidBackColor = Color.MistyRose;
-        private readonly Color _selectionColor = Color.SpringGreen;
-        private readonly Color _textColor = Color.IndianRed;
+        private readonly Color _editInvalidBackColor = Color.LightPink;
+        private readonly Color _selectionBackColor = Color.SpringGreen;
+        private readonly Color _selectionTextColor = Color.DarkRed;
+        private readonly Color _tierWeightTextColor = Color.Blue;
+        private readonly Color _tierWeightBackColor = Color.Wheat;
 
         private readonly BindingList<Tier> _bindingTiers = [];
         private readonly IReadOnlyList<ItemStatsHelper.StatDescriptor> _itemStatsDescriptors;
@@ -219,6 +220,7 @@ namespace PoE2BuildCalculator
             var grid = (DataGridView)sender;
             var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
             bool isCurrentCell = (grid.CurrentCell != null && grid.CurrentCell.RowIndex == e.RowIndex && grid.CurrentCell.ColumnIndex == e.ColumnIndex);
+            bool isTierWeightColumn = string.Equals(grid.Columns[e.ColumnIndex].Name, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase);
 
             Color backColor = Color.Empty;
             bool isColorSet = false;
@@ -231,6 +233,11 @@ namespace PoE2BuildCalculator
             else if (isCurrentCell && (e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected)
             {
                 backColor = GetCellEditBackColor(grid, e.RowIndex, false, true);
+                isColorSet = true;
+            }
+            else if (isTierWeightColumn)
+            {
+                backColor = _tierWeightBackColor;
                 isColorSet = true;
             }
 
@@ -252,7 +259,8 @@ namespace PoE2BuildCalculator
             // Only draw text when not editing (editing control draws it)
             if (!cell.IsInEditMode && e.FormattedValue != null)
             {
-                using (var foreBrush = new SolidBrush(_textColor))
+                var brushColor = isTierWeightColumn ? _tierWeightTextColor : _selectionTextColor;
+                using (var foreBrush = new SolidBrush(brushColor))
                 {
                     e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, _cellPaintingStringFormat);
                 }
@@ -381,7 +389,7 @@ namespace PoE2BuildCalculator
             }
             else if (isSelected)
             {
-                return _selectionColor;
+                return _selectionBackColor;
             }
 
             return Color.Empty;
@@ -400,7 +408,7 @@ namespace PoE2BuildCalculator
             _validationForeColorSuccess = editingControl.ForeColor;
 
             editingControl.BackColor = desiredBack;
-            editingControl.ForeColor = _textColor;
+            editingControl.ForeColor = _selectionTextColor;
             editingControl.Margin = Padding.Empty;
             editingControl.BorderStyle = BorderStyle.FixedSingle; // keeps vertical text alignment correct
             editingControl.Multiline = false;
