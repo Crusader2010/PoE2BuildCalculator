@@ -36,7 +36,7 @@ namespace PoE2BuildCalculator
         };
         private readonly DataGridViewCellStyle _defaultDoubleCellStyle = new()
         {
-            Format = "0.00",
+            Format = Constants.DOUBLE_NUMBER_FORMAT,
             Alignment = DataGridViewContentAlignment.MiddleCenter,
             DataSourceNullValue = 0.0d,
             NullValue = 0.0d,
@@ -681,7 +681,7 @@ namespace PoE2BuildCalculator
 
         private void SetTotalTierWeights()
         {
-            TextboxTotalTierWeights.Text = _totalTierWeight.ToString("0.00") + " %";
+            TextboxTotalTierWeights.Text = _totalTierWeight.ToString(Constants.DOUBLE_NUMBER_FORMAT) + Constants.TOTAL_TIERS_WEIGHT_SUFFIX;
         }
 
         private void StartFlashingIfNeeded()
