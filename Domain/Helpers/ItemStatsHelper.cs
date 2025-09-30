@@ -1,8 +1,10 @@
+using Domain.Main;
+using Domain.Static;
 using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Reflection;
 
-namespace Domain
+namespace Domain.Helpers
 {
     /// <summary>
     /// Helper that exposes ItemStats property metadata (description + accessor) in a cached,
@@ -72,11 +74,11 @@ namespace Domain
             foreach (var p in props)
             {
                 var t = p.PropertyType;
-                if (t != typeof(int) && t != typeof(double) && t != typeof(string) && t != typeof(long)) continue; // include numeric and string properties (UI may want Enchant too)
+                if (t != typeof(int) && t != typeof(double) && t != typeof(string) && t != typeof(long)) continue; // include numeric and string properties
 
                 // Description attribute or fallback
                 var descAttr = p.GetCustomAttribute<DescriptionAttribute>(inherit: false);
-                var header = descAttr.Description ?? Constants.DEFAULT_DESCRIPTION;
+                var header = descAttr?.Description ?? Constants.DEFAULT_DESCRIPTION;
 
                 // optional StatColumnAttribute for ordering
                 var orderAttr = p.GetCustomAttribute<StatColumnAttribute>(inherit: false);

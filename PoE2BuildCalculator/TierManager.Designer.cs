@@ -168,9 +168,9 @@
             label2.CausesValidation = false;
             label2.Location = new Point(260, 86);
             label2.Name = "label2";
-            label2.Size = new Size(368, 15);
+            label2.Size = new Size(411, 15);
             label2.TabIndex = 10;
-            label2.Text = "List of tiers - each tier's stats weights and the weight of the tier itself";
+            label2.Text = "List of custom tiers - each tier's stats weights and the weight of the tier itself";
             // 
             // TierManager
             // 
@@ -189,7 +189,7 @@
             FormBorderStyle = FormBorderStyle.FixedSingle;
             Name = "TierManager";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Manage tiers";
+            Text = "Manage custom tiers";
             FormClosing += TierManager_FormClosing;
             Load += TierManager_Load;
             ((System.ComponentModel.ISupportInitialize)TableTiers).EndInit();

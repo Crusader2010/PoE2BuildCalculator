@@ -35,6 +35,8 @@
             ButtonParseItemListFile = new Button();
             TierManagerButton = new Button();
             ShowItemsDataButton = new Button();
+            ButtonComputeCombinations = new Button();
+            TextboxDisplay = new TextBox();
             StatusBar.SuspendLayout();
             SuspendLayout();
             // 
@@ -45,7 +47,7 @@
             // 
             // ButtonOpenItemListFile
             // 
-            ButtonOpenItemListFile.Location = new Point(294, 127);
+            ButtonOpenItemListFile.Location = new Point(376, 91);
             ButtonOpenItemListFile.Name = "ButtonOpenItemListFile";
             ButtonOpenItemListFile.Size = new Size(126, 58);
             ButtonOpenItemListFile.TabIndex = 0;
@@ -69,7 +71,7 @@
             // 
             // ButtonParseItemListFile
             // 
-            ButtonParseItemListFile.Location = new Point(478, 127);
+            ButtonParseItemListFile.Location = new Point(520, 91);
             ButtonParseItemListFile.Name = "ButtonParseItemListFile";
             ButtonParseItemListFile.Size = new Size(126, 58);
             ButtonParseItemListFile.TabIndex = 2;
@@ -79,9 +81,9 @@
             // 
             // TierManagerButton
             // 
-            TierManagerButton.Location = new Point(411, 237);
+            TierManagerButton.Location = new Point(12, 91);
             TierManagerButton.Name = "TierManagerButton";
-            TierManagerButton.Size = new Size(172, 68);
+            TierManagerButton.Size = new Size(137, 73);
             TierManagerButton.TabIndex = 3;
             TierManagerButton.Text = "Manage tiers and weights";
             TierManagerButton.UseVisualStyleBackColor = true;
@@ -89,7 +91,7 @@
             // 
             // ShowItemsDataButton
             // 
-            ShowItemsDataButton.Location = new Point(199, 235);
+            ShowItemsDataButton.Location = new Point(12, 12);
             ShowItemsDataButton.Name = "ShowItemsDataButton";
             ShowItemsDataButton.Size = new Size(137, 73);
             ShowItemsDataButton.TabIndex = 4;
@@ -97,11 +99,35 @@
             ShowItemsDataButton.UseVisualStyleBackColor = true;
             ShowItemsDataButton.Click += ShowItemsDataButton_Click;
             // 
+            // ButtonComputeCombinations
+            // 
+            ButtonComputeCombinations.Location = new Point(662, 91);
+            ButtonComputeCombinations.Name = "ButtonComputeCombinations";
+            ButtonComputeCombinations.Size = new Size(126, 58);
+            ButtonComputeCombinations.TabIndex = 5;
+            ButtonComputeCombinations.Text = "Compute combinations";
+            ButtonComputeCombinations.UseVisualStyleBackColor = true;
+            ButtonComputeCombinations.Click += ButtonComputeCombinations_Click;
+            // 
+            // TextboxDisplay
+            // 
+            TextboxDisplay.BorderStyle = BorderStyle.FixedSingle;
+            TextboxDisplay.Location = new Point(376, 12);
+            TextboxDisplay.MaxLength = int.MaxValue;
+            TextboxDisplay.Multiline = true;
+            TextboxDisplay.Name = "TextboxDisplay";
+            TextboxDisplay.ReadOnly = true;
+            TextboxDisplay.ScrollBars = ScrollBars.Both;
+            TextboxDisplay.Size = new Size(412, 58);
+            TextboxDisplay.TabIndex = 6;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
             ClientSize = new Size(800, 450);
+            Controls.Add(TextboxDisplay);
+            Controls.Add(ButtonComputeCombinations);
             Controls.Add(ShowItemsDataButton);
             Controls.Add(TierManagerButton);
             Controls.Add(ButtonParseItemListFile);
@@ -129,5 +155,7 @@
         private Button ButtonParseItemListFile;
         private Button TierManagerButton;
         private Button ShowItemsDataButton;
+        private Button ButtonComputeCombinations;
+        private TextBox TextboxDisplay;
     }
 }

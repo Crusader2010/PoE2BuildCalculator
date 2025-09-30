@@ -1,16 +1,16 @@
-﻿namespace Manager
+﻿namespace Domain.Combinations
 {
     public static class CombinationGenerator
     {
         /// <summary>
-        /// Efficiently generates all possible combinations and filters them with a provided validator.
+        /// Generates all possible combinations and filters them with a provided validator.
         /// </summary>
-        /// <param name="listOfStatsWithoutRings">The list of lists where one item is taken from each.</param>
-        /// <param name="listOfRings">The special list where two different items must be taken.</param>
+        /// <param name="listOfItemClassesWithoutRings">The list of items split per item class, except rings. One item is taken from each sublist.</param>
+        /// <param name="listOfRings">The list of items with class = Ring, from which two different items must be taken.</param>
         /// <param name="validator">A function that returns true for valid combinations, false otherwise.</param>
         /// <returns>An IEnumerable of lists, yielding one valid combination at a time.</returns>
-        public static IEnumerable<List<T>> GenerateEfficientCombinations<T>(
-            List<List<T>> listOfStatsWithoutRings,
+        public static IEnumerable<List<T>> GenerateCombinations<T>(
+            List<List<T>> listOfItemClassesWithoutRings,
             List<T> listOfRings,
             Func<List<T>, bool> validator)
         {
@@ -19,7 +19,7 @@
                 throw new ArgumentException("The special list must contain at least two different values.", nameof(listOfRings));
             }
 
-            var generalCombinations = GenerateRecursiveCombinations(listOfStatsWithoutRings, [], 0);
+            var generalCombinations = GenerateRecursiveCombinations(listOfItemClassesWithoutRings, [], 0);
 
             foreach (var pair in GetUniquePairs(listOfRings))
             {
@@ -63,7 +63,7 @@
         }
 
         /// <summary>
-        /// Lazily generates all unique pairs from a single list.
+        /// Generates all unique pairs from a single list.
         /// </summary>
         private static IEnumerable<List<T>> GetUniquePairs<T>(List<T> list)
         {

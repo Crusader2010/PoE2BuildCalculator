@@ -1,3 +1,7 @@
+using Domain.Combinations;
+using Domain.Main;
+using Domain.Static;
+
 namespace PoE2BuildCalculator
 {
     public partial class MainForm : Form
@@ -47,6 +51,7 @@ namespace PoE2BuildCalculator
             var parseButton = sender as Control;
             parseButton!.Enabled = false;
             ButtonOpenItemListFile.Enabled = false;
+            TextboxDisplay.Text = string.Empty;
 
             // Create a new CancellationTokenSource for this parse.
             _cts?.Dispose();
@@ -87,7 +92,7 @@ namespace PoE2BuildCalculator
             }
             catch (Exception ex)
             {
-                StatusBarLabel.Text = $"Error: {ex.Message}";
+                StatusBarLabel.Text = $"Error: {ex}";
             }
             finally
             {
@@ -206,6 +211,32 @@ namespace PoE2BuildCalculator
 
             // show modal so caller waits for the user to close it
             display.Show(this);
+        }
+
+        private void ButtonComputeCombinations_Click(object sender, EventArgs e)
+        {
+            if (_fileParser == null)
+            {
+                StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
+                return;
+            }
+
+            var items = _fileParser.GetParsedItems();
+            if (items.Count == 0)
+            {
+                StatusBarLabel.Text = "There are no valid items in the chosen file. No combinations can be computed.";
+                return;
+            }
+
+            var itemsForClasses = items.Where(x => Constants.ITEM_CLASSES.Contains(x.Class, StringComparer.OrdinalIgnoreCase)).GroupBy(x => x.Class).ToDictionary(x => x.Key, x => x.ToList());
+            itemsForClasses.Remove(Constants.ITEM_CLASS_RING, out var rings);
+
+            var itemsWithoutRingsInput = new List<List<Item>>();
+            itemsWithoutRingsInput.AddRange(itemsForClasses.Values);
+
+            var combinations = CombinationGenerator.GenerateCombinations(itemsWithoutRingsInput, rings, ItemValidator.ValidateListOfItems);
+
+            TextboxDisplay.Text = $"Total number of combinations: {combinations.LongCount()}";
         }
     }
 }

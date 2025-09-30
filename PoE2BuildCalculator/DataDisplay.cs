@@ -1,4 +1,4 @@
-﻿using Domain;
+﻿using Domain.Helpers;
 using Manager;
 
 namespace PoE2BuildCalculator

@@ -1,4 +1,6 @@
-﻿using Domain;
+﻿using Domain.Helpers;
+using Domain.Main;
+using Domain.Static;
 using System.ComponentModel;
 using System.Data;
 using System.Reflection;
@@ -373,6 +375,11 @@ namespace PoE2BuildCalculator
                 {
                     return (false, $"The total value of stats' weights for '{tier.TierName}' (ID: {tier.TierId}) cannot exceed 100%. Attempted value: {tier.TotalStatWeight - tier.StatWeights[columnName] + value}");
                 }
+                else
+                {
+                    var (isValid, rowIndexOther) = ValidateNoStatWeightDuplication(rowIndex, columnName);
+                    if (!isValid) return (false, $"You cannot set the weight, for the same stat, in more than one tier. Stat name: {columnName}; Other tier: {_bindingTiers[rowIndexOther].TierName}");
+                }
 
                 tier.SetStatWeight(columnName, value);
                 TableStatsWeightSum.Refresh();
@@ -728,6 +735,19 @@ namespace PoE2BuildCalculator
                 TextboxTotalTierWeights.BackColor == _originalBackColor
                 ? Color.Red
                 : _originalBackColor;
+        }
+
+        private (bool isValid, int rowIndexOther) ValidateNoStatWeightDuplication(int rowIndexToExclude, string statName)
+        {
+            for (int i = 0; i < _bindingTiers.Count; i++)
+            {
+                if (i != rowIndexToExclude && _bindingTiers[i].StatWeights.TryGetValue(statName, out double value) && value > 0.0d)
+                {
+                    return (false, i);
+                }
+            }
+
+            return (true, -1);
         }
 
         #endregion

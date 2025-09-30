@@ -1,4 +1,4 @@
-namespace Domain
+namespace Domain.Helpers
 {
     public static class ErrorHelper
     {

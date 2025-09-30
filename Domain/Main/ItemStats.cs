@@ -1,6 +1,7 @@
-﻿using System.ComponentModel;
+﻿using Domain.Helpers;
+using System.ComponentModel;
 
-namespace Domain
+namespace Domain.Main
 {
     public class ItemStats
     {

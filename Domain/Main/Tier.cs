@@ -1,6 +1,6 @@
 ﻿using System.ComponentModel;
 
-namespace Domain
+namespace Domain.Main
 {
     public class Tier : INotifyPropertyChanged
     {

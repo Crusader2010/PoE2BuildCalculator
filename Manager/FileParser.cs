@@ -1,4 +1,6 @@
 ﻿using Domain;
+using Domain.Main;
+using Domain.Static;
 using System.Collections.Immutable;
 using System.Text;
 
@@ -337,7 +339,6 @@ namespace Manager
             }
         }
 
-        // Return a tuple so the helper can create/replace the current item and increment the id
         private async Task<(bool Success, Item Item, int CurrentItemId)> ProcessItemsFromFileData(Item item, StreamReader sr, int currentItemId, CancellationToken cancellationToken)
         {
             // Read one line (async with cancellation)
