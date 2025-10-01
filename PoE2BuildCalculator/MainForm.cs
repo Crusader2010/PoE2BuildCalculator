@@ -1,6 +1,7 @@
 using Domain.Combinations;
 using Domain.Main;
 using Domain.Static;
+using System.Collections.Immutable;
 
 namespace PoE2BuildCalculator
 {
@@ -9,6 +10,10 @@ namespace PoE2BuildCalculator
         // Class references
         private Manager.FileParser _fileParser { get; set; }
         private TierManager _formTierManager { get; set; }
+        internal Func<List<Item>, bool> _itemValidatorFunction { get; set; } = null;
+        private ImmutableList<Item> _parsedItems { get; set; } = [];
+
+        private IEnumerable<List<Item>> _combinations { get; set; } = [];
 
         // Progress UI
         private ToolStripProgressBar _statusProgressBar;
@@ -221,22 +226,29 @@ namespace PoE2BuildCalculator
                 return;
             }
 
-            var items = _fileParser.GetParsedItems();
-            if (items.Count == 0)
+            _parsedItems = _fileParser.GetParsedItems();
+            if (_parsedItems.Count == 0)
             {
                 StatusBarLabel.Text = "There are no valid items in the chosen file. No combinations can be computed.";
                 return;
             }
 
-            var itemsForClasses = items.Where(x => Constants.ITEM_CLASSES.Contains(x.Class, StringComparer.OrdinalIgnoreCase)).GroupBy(x => x.Class).ToDictionary(x => x.Key, x => x.ToList());
+            var itemsForClasses = _parsedItems.Where(x => Constants.ITEM_CLASSES.Contains(x.Class, StringComparer.OrdinalIgnoreCase)).GroupBy(x => x.Class).ToDictionary(x => x.Key, x => x.ToList());
             itemsForClasses.Remove(Constants.ITEM_CLASS_RING, out var rings);
 
             var itemsWithoutRingsInput = new List<List<Item>>();
             itemsWithoutRingsInput.AddRange(itemsForClasses.Values);
 
-            var combinations = CombinationGenerator.GenerateCombinations(itemsWithoutRingsInput, rings, ItemValidator.ValidateListOfItems);
+            _itemValidatorFunction ??= x => true; // ItemValidator.ValidateListOfItems;
+            _combinations = CombinationGenerator.GenerateCombinations(itemsWithoutRingsInput, rings, _itemValidatorFunction);
 
-            TextboxDisplay.Text = $"Total number of combinations: {combinations.LongCount()}";
+            TextboxDisplay.Text = $"Total number of combinations: {_combinations.LongCount()}";
+        }
+
+        private void ButtonManageCustomValidator_Click(object sender, EventArgs e)
+        {
+            var customValidator = new CustomValidator(this);
+            customValidator.Show(this);
         }
     }
 }

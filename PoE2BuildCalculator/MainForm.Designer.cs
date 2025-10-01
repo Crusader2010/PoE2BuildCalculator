@@ -37,6 +37,7 @@
             ShowItemsDataButton = new Button();
             ButtonComputeCombinations = new Button();
             TextboxDisplay = new TextBox();
+            ButtonManageCustomValidator = new Button();
             StatusBar.SuspendLayout();
             SuspendLayout();
             // 
@@ -121,11 +122,22 @@
             TextboxDisplay.Size = new Size(412, 58);
             TextboxDisplay.TabIndex = 6;
             // 
+            // ButtonManageCustomValidator
+            // 
+            ButtonManageCustomValidator.Location = new Point(376, 174);
+            ButtonManageCustomValidator.Name = "ButtonManageCustomValidator";
+            ButtonManageCustomValidator.Size = new Size(126, 58);
+            ButtonManageCustomValidator.TabIndex = 7;
+            ButtonManageCustomValidator.Text = "Manage custom validator";
+            ButtonManageCustomValidator.UseVisualStyleBackColor = true;
+            ButtonManageCustomValidator.Click += ButtonManageCustomValidator_Click;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
             ClientSize = new Size(800, 450);
+            Controls.Add(ButtonManageCustomValidator);
             Controls.Add(TextboxDisplay);
             Controls.Add(ButtonComputeCombinations);
             Controls.Add(ShowItemsDataButton);
@@ -157,5 +169,6 @@
         private Button ShowItemsDataButton;
         private Button ButtonComputeCombinations;
         private TextBox TextboxDisplay;
+        private Button ButtonManageCustomValidator;
     }
 }
