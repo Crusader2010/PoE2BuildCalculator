@@ -38,9 +38,9 @@
             // 
             ImportDisplayData.Location = new Point(12, 12);
             ImportDisplayData.Name = "ImportDisplayData";
-            ImportDisplayData.Size = new Size(75, 55);
+            ImportDisplayData.Size = new Size(75, 70);
             ImportDisplayData.TabIndex = 1;
-            ImportDisplayData.Text = "Import Data";
+            ImportDisplayData.Text = "Reload parsed data";
             ImportDisplayData.UseVisualStyleBackColor = true;
             ImportDisplayData.Click += ImportDataToDisplay_Click;
             // 
@@ -53,14 +53,14 @@
             TableDisplayData.Location = new Point(93, 12);
             TableDisplayData.Name = "TableDisplayData";
             TableDisplayData.ReadOnly = true;
-            TableDisplayData.Size = new Size(454, 260);
+            TableDisplayData.Size = new Size(454, 279);
             TableDisplayData.TabIndex = 2;
             // 
             // ButtonClose
             // 
-            ButtonClose.Location = new Point(12, 217);
+            ButtonClose.Location = new Point(12, 221);
             ButtonClose.Name = "ButtonClose";
-            ButtonClose.Size = new Size(75, 55);
+            ButtonClose.Size = new Size(75, 70);
             ButtonClose.TabIndex = 3;
             ButtonClose.Text = "Close form";
             ButtonClose.UseVisualStyleBackColor = true;
@@ -80,8 +80,8 @@
             DoubleBuffered = true;
             FormBorderStyle = FormBorderStyle.Fixed3D;
             Name = "DataDisplay";
-            StartPosition = FormStartPosition.CenterParent;
-            Text = "DataDisplay";
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "Parsed Items Display";
             ((System.ComponentModel.ISupportInitialize)TableDisplayData).EndInit();
             ResumeLayout(false);
         }

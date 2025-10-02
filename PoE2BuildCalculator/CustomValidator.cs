@@ -1,5 +1,7 @@
 ﻿using Domain.Combinations;
 using Domain.Main;
+using System.ComponentModel;
+using System.Windows.Forms.VisualStyles;
 
 namespace PoE2BuildCalculator
 {
@@ -12,12 +14,17 @@ namespace PoE2BuildCalculator
 
         private DataGridViewCellStyle _enabledOpStyle;
         private DataGridViewCellStyle _disabledOpStyle;
+        private int _rowIndexFromMouseDown;
+        private int _rowIndexOfItemUnderMouseToDrop;
+        private int _insertionRowIndex = -1;
 
         public CustomValidator(MainForm ownerForm)
         {
             ArgumentNullException.ThrowIfNull(ownerForm, nameof(ownerForm));
             InitializeComponent();
             _ownerForm = ownerForm;
+
+            typeof(DataGridView).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(dgvRules, true);
         }
 
         private void dgvRules_CellValueChanged(object sender, DataGridViewCellEventArgs e)
@@ -211,7 +218,7 @@ namespace PoE2BuildCalculator
             _enabledOpStyle = new DataGridViewCellStyle
             {
                 BackColor = Color.GreenYellow,
-                ForeColor = Color.Black,
+                ForeColor = Color.DarkRed,
                 SelectionBackColor = Color.AliceBlue,
             };
             _disabledOpStyle = new DataGridViewCellStyle
@@ -225,6 +232,7 @@ namespace PoE2BuildCalculator
             dgvRules.AutoGenerateColumns = false;
             dgvRules.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
+            dgvRules.RowHeadersVisible = false;
             dgvRules.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             dgvRules.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
@@ -238,7 +246,7 @@ namespace PoE2BuildCalculator
                     HeaderText = header,
                     DataPropertyName = dataProperty,
                     FlatStyle = FlatStyle.Standard,
-                    FillWeight = 45,
+                    FillWeight = 30,
                     DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton
                 };
                 col.Items.AddRange(opItems);
@@ -251,26 +259,45 @@ namespace PoE2BuildCalculator
             dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Sum ≥", DataPropertyName = "SumAtLeastEnabled", FillWeight = 50 });
             dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = "SumAtLeastValue", FillWeight = 70 });
 
-            dgvRules.Columns.Add(createOpColumn("Op", "Op1")); // Operator 1
+            dgvRules.Columns.Add(createOpColumn("Operator", "Op1")); // Operator 1
 
             // Condition 2
             dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Sum ≤", DataPropertyName = "SumAtMostEnabled", FillWeight = 50 });
             dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = "SumAtMostValue", FillWeight = 70 });
 
-            dgvRules.Columns.Add(createOpColumn("Op", "Op2")); // Operator 2
+            dgvRules.Columns.Add(createOpColumn("Operator", "Op2")); // Operator 2
 
             // Condition 3
             dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Each ≥", DataPropertyName = "EachAtLeastEnabled", FillWeight = 50 });
             dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = "EachAtLeastValue", FillWeight = 70 });
 
-            dgvRules.Columns.Add(createOpColumn("Op", "Op3")); // Operator 3
+            dgvRules.Columns.Add(createOpColumn("Operator", "Op3")); // Operator 3
 
             // Condition 4
             dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Each ≤", DataPropertyName = "EachAtMostEnabled", FillWeight = 50 });
             dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = "EachAtMostValue", FillWeight = 70 });
 
             // Final Row Operator
-            dgvRules.Columns.Add(createOpColumn("Row Op", "RowOperator"));
+            dgvRules.Columns.Add(createOpColumn("Row Operator", "RowOperator"));
+
+            dgvRules.CellPainting -= dgvRules_CellPainting;
+            dgvRules.CellPainting += dgvRules_CellPainting;
+
+            dgvRules.MouseDown -= dgvRules_MouseDown;
+            dgvRules.MouseMove -= dgvRules_MouseMove;
+            dgvRules.DragOver -= dgvRules_DragOver;
+            dgvRules.DragDrop -= dgvRules_DragDrop;
+            dgvRules.RowPostPaint -= dgvRules_RowPostPaint;
+            dgvRules.KeyDown -= dgvRules_KeyDown;
+
+            dgvRules.MouseDown += dgvRules_MouseDown;
+            dgvRules.MouseMove += dgvRules_MouseMove;
+            dgvRules.DragOver += dgvRules_DragOver;
+            dgvRules.DragDrop += dgvRules_DragDrop;
+            dgvRules.RowPostPaint += dgvRules_RowPostPaint;
+            dgvRules.KeyDown += dgvRules_KeyDown;
+
+            dgvRules.AllowDrop = true;
             dgvRules.ResumeLayout();
         }
 
@@ -347,6 +374,18 @@ namespace PoE2BuildCalculator
                 textBox.KeyDown -= EditingControl_KeyDown;
                 textBox.KeyDown += EditingControl_KeyDown;
             }
+            else if (e.Control is ComboBox comboBox)
+            {
+                // Remove handler first to prevent multiple subscriptions
+                comboBox.DrawItem -= ComboBox_DrawItem;
+
+                // Set properties for owner-drawing
+                comboBox.DrawMode = DrawMode.OwnerDrawFixed;
+                comboBox.DropDownStyle = ComboBoxStyle.DropDownList; // Good practice
+
+                // Add the custom drawing event handler
+                comboBox.DrawItem += ComboBox_DrawItem;
+            }
         }
 
         private void EditingControl_KeyDown(object sender, KeyEventArgs e)
@@ -361,18 +400,29 @@ namespace PoE2BuildCalculator
             }
         }
 
-        /// <summary>
-        /// Forces checkbox changes to be committed instantly, triggering CellValueChanged.
-        /// </summary>
-        private void dgvRules_CurrentCellDirtyStateChanged(object sender, EventArgs e)
+        private void ComboBox_DrawItem(object sender, DrawItemEventArgs e)
         {
-            if (dgvRules.IsCurrentCellDirty)
-            {
-                if (dgvRules.CurrentCell is DataGridViewCheckBoxCell)
-                {
-                    dgvRules.CommitEdit(DataGridViewDataErrorContexts.Commit);
-                }
-            }
+            // Ignore if the index is invalid
+            if (e.Index < 0) { return; }
+
+            var comboBox = sender as ComboBox;
+            string text = comboBox.Items[e.Index].ToString();
+
+            // Draw the background of the item
+            e.DrawBackground();
+
+            // Use TextRenderer for high-quality text drawing
+            TextRenderer.DrawText(
+                e.Graphics,
+                text,
+                e.Font,
+                e.Bounds,
+                e.ForeColor,
+                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter
+            );
+
+            // Draw the focus rectangle if the mouse is over the item
+            e.DrawFocusRectangle();
         }
 
         /// <summary>
@@ -390,6 +440,190 @@ namespace PoE2BuildCalculator
                 {
                     comboBox.DroppedDown = true;
                 }
+            }
+            else if (dgvRules.Columns[e.ColumnIndex] is DataGridViewCheckBoxColumn)
+            {
+                bool currentValue = (bool?)dgvRules[e.ColumnIndex, e.RowIndex].Value ?? false;
+                dgvRules[e.ColumnIndex, e.RowIndex].Value = !currentValue;
+                dgvRules.CommitEdit(DataGridViewDataErrorContexts.Commit);
+                dgvRules.InvalidateCell(e.ColumnIndex, e.RowIndex);
+                dgvRules.EndEdit();
+            }
+        }
+
+        private void dgvRules_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
+        {
+            // leave headers untouched
+            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
+
+            // Only handle ComboBox columns
+            if (dgvRules.Columns[e.ColumnIndex] is not DataGridViewComboBoxColumn) return;
+
+            // Get the cell and choose the style we want (enabled vs disabled)
+            var cell = dgvRules[e.ColumnIndex, e.RowIndex];
+            var style = cell.ReadOnly ? _disabledOpStyle : _enabledOpStyle;
+
+            // Fill the complete cell rectangle with our desired backcolor (this ensures no white band)
+            using (var b = new SolidBrush(style.BackColor))
+            {
+                e.Graphics.FillRectangle(b, e.CellBounds);
+            }
+
+            string text = e.FormattedValue?.ToString() ?? string.Empty;
+
+            // Use TextRenderer for crisp text and high-DPI correctness
+            var textFlags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
+            int glyphWidth = SystemInformation.VerticalScrollBarWidth + 4; // ~18-20 px: keeps a reasonable button width
+            var textRect = new Rectangle(e.CellBounds.X, e.CellBounds.Y, e.CellBounds.Width - glyphWidth, e.CellBounds.Height); // or e.CellBounds
+            var buttonRect = new Rectangle(e.CellBounds.Right - glyphWidth, e.CellBounds.Y, glyphWidth, e.CellBounds.Height);
+
+            TextRenderer.DrawText(e.Graphics, text, e.CellStyle.Font, textRect, style.ForeColor, textFlags);
+            if (ComboBoxRenderer.IsSupported)
+            {
+                // Draw native-looking drop-down button on the right
+                ComboBoxRenderer.DrawDropDownButton(e.Graphics, buttonRect, ComboBoxState.Hot);
+            }
+            else
+            {
+                // Simple fallback: draw a tiny triangle arrow
+                Point center = new(buttonRect.Left + buttonRect.Width / 2, buttonRect.Top + buttonRect.Height / 2);
+                var p1 = new Point(center.X - 5, center.Y - 1);
+                var p2 = new Point(center.X + 5, center.Y - 1);
+                var p3 = new Point(center.X, center.Y + 3);
+                using (var br = new SolidBrush(style.ForeColor))
+                {
+                    e.Graphics.FillPolygon(br, new[] { p1, p2, p3 });
+                }
+            }
+
+            e.Paint(e.CellBounds, DataGridViewPaintParts.Border);
+
+            // Draw a focus rectangle if needed (keeps existing UX consistent)
+            if ((e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected)
+            {
+                var focusRect = e.CellBounds;
+                //focusRect.Inflate(-2, -2);
+                ControlPaint.DrawFocusRectangle(e.Graphics, focusRect);
+            }
+
+            e.Handled = true;
+        }
+
+        private void dgvRules_MouseDown(object sender, MouseEventArgs e)
+        {
+            _rowIndexFromMouseDown = dgvRules.HitTest(e.X, e.Y).RowIndex;
+        }
+
+        private void dgvRules_MouseMove(object sender, MouseEventArgs e)
+        {
+            if ((e.Button & MouseButtons.Left) == MouseButtons.Left && _rowIndexFromMouseDown >= 0)
+            {
+                dgvRules.DoDragDrop(dgvRules.Rows[_rowIndexFromMouseDown], DragDropEffects.Move);
+            }
+        }
+
+        private void dgvRules_DragOver(object sender, DragEventArgs e)
+        {
+            e.Effect = DragDropEffects.Move;
+
+            Point clientPoint = dgvRules.PointToClient(new Point(e.X, e.Y));
+            int rowIndex = dgvRules.HitTest(clientPoint.X, clientPoint.Y).RowIndex;
+
+            // update insertion line
+            if (rowIndex != _insertionRowIndex)
+            {
+                _insertionRowIndex = rowIndex;
+                dgvRules.Invalidate();
+            }
+
+            // --- auto-scroll ---
+            int scrollZone = 30; // px near top/bottom edge
+            if (clientPoint.Y < scrollZone)
+            {
+                // scroll up
+                if (dgvRules.FirstDisplayedScrollingRowIndex > 1)
+                    dgvRules.FirstDisplayedScrollingRowIndex -= 2;
+            }
+            else if (clientPoint.Y > dgvRules.Height - scrollZone)
+            {
+                // scroll down
+                int last = dgvRules.Rows.Count - 1;
+                if (dgvRules.FirstDisplayedScrollingRowIndex < last - 1)
+                    dgvRules.FirstDisplayedScrollingRowIndex += 2;
+            }
+        }
+        private void dgvRules_DragDrop(object sender, DragEventArgs e)
+        {
+            Point clientPoint = dgvRules.PointToClient(new Point(e.X, e.Y));
+            _rowIndexOfItemUnderMouseToDrop = dgvRules.HitTest(clientPoint.X, clientPoint.Y).RowIndex;
+
+            if (_rowIndexOfItemUnderMouseToDrop < 0 || _rowIndexFromMouseDown < 0 || _rowIndexFromMouseDown == _rowIndexOfItemUnderMouseToDrop) return;
+
+            // Get the underlying BindingList
+            if (dgvRules.DataSource is BindingList<ValidationRuleModel> list)
+            {
+                var rowToMove = list[_rowIndexFromMouseDown];
+                list.RemoveAt(_rowIndexFromMouseDown);
+                list.Insert(_rowIndexOfItemUnderMouseToDrop, rowToMove);
+
+                // Refresh selection
+                dgvRules.ClearSelection();
+                dgvRules.Rows[_rowIndexOfItemUnderMouseToDrop].Selected = true;
+
+                _insertionRowIndex = -1;
+                dgvRules.Invalidate();
+
+                // Force UpdateCellStates since adjacency changed
+                UpdateCellStates();
+            }
+        }
+
+        private void dgvRules_RowPostPaint(object sender, DataGridViewRowPostPaintEventArgs e)
+        {
+            if (_insertionRowIndex < 0) return;
+
+            using (var pen = new Pen(Color.Red, 2))
+            {
+                if (e.RowIndex == _insertionRowIndex)
+                {
+                    int y = e.RowBounds.Top;
+                    e.Graphics.DrawLine(pen, e.RowBounds.Left, y, e.RowBounds.Right, y);
+                }
+                else if (_insertionRowIndex == dgvRules.Rows.Count)
+                {
+                    // line after the last row
+                    if (e.RowIndex == dgvRules.Rows.Count - 1)
+                    {
+                        int y = e.RowBounds.Bottom;
+                        e.Graphics.DrawLine(pen, e.RowBounds.Left, y, e.RowBounds.Right, y);
+                    }
+                }
+            }
+        }
+
+        private void dgvRules_KeyDown(object sender, KeyEventArgs e)
+        {
+            if (dgvRules.DataSource is not BindingList<ValidationRuleModel> list) return;
+            if (dgvRules.CurrentRow == null) return;
+
+            int index = dgvRules.CurrentRow.Index;
+            if (e.Control && e.KeyCode == Keys.Up && index > 0)
+            {
+                var item = list[index];
+                list.RemoveAt(index);
+                list.Insert(index - 1, item);
+                dgvRules.CurrentCell = dgvRules.Rows[index - 1].Cells[0];
+                UpdateCellStates();
+                e.Handled = true;
+            }
+            else if (e.Control && e.KeyCode == Keys.Down && index < list.Count - 1)
+            {
+                var item = list[index];
+                list.RemoveAt(index);
+                list.Insert(index + 1, item);
+                dgvRules.CurrentCell = dgvRules.Rows[index + 1].Cells[0];
+                UpdateCellStates();
+                e.Handled = true;
             }
         }
     }

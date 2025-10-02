@@ -370,7 +370,7 @@ namespace Manager
                 MapItemStatsForItems(line, item);
             }
 
-            return (true, item, item.Id);
+            return (true, item, item?.Id ?? -1);
         }
     }
 }

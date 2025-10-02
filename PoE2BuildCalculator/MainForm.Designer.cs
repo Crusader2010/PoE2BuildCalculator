@@ -150,7 +150,7 @@
             MaximizeBox = false;
             Name = "MainForm";
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "PoE2 Build Calculator";
+            Text = "PoE2 Build Calculator - Main window";
             Load += MainForm_Load;
             StatusBar.ResumeLayout(false);
             StatusBar.PerformLayout();

@@ -37,47 +37,61 @@
             // 
             // dgvRules
             // 
+            dgvRules.AllowUserToAddRows = false;
+            dgvRules.AllowUserToDeleteRows = false;
+            dgvRules.AllowUserToResizeColumns = false;
+            dgvRules.AllowUserToResizeRows = false;
+            dgvRules.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            dgvRules.BackgroundColor = Color.FromArgb(224, 224, 224);
+            dgvRules.CellBorderStyle = DataGridViewCellBorderStyle.Sunken;
             dgvRules.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvRules.Dock = DockStyle.Fill;
             dgvRules.Location = new Point(0, 0);
+            dgvRules.MultiSelect = false;
             dgvRules.Name = "dgvRules";
-            dgvRules.Size = new Size(1278, 513);
+            dgvRules.Size = new Size(971, 421);
             dgvRules.TabIndex = 0;
             dgvRules.CellClick += dgvRules_CellClick;
             dgvRules.CellValidating += dgvRules_CellValidating;
             dgvRules.CellValueChanged += dgvRules_CellValueChanged;
-            dgvRules.CurrentCellDirtyStateChanged += dgvRules_CurrentCellDirtyStateChanged;
             dgvRules.EditingControlShowing += dgvRules_EditingControlShowing;
             // 
             // btnCreateValidator
             // 
+            btnCreateValidator.AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            btnCreateValidator.BackColor = Color.FromArgb(255, 224, 192);
             btnCreateValidator.Dock = DockStyle.Bottom;
-            btnCreateValidator.Location = new Point(0, 17);
+            btnCreateValidator.Location = new Point(0, 15);
+            btnCreateValidator.Margin = new Padding(20);
             btnCreateValidator.Name = "btnCreateValidator";
-            btnCreateValidator.Size = new Size(1278, 40);
+            btnCreateValidator.Size = new Size(969, 43);
             btnCreateValidator.TabIndex = 1;
             btnCreateValidator.Text = "Create Validator Function";
-            btnCreateValidator.UseVisualStyleBackColor = true;
+            btnCreateValidator.UseVisualStyleBackColor = false;
             btnCreateValidator.Click += btnCreateValidator_Click;
             // 
             // panelBottom
             // 
+            panelBottom.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
+            panelBottom.BackColor = Color.FromArgb(224, 224, 224);
+            panelBottom.BorderStyle = BorderStyle.FixedSingle;
             panelBottom.Controls.Add(btnCreateValidator);
-            panelBottom.Dock = DockStyle.Bottom;
-            panelBottom.Location = new Point(0, 456);
+            panelBottom.Location = new Point(0, 421);
             panelBottom.Name = "panelBottom";
-            panelBottom.Size = new Size(1278, 57);
+            panelBottom.Size = new Size(971, 60);
             panelBottom.TabIndex = 2;
             // 
             // CustomValidator
             // 
-            AutoScaleDimensions = new SizeF(7F, 15F);
-            AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(1278, 513);
+            AutoScaleDimensions = new SizeF(96F, 96F);
+            AutoScaleMode = AutoScaleMode.Dpi;
+            AutoSizeMode = AutoSizeMode.GrowAndShrink;
+            ClientSize = new Size(971, 481);
             Controls.Add(panelBottom);
             Controls.Add(dgvRules);
+            DoubleBuffered = true;
             Name = "CustomValidator";
-            Text = "Custom Validator";
+            StartPosition = FormStartPosition.CenterScreen;
+            Text = "Custom Validator Manager";
             Load += CustomValidator_Load;
             ((System.ComponentModel.ISupportInitialize)dgvRules).EndInit();
             panelBottom.ResumeLayout(false);
