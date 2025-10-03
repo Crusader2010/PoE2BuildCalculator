@@ -7,6 +7,22 @@ namespace PoE2BuildCalculator
 {
     public partial class CustomValidator : Form
     {
+        #region Constants
+        private const string COL_PROPERTY_NAME = "PropertyName";
+        private const string COL_SUM_AT_LEAST_ENABLED = "SumAtLeastEnabled";
+        private const string COL_SUM_AT_LEAST_VALUE = "SumAtLeastValue";
+        private const string COL_OP1 = "Op1";
+        private const string COL_SUM_AT_MOST_ENABLED = "SumAtMostEnabled";
+        private const string COL_SUM_AT_MOST_VALUE = "SumAtMostValue";
+        private const string COL_OP2 = "Op2";
+        private const string COL_EACH_AT_LEAST_ENABLED = "EachAtLeastEnabled";
+        private const string COL_EACH_AT_LEAST_VALUE = "EachAtLeastValue";
+        private const string COL_OP3 = "Op3";
+        private const string COL_EACH_AT_MOST_ENABLED = "EachAtMostEnabled";
+        private const string COL_EACH_AT_MOST_VALUE = "EachAtMostValue";
+        private const string COL_ROW_OPERATOR = "RowOperator";
+        #endregion
+
         // This will hold the final, combined validation function.
         private Func<List<Item>, bool> _masterValidator;
         private BindingList<ValidationRuleModel> _rules;
@@ -17,6 +33,10 @@ namespace PoE2BuildCalculator
         private int _rowIndexFromMouseDown;
         private int _rowIndexOfItemUnderMouseToDrop;
         private int _insertionRowIndex = -1;
+        private bool _isClosing = false;
+        private Color _initialCellSelectionColor;
+        private readonly Color _backColorInvalidValue = Color.FromArgb(255, 200, 200);
+        private readonly Color _backColorValidValue = Color.White;
 
         public CustomValidator(MainForm ownerForm)
         {
@@ -31,24 +51,28 @@ namespace PoE2BuildCalculator
         {
             if (e.RowIndex < 0) return;
 
+            var colName = dgvRules.Columns[e.ColumnIndex].DataPropertyName;
+
             // Check if the changed cell is one of our checkbox columns
-            bool isCheckboxColumn = e.ColumnIndex == 1 || e.ColumnIndex == 4 || e.ColumnIndex == 7 || e.ColumnIndex == 10;
+            bool isCheckboxColumn = colName == COL_SUM_AT_LEAST_ENABLED ||
+                                   colName == COL_SUM_AT_MOST_ENABLED ||
+                                   colName == COL_EACH_AT_LEAST_ENABLED ||
+                                   colName == COL_EACH_AT_MOST_ENABLED;
+
             if (isCheckboxColumn)
             {
-                dgvRules.CommitEdit(DataGridViewDataErrorContexts.Commit); // Ensure the model is updated first
-
+                dgvRules.CommitEdit(DataGridViewDataErrorContexts.Commit);
                 var ruleModel = _rules[e.RowIndex];
                 bool isChecked = (bool)(dgvRules[e.ColumnIndex, e.RowIndex]?.Value ?? false);
 
-                // --- New: Clear corresponding value if unchecked ---
                 if (!isChecked)
                 {
-                    switch (e.ColumnIndex)
+                    switch (colName)
                     {
-                        case 1: ruleModel.SumAtLeastValue = string.Empty; break;
-                        case 4: ruleModel.SumAtMostValue = string.Empty; break;
-                        case 7: ruleModel.EachAtLeastValue = string.Empty; break;
-                        case 10: ruleModel.EachAtMostValue = string.Empty; break;
+                        case COL_SUM_AT_LEAST_ENABLED: ruleModel.SumAtLeastValue = string.Empty; break;
+                        case COL_SUM_AT_MOST_ENABLED: ruleModel.SumAtMostValue = string.Empty; break;
+                        case COL_EACH_AT_LEAST_ENABLED: ruleModel.EachAtLeastValue = string.Empty; break;
+                        case COL_EACH_AT_MOST_ENABLED: ruleModel.EachAtMostValue = string.Empty; break;
                     }
                 }
 
@@ -58,35 +82,54 @@ namespace PoE2BuildCalculator
 
         private void dgvRules_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
         {
-            // We only care about the value columns
-            bool isValueColumn = e.ColumnIndex == 2 || e.ColumnIndex == 4 || e.ColumnIndex == 7 || e.ColumnIndex == 9 || e.ColumnIndex == 11;
+            if (_isClosing)
+            {
+                e.Cancel = false;
+                return;
+            }
+
+            var colName = dgvRules.Columns[e.ColumnIndex].DataPropertyName;
+
+            // Only validate value columns
+            bool isValueColumn = colName == COL_SUM_AT_LEAST_VALUE ||
+                                colName == COL_SUM_AT_MOST_VALUE ||
+                                colName == COL_EACH_AT_LEAST_VALUE ||
+                                colName == COL_EACH_AT_MOST_VALUE;
+
             if (!isValueColumn) return;
 
             var rule = _rules[e.RowIndex];
-            bool isValidationRequired = false;
-
-            // Check if the corresponding checkbox is checked
-            switch (e.ColumnIndex)
+            bool isValidationRequired = colName switch
             {
-                case 2: isValidationRequired = rule.SumAtLeastEnabled; break;
-                case 5: isValidationRequired = rule.SumAtMostEnabled; break;
-                case 8: isValidationRequired = rule.EachAtLeastEnabled; break;
-                case 11: isValidationRequired = rule.EachAtMostEnabled; break;
-            }
+                COL_SUM_AT_LEAST_VALUE => rule.SumAtLeastEnabled,
+                COL_SUM_AT_MOST_VALUE => rule.SumAtMostEnabled,
+                COL_EACH_AT_LEAST_VALUE => rule.EachAtLeastEnabled,
+                COL_EACH_AT_MOST_VALUE => rule.EachAtMostEnabled,
+                _ => false
+            };
 
-            // --- Only validate if the checkbox is checked ---
             if (!isValidationRequired)
             {
                 e.Cancel = false;
-                dgvRules.Rows[e.RowIndex].ErrorText = null;
+                dgvRules.Rows[e.RowIndex].ErrorText = string.Empty;
+                dgvRules[e.ColumnIndex, e.RowIndex].Style.BackColor = _backColorValidValue;
+
+                // Update editing control if still in edit mode
+                if (dgvRules.EditingControl is TextBox tb) tb.BackColor = _backColorValidValue;
+
                 return;
             }
 
             var propType = rule.PropInfo.PropertyType;
             string value = e.FormattedValue?.ToString();
 
-            // Allow empty values for checked boxes, but treat as an error during final validation
-            if (string.IsNullOrWhiteSpace(value)) return;
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                //e.Cancel = true;
+                //dgvRules.Rows[e.RowIndex].ErrorText = $"Value required for {rule.PropertyName}";
+                //dgvRules[e.ColumnIndex, e.RowIndex].Style.BackColor = _backColorInvalidValue;
+                return;
+            }
 
             bool isValid = propType == typeof(int)
                 ? int.TryParse(value, out _)
@@ -95,17 +138,22 @@ namespace PoE2BuildCalculator
             if (!isValid)
             {
                 e.Cancel = true;
-                dgvRules.Rows[e.RowIndex].ErrorText = $"Invalid value for rule {rule.PropertyName}";
+                dgvRules.Rows[e.RowIndex].ErrorText = $"Invalid {propType.Name} for {rule.PropertyName}";
+                dgvRules[e.ColumnIndex, e.RowIndex].Style.BackColor = _backColorInvalidValue;
+
+                if (dgvRules.EditingControl is TextBox tb) tb.BackColor = _backColorInvalidValue;
             }
             else
             {
-                dgvRules.Rows[e.RowIndex].ErrorText = null;
+                dgvRules.Rows[e.RowIndex].ErrorText = string.Empty;
+                dgvRules[e.ColumnIndex, e.RowIndex].Style.BackColor = _backColorValidValue;
+
+                if (dgvRules.EditingControl is TextBox tb) tb.BackColor = _backColorValidValue;
             }
         }
 
         private void btnCreateValidator_Click(object sender, EventArgs e)
         {
-            // A helper function to combine two boolean results based on an operator string
             static bool combine(string op, bool current, bool next)
             {
                 return op switch
@@ -116,29 +164,54 @@ namespace PoE2BuildCalculator
                     _ => throw new InvalidOperationException($"Unknown operator: {op}"),
                 };
             }
+
             dgvRules.CommitEdit(DataGridViewDataErrorContexts.Commit);
 
             try
             {
-                var activeRules = _rules.Where(r => r.SumAtLeastEnabled || r.SumAtMostEnabled || r.EachAtLeastEnabled || r.EachAtMostEnabled).ToList();
+                // Get active rules with their ORIGINAL indices for proper operator lookup
+                var activeRulesWithIndices = _rules
+                    .Select((rule, index) => new { Rule = rule, OriginalIndex = index })
+                    .Where(x => x.Rule.SumAtLeastEnabled || x.Rule.SumAtMostEnabled ||
+                               x.Rule.EachAtLeastEnabled || x.Rule.EachAtMostEnabled)
+                    .ToList();
 
-                if (activeRules.Count == 0)
+                if (activeRulesWithIndices.Count == 0)
                 {
                     _masterValidator = (items) => true;
-                    MessageBox.Show("No rules defined. Validator will always return true.", "Validator Created", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("No rules defined. Validator will always return true.",
+                                  "Validator Created", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
-                // Generate a final validator function for each active row
-                var rowValidators = new List<Func<List<Item>, bool>>();
-                foreach (var rule in activeRules)
+                // Validate that all active rules have values
+                foreach (var ruleWithIndex in activeRulesWithIndices)
                 {
+                    var rule = ruleWithIndex.Rule;
+                    if ((rule.SumAtLeastEnabled && string.IsNullOrWhiteSpace(rule.SumAtLeastValue)) ||
+                        (rule.SumAtMostEnabled && string.IsNullOrWhiteSpace(rule.SumAtMostValue)) ||
+                        (rule.EachAtLeastEnabled && string.IsNullOrWhiteSpace(rule.EachAtLeastValue)) ||
+                        (rule.EachAtMostEnabled && string.IsNullOrWhiteSpace(rule.EachAtMostValue)))
+                    {
+                        MessageBox.Show($"Rule '{rule.PropertyName}' has an enabled condition without a value.",
+                                      "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+
+                // Build validators with their operators
+                var validatorsWithOps = new List<(Func<List<Item>, bool> Validator, string Operator)>();
+
+                for (int i = 0; i < activeRulesWithIndices.Count; i++)
+                {
+                    var ruleWithIndex = activeRulesWithIndices[i];
+                    var rule = ruleWithIndex.Rule;
+
                     bool propertyValidator(List<Item> items)
                     {
                         var conditions = new List<Func<List<Item>, bool>>();
                         var operators = new List<string>();
 
-                        // Gather all active conditions and their subsequent operators for the current row
                         if (rule.SumAtLeastEnabled)
                         {
                             var v = Convert.ToDouble(rule.SumAtLeastValue);
@@ -163,46 +236,50 @@ namespace PoE2BuildCalculator
                             conditions.Add(list => list.All(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats)) <= v));
                         }
 
-                        if (conditions.Count == 0) return true; // Should not happen due to activeRules filter
+                        if (conditions.Count == 0) return true;
 
-                        // Sequentially apply the conditions using the selected operators
                         bool result = conditions[0](items);
-                        for (int i = 1; i < conditions.Count; i++)
+                        for (int j = 1; j < conditions.Count; j++)
                         {
-                            result = combine(operators[i - 1], result, conditions[i](items));
+                            result = combine(operators[j - 1], result, conditions[j](items));
                         }
                         return result;
                     }
-                    rowValidators.Add(propertyValidator);
+
+                    // Get the row operator from the ORIGINAL rule position
+                    string rowOperator = rule.RowOperator ?? "AND";
+                    validatorsWithOps.Add((propertyValidator, rowOperator));
                 }
 
-                // Combine all the row validators using the RowOperators
+                // Combine all validators
                 _masterValidator = (items) =>
                 {
-                    if (rowValidators.Count == 0) return true;
+                    if (validatorsWithOps.Count == 0) return true;
 
-                    // Sequentially apply the row validators using the selected RowOperators
-                    bool finalResult = rowValidators[0](items);
-                    for (int i = 1; i < rowValidators.Count; i++)
+                    bool finalResult = validatorsWithOps[0].Validator(items);
+                    for (int i = 1; i < validatorsWithOps.Count; i++)
                     {
-                        // The operator is taken from the previous rule in the list
-                        string rowOp = activeRules[i - 1].RowOperator;
-                        finalResult = combine(rowOp, finalResult, rowValidators[i](items));
+                        // Use the operator from the PREVIOUS validator
+                        string rowOp = validatorsWithOps[i - 1].Operator;
+                        finalResult = combine(rowOp, finalResult, validatorsWithOps[i].Validator(items));
                     }
                     return finalResult;
                 };
 
                 _ownerForm._itemValidatorFunction = _masterValidator;
 
-                MessageBox.Show("Validator function created successfully! Ready to test.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Validator function created successfully! Ready to test.",
+                              "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (FormatException)
             {
-                MessageBox.Show("Error: A checked condition has an empty or invalid value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error: A checked condition has an empty or invalid value.",
+                              "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An unexpected error occurred: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"An unexpected error occurred: {ex.Message}",
+                              "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -210,6 +287,8 @@ namespace PoE2BuildCalculator
         {
             SetupDataGridView();
             PopulateRules();
+
+            AutoResizeForm();
         }
 
         private void SetupDataGridView()
@@ -222,8 +301,8 @@ namespace PoE2BuildCalculator
             };
             _disabledOpStyle = new DataGridViewCellStyle
             {
-                BackColor = Color.FromArgb(224, 224, 224), // A light gray
-                ForeColor = Color.DarkGray, // "Washed out" text
+                BackColor = Color.FromArgb(224, 224, 224),
+                ForeColor = Color.DarkGray,
                 SelectionBackColor = Color.FromArgb(224, 224, 224)
             };
 
@@ -232,20 +311,20 @@ namespace PoE2BuildCalculator
             dgvRules.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
             dgvRules.RowHeadersVisible = true;
-            dgvRules.RowHeadersWidth = 20;
-            dgvRules.RowHeadersWidthSizeMode = DataGridViewRowHeadersWidthSizeMode.DisableResizing;
+            dgvRules.RowHeadersWidth = 30;
+            dgvRules.RowHeadersWidthSizeMode = DataGridViewRowHeadersWidthSizeMode.AutoSizeToFirstHeader;
             dgvRules.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             dgvRules.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
             var opItems = new[] { "AND", "OR", "XOR" };
 
-            // Helper function to create a combo box column
             DataGridViewComboBoxColumn createOpColumn(string header, string dataProperty)
             {
                 var col = new DataGridViewComboBoxColumn
                 {
                     HeaderText = header,
                     DataPropertyName = dataProperty,
+                    Name = dataProperty,
                     FlatStyle = FlatStyle.Standard,
                     FillWeight = 30,
                     DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton
@@ -254,32 +333,19 @@ namespace PoE2BuildCalculator
                 return col;
             }
 
-            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Statistic", DataPropertyName = "PropertyName", ReadOnly = true, FillWeight = 150 });
-
-            // Condition 1
-            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Sum ≥", DataPropertyName = "SumAtLeastEnabled", FillWeight = 50 });
-            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = "SumAtLeastValue", FillWeight = 70 });
-
-            dgvRules.Columns.Add(createOpColumn("Operator", "Op1")); // Operator 1
-
-            // Condition 2
-            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Sum ≤", DataPropertyName = "SumAtMostEnabled", FillWeight = 50 });
-            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = "SumAtMostValue", FillWeight = 70 });
-
-            dgvRules.Columns.Add(createOpColumn("Operator", "Op2")); // Operator 2
-
-            // Condition 3
-            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Each ≥", DataPropertyName = "EachAtLeastEnabled", FillWeight = 50 });
-            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = "EachAtLeastValue", FillWeight = 70 });
-
-            dgvRules.Columns.Add(createOpColumn("Operator", "Op3")); // Operator 3
-
-            // Condition 4
-            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Each ≤", DataPropertyName = "EachAtMostEnabled", FillWeight = 50 });
-            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = "EachAtMostValue", FillWeight = 70 });
-
-            // Final Row Operator
-            dgvRules.Columns.Add(createOpColumn("Row Operator", "RowOperator"));
+            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Statistic", DataPropertyName = COL_PROPERTY_NAME, Name = COL_PROPERTY_NAME, ReadOnly = true, FillWeight = 150 });
+            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Sum ≥", DataPropertyName = COL_SUM_AT_LEAST_ENABLED, Name = COL_SUM_AT_LEAST_ENABLED, FillWeight = 50 });
+            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = COL_SUM_AT_LEAST_VALUE, Name = COL_SUM_AT_LEAST_VALUE, FillWeight = 70 });
+            dgvRules.Columns.Add(createOpColumn("Operator", COL_OP1));
+            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Sum ≤", DataPropertyName = COL_SUM_AT_MOST_ENABLED, Name = COL_SUM_AT_MOST_ENABLED, FillWeight = 50 });
+            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = COL_SUM_AT_MOST_VALUE, Name = COL_SUM_AT_MOST_VALUE, FillWeight = 70 });
+            dgvRules.Columns.Add(createOpColumn("Operator", COL_OP2));
+            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Each ≥", DataPropertyName = COL_EACH_AT_LEAST_ENABLED, Name = COL_EACH_AT_LEAST_ENABLED, FillWeight = 50 });
+            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = COL_EACH_AT_LEAST_VALUE, Name = COL_EACH_AT_LEAST_VALUE, FillWeight = 70 });
+            dgvRules.Columns.Add(createOpColumn("Operator", COL_OP3));
+            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Each ≤", DataPropertyName = COL_EACH_AT_MOST_ENABLED, Name = COL_EACH_AT_MOST_ENABLED, FillWeight = 50 });
+            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = COL_EACH_AT_MOST_VALUE, Name = COL_EACH_AT_MOST_VALUE, FillWeight = 70 });
+            dgvRules.Columns.Add(createOpColumn("Row Operator", COL_ROW_OPERATOR));
 
             dgvRules.CellPainting -= dgvRules_CellPainting;
             dgvRules.CellPainting += dgvRules_CellPainting;
@@ -302,6 +368,33 @@ namespace PoE2BuildCalculator
 
             dgvRules.AllowDrop = true;
             dgvRules.ResumeLayout();
+        }
+
+        private void AutoResizeForm()
+        {
+            // Auto-size columns to fit their content
+            dgvRules.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
+
+            // Calculate total width needed
+            int totalWidth = dgvRules.RowHeadersWidth + SystemInformation.VerticalScrollBarWidth + 20; // padding
+            foreach (DataGridViewColumn col in dgvRules.Columns)
+            {
+                totalWidth += col.Width;
+            }
+
+            // Calculate total height needed (limit to reasonable size)
+            int totalHeight = dgvRules.ColumnHeadersHeight + panelBottom.Height + 50; // padding and borders
+            int visibleRowsHeight = Math.Min(dgvRules.Rows.Count * dgvRules.Rows[0].Height, 600); // max 600px for rows
+            totalHeight += visibleRowsHeight;
+
+            // Set form size with reasonable limits
+            int newWidth = Math.Max(800, Math.Min(totalWidth, Screen.PrimaryScreen.WorkingArea.Width - 100));
+            int newHeight = Math.Max(400, Math.Min(totalHeight, Screen.PrimaryScreen.WorkingArea.Height - 100));
+
+            this.Size = new Size(newWidth, newHeight);
+
+            // After sizing, switch back to Fill mode for responsive behavior
+            dgvRules.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
         }
 
         private void PopulateRules()
@@ -332,62 +425,70 @@ namespace PoE2BuildCalculator
                 var row = dgvRules.Rows[i];
                 if (row.DataBoundItem is not ValidationRuleModel ruleModel) continue;
 
-                // --- Value Cells (Unchanged) ---
-                row.Cells[2].ReadOnly = !ruleModel.SumAtLeastEnabled;
-                row.Cells[5].ReadOnly = !ruleModel.SumAtMostEnabled;
-                row.Cells[8].ReadOnly = !ruleModel.EachAtLeastEnabled;
-                row.Cells[11].ReadOnly = !ruleModel.EachAtMostEnabled;
-
-                // --- Operator Cells (Updated with Style logic) ---
-                // Helper to apply style and readonly state
-                void setOpCellState(int colIndex, bool isEnabled)
+                // Helper to set cell state by column name
+                void setCellState(string colName, bool isEnabled)
                 {
-                    row.Cells[colIndex].ReadOnly = !isEnabled;
-                    row.Cells[colIndex].Style = isEnabled ? _enabledOpStyle : _disabledOpStyle;
+                    var cell = row.Cells[colName];
+                    cell.ReadOnly = !isEnabled;
+                    if (dgvRules.Columns[colName] is DataGridViewComboBoxColumn)
+                    {
+                        cell.Style = isEnabled ? _enabledOpStyle : _disabledOpStyle;
+                    }
                 }
 
-                setOpCellState(3, ruleModel.SumAtLeastEnabled && ruleModel.SumAtMostEnabled);    // Op1
-                setOpCellState(6, ruleModel.SumAtMostEnabled && ruleModel.EachAtLeastEnabled);   // Op2
-                setOpCellState(9, ruleModel.EachAtLeastEnabled && ruleModel.EachAtMostEnabled);  // Op3
+                // Value cells
+                setCellState(COL_SUM_AT_LEAST_VALUE, ruleModel.SumAtLeastEnabled);
+                setCellState(COL_SUM_AT_MOST_VALUE, ruleModel.SumAtMostEnabled);
+                setCellState(COL_EACH_AT_LEAST_VALUE, ruleModel.EachAtLeastEnabled);
+                setCellState(COL_EACH_AT_MOST_VALUE, ruleModel.EachAtMostEnabled);
 
-                // --- RowOperator (Updated with Style logic) ---
+                // Operator cells
+                setCellState(COL_OP1, ruleModel.SumAtLeastEnabled && ruleModel.SumAtMostEnabled);
+                setCellState(COL_OP2, ruleModel.SumAtMostEnabled && ruleModel.EachAtLeastEnabled);
+                setCellState(COL_OP3, ruleModel.EachAtLeastEnabled && ruleModel.EachAtMostEnabled);
+
+                // Row operator
                 bool isLastRow = (i == dgvRules.Rows.Count - 1);
                 if (isLastRow)
                 {
-                    setOpCellState(12, false); // Always disabled
+                    setCellState(COL_ROW_OPERATOR, false);
                 }
                 else
                 {
                     var nextRuleModel = dgvRules.Rows[i + 1].DataBoundItem as ValidationRuleModel;
-                    setOpCellState(12, ruleModel.IsActive && nextRuleModel.IsActive);
+                    setCellState(COL_ROW_OPERATOR, ruleModel.IsActive && nextRuleModel?.IsActive == true);
                 }
             }
-            dgvRules.Invalidate(); // Use Invalidate for a smoother visual update
+            dgvRules.Invalidate();
             dgvRules.ResumeLayout();
         }
 
         private void dgvRules_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
         {
-            // We only care about our value columns
-            int colIndex = dgvRules.CurrentCell.ColumnIndex;
-            bool isValueColumn = colIndex == 2 || colIndex == 5 || colIndex == 8 || colIndex == 11;
+            var colName = dgvRules.Columns[dgvRules.CurrentCell.ColumnIndex].DataPropertyName;
 
+            bool isValueColumn = colName == COL_SUM_AT_LEAST_VALUE ||
+                                colName == COL_SUM_AT_MOST_VALUE ||
+                                colName == COL_EACH_AT_LEAST_VALUE ||
+                                colName == COL_EACH_AT_MOST_VALUE;
+
+            _initialCellSelectionColor = dgvRules.CurrentCell.Style.SelectionBackColor;
             if (isValueColumn && e.Control is TextBox textBox)
             {
-                // Remove handler first to avoid multiple subscriptions
                 textBox.KeyDown -= EditingControl_KeyDown;
                 textBox.KeyDown += EditingControl_KeyDown;
+
+                // Set the editing control's background to match the cell's background
+                var cell = dgvRules.CurrentCell;
+                textBox.BackColor = cell.Style.BackColor != Color.Empty
+                    ? cell.Style.BackColor
+                    : _backColorValidValue;
             }
             else if (e.Control is ComboBox comboBox)
             {
-                // Remove handler first to prevent multiple subscriptions
                 comboBox.DrawItem -= ComboBox_DrawItem;
-
-                // Set properties for owner-drawing
                 comboBox.DrawMode = DrawMode.OwnerDrawFixed;
-                comboBox.DropDownStyle = ComboBoxStyle.DropDownList; // Good practice
-
-                // Add the custom drawing event handler
+                comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
                 comboBox.DrawItem += ComboBox_DrawItem;
             }
         }
@@ -396,10 +497,25 @@ namespace PoE2BuildCalculator
         {
             if (e.KeyCode == Keys.Escape)
             {
-                e.SuppressKeyPress = true; // Prevent the "ding" sound
+                e.SuppressKeyPress = true;
                 if (sender is TextBox textBox)
                 {
-                    textBox.Text = string.Empty; // Clear the text
+                    textBox.Text = string.Empty;
+                }
+            }
+            else if (e.KeyCode == Keys.Enter)
+            {
+                e.SuppressKeyPress = true;
+                e.Handled = true;
+
+                // Commit the edit and move to next cell
+                dgvRules.EndEdit();
+                dgvRules.CommitEdit(DataGridViewDataErrorContexts.Commit);
+
+                // Move to next row, same column
+                if (dgvRules.CurrentCell.RowIndex < dgvRules.Rows.Count - 1)
+                {
+                    dgvRules.CurrentCell = dgvRules[dgvRules.CurrentCell.ColumnIndex, dgvRules.CurrentCell.RowIndex + 1];
                 }
             }
         }
@@ -530,6 +646,12 @@ namespace PoE2BuildCalculator
 
         private void dgvRules_MouseMove(object sender, MouseEventArgs e)
         {
+            // Don't allow drag if currently editing a cell
+            if (dgvRules.IsCurrentCellInEditMode)
+            {
+                return;
+            }
+
             if ((e.Button & MouseButtons.Left) == MouseButtons.Left && _rowIndexFromMouseDown >= 0)
             {
                 dgvRules.DoDragDrop(dgvRules.Rows[_rowIndexFromMouseDown], DragDropEffects.Move);
@@ -572,7 +694,6 @@ namespace PoE2BuildCalculator
             Point clientPoint = dgvRules.PointToClient(new Point(e.X, e.Y));
             _rowIndexOfItemUnderMouseToDrop = dgvRules.HitTest(clientPoint.X, clientPoint.Y).RowIndex;
 
-            // If dropped outside grid or on same row, cancel
             if (_rowIndexOfItemUnderMouseToDrop < 0 || _rowIndexFromMouseDown < 0 || _rowIndexFromMouseDown == _rowIndexOfItemUnderMouseToDrop)
             {
                 _insertionRowIndex = -1;
@@ -585,19 +706,14 @@ namespace PoE2BuildCalculator
             _rules.RemoveAt(_rowIndexFromMouseDown);
             _rules.Insert(_rowIndexOfItemUnderMouseToDrop, rowToMove);
 
-            // Clear insertion line and reset drag state
             _insertionRowIndex = -1;
             _rowIndexFromMouseDown = -1;
 
-            // Refresh the grid and selection
             dgvRules.ClearSelection();
             dgvRules.Rows[_rowIndexOfItemUnderMouseToDrop].Selected = true;
             dgvRules.CurrentCell = dgvRules.Rows[_rowIndexOfItemUnderMouseToDrop].Cells[0];
 
-            // Force a complete refresh to ensure binding updates
             dgvRules.Refresh();
-
-            // Update cell states after UI has settled
             UpdateCellStates();
         }
 
@@ -662,6 +778,51 @@ namespace PoE2BuildCalculator
             // Clear the insertion line when drag leaves the control
             _insertionRowIndex = -1;
             dgvRules.Invalidate();
+        }
+
+        private void btnCreateValidator_MouseEnter(object sender, EventArgs e)
+        {
+            btnCreateValidator.BackColor = Color.FromArgb(90, 150, 200);
+        }
+
+        private void btnCreateValidator_MouseLeave(object sender, EventArgs e)
+        {
+            btnCreateValidator.BackColor = Color.FromArgb(70, 130, 180);
+        }
+
+        private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            _isClosing = true;
+
+            try
+            {
+                // Force end any edit operation without validation
+                if (dgvRules.IsCurrentCellInEditMode)
+                {
+                    dgvRules.CancelEdit();
+                    dgvRules.EndEdit();
+                }
+
+                dgvRules.CurrentCell = null;
+
+                // Clear all errors
+                foreach (DataGridViewRow row in dgvRules.Rows)
+                {
+                    row.ErrorText = string.Empty;
+                    foreach (DataGridViewCell cell in row.Cells)
+                    {
+                        cell.ErrorText = string.Empty;
+                        if (cell.Style.BackColor == Color.FromArgb(255, 200, 200))
+                        {
+                            cell.Style.BackColor = Color.White;
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // Ignore errors
+            }
         }
     }
 }
