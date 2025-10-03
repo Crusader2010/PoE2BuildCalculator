@@ -24,7 +24,7 @@ namespace PoE2BuildCalculator
         #endregion
 
         // This will hold the final, combined validation function.
-        private Func<List<Item>, bool> _masterValidator;
+        private Func<List<Item>, bool> _masterValidator = x => true;
         private BindingList<ValidationRuleModel> _rules;
         private readonly MainForm _ownerForm;
 
@@ -178,9 +178,7 @@ namespace PoE2BuildCalculator
 
                 if (activeRulesWithIndices.Count == 0)
                 {
-                    _masterValidator = (items) => true;
-                    MessageBox.Show("No rules defined. Validator will always return true.",
-                                  "Validator Created", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("No rules defined. Validator will always return true.", "Validator Created", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     return;
                 }
 
@@ -193,8 +191,7 @@ namespace PoE2BuildCalculator
                         (rule.EachAtLeastEnabled && string.IsNullOrWhiteSpace(rule.EachAtLeastValue)) ||
                         (rule.EachAtMostEnabled && string.IsNullOrWhiteSpace(rule.EachAtMostValue)))
                     {
-                        MessageBox.Show($"Rule '{rule.PropertyName}' has an enabled condition without a value.",
-                                      "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"Rule '{rule.PropertyName}' has an enabled condition without a value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
                 }
@@ -268,18 +265,15 @@ namespace PoE2BuildCalculator
 
                 _ownerForm._itemValidatorFunction = _masterValidator;
 
-                MessageBox.Show("Validator function created successfully! Ready to test.",
-                              "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Validator function created successfully! Ready to test.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (FormatException)
             {
-                MessageBox.Show("Error: A checked condition has an empty or invalid value.",
-                              "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error: A checked condition has an empty or invalid value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An unexpected error occurred: {ex.Message}",
-                              "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"An unexpected error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 

@@ -59,7 +59,7 @@
             // 
             btnCreateValidator.Anchor = AnchorStyles.None;
             btnCreateValidator.BackColor = Color.FromArgb(70, 130, 180);
-            btnCreateValidator.FlatAppearance.BorderSize = 0;
+            btnCreateValidator.FlatAppearance.BorderColor = Color.Lime;
             btnCreateValidator.FlatStyle = FlatStyle.Flat;
             btnCreateValidator.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             btnCreateValidator.ForeColor = Color.White;
@@ -68,7 +68,7 @@
             btnCreateValidator.Size = new Size(350, 40);
             btnCreateValidator.TabIndex = 1;
             btnCreateValidator.Text = "Create Validator Function";
-            btnCreateValidator.UseVisualStyleBackColor = false;
+            btnCreateValidator.UseVisualStyleBackColor = true;
             btnCreateValidator.Click += btnCreateValidator_Click;
             btnCreateValidator.MouseEnter += btnCreateValidator_MouseEnter;
             btnCreateValidator.MouseLeave += btnCreateValidator_MouseLeave;
@@ -76,7 +76,7 @@
             // panelBottom
             // 
             panelBottom.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            panelBottom.BackColor = Color.FromArgb(250, 250, 250);
+            panelBottom.BackColor = Color.FromArgb(224, 224, 224);
             panelBottom.Controls.Add(btnCreateValidator);
             panelBottom.Location = new Point(8, 419);
             panelBottom.Name = "panelBottom";
