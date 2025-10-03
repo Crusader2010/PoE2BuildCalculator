@@ -48,7 +48,7 @@
             dgvRules.Location = new Point(0, 0);
             dgvRules.MultiSelect = false;
             dgvRules.Name = "dgvRules";
-            dgvRules.Size = new Size(971, 421);
+            dgvRules.Size = new Size(1386, 478);
             dgvRules.TabIndex = 0;
             dgvRules.CellClick += dgvRules_CellClick;
             dgvRules.CellValidating += dgvRules_CellValidating;
@@ -63,7 +63,7 @@
             btnCreateValidator.Location = new Point(0, 15);
             btnCreateValidator.Margin = new Padding(20);
             btnCreateValidator.Name = "btnCreateValidator";
-            btnCreateValidator.Size = new Size(969, 43);
+            btnCreateValidator.Size = new Size(1384, 43);
             btnCreateValidator.TabIndex = 1;
             btnCreateValidator.Text = "Create Validator Function";
             btnCreateValidator.UseVisualStyleBackColor = false;
@@ -75,9 +75,9 @@
             panelBottom.BackColor = Color.FromArgb(224, 224, 224);
             panelBottom.BorderStyle = BorderStyle.FixedSingle;
             panelBottom.Controls.Add(btnCreateValidator);
-            panelBottom.Location = new Point(0, 421);
+            panelBottom.Location = new Point(0, 478);
             panelBottom.Name = "panelBottom";
-            panelBottom.Size = new Size(971, 60);
+            panelBottom.Size = new Size(1386, 60);
             panelBottom.TabIndex = 2;
             // 
             // CustomValidator
@@ -85,7 +85,7 @@
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
             AutoSizeMode = AutoSizeMode.GrowAndShrink;
-            ClientSize = new Size(971, 481);
+            ClientSize = new Size(1386, 538);
             Controls.Add(panelBottom);
             Controls.Add(dgvRules);
             DoubleBuffered = true;

@@ -9,7 +9,7 @@ namespace PoE2BuildCalculator
     {
         // This will hold the final, combined validation function.
         private Func<List<Item>, bool> _masterValidator;
-        private List<ValidationRuleModel> _rules;
+        private BindingList<ValidationRuleModel> _rules;
         private readonly MainForm _ownerForm;
 
         private DataGridViewCellStyle _enabledOpStyle;
@@ -74,7 +74,7 @@ namespace PoE2BuildCalculator
                 case 11: isValidationRequired = rule.EachAtMostEnabled; break;
             }
 
-            // --- New: Only validate if the checkbox is checked ---
+            // --- Only validate if the checkbox is checked ---
             if (!isValidationRequired)
             {
                 e.Cancel = false;
@@ -96,7 +96,6 @@ namespace PoE2BuildCalculator
             {
                 e.Cancel = true;
                 dgvRules.Rows[e.RowIndex].ErrorText = $"Invalid value for rule {rule.PropertyName}";
-                //MessageBox.Show($"Please enter a valid {propType.Name} for {rule.PropertyName}.", "Invalid Input", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             else
             {
@@ -232,7 +231,9 @@ namespace PoE2BuildCalculator
             dgvRules.AutoGenerateColumns = false;
             dgvRules.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
 
-            dgvRules.RowHeadersVisible = false;
+            dgvRules.RowHeadersVisible = true;
+            dgvRules.RowHeadersWidth = 20;
+            dgvRules.RowHeadersWidthSizeMode = DataGridViewRowHeadersWidthSizeMode.DisableResizing;
             dgvRules.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
             dgvRules.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
@@ -287,6 +288,7 @@ namespace PoE2BuildCalculator
             dgvRules.MouseMove -= dgvRules_MouseMove;
             dgvRules.DragOver -= dgvRules_DragOver;
             dgvRules.DragDrop -= dgvRules_DragDrop;
+            dgvRules.DragLeave -= dgvRules_DragLeave;
             dgvRules.RowPostPaint -= dgvRules_RowPostPaint;
             dgvRules.KeyDown -= dgvRules_KeyDown;
 
@@ -294,6 +296,7 @@ namespace PoE2BuildCalculator
             dgvRules.MouseMove += dgvRules_MouseMove;
             dgvRules.DragOver += dgvRules_DragOver;
             dgvRules.DragDrop += dgvRules_DragDrop;
+            dgvRules.DragLeave += dgvRules_DragLeave;
             dgvRules.RowPostPaint += dgvRules_RowPostPaint;
             dgvRules.KeyDown += dgvRules_KeyDown;
 
@@ -303,15 +306,16 @@ namespace PoE2BuildCalculator
 
         private void PopulateRules()
         {
-            _rules = [];
-
             var properties = typeof(ItemStats).GetProperties()
                 .Where(p => p.Name != nameof(ItemStats.Enchant) && (p.PropertyType == typeof(int) || p.PropertyType == typeof(double)));
 
+            var rulesList = new List<ValidationRuleModel>();
             foreach (var prop in properties)
             {
-                _rules.Add(new ValidationRuleModel { PropertyName = prop.Name, PropInfo = prop });
+                rulesList.Add(new ValidationRuleModel { PropertyName = prop.Name, PropInfo = prop });
             }
+
+            _rules = new BindingList<ValidationRuleModel>(rulesList);
 
             dgvRules.SuspendLayout();
             dgvRules.DataSource = _rules;
@@ -511,7 +515,17 @@ namespace PoE2BuildCalculator
 
         private void dgvRules_MouseDown(object sender, MouseEventArgs e)
         {
-            _rowIndexFromMouseDown = dgvRules.HitTest(e.X, e.Y).RowIndex;
+            var hitTest = dgvRules.HitTest(e.X, e.Y);
+
+            // Only allow drag from row headers or cells, not from column headers
+            if (hitTest.RowIndex >= 0)
+            {
+                _rowIndexFromMouseDown = hitTest.RowIndex;
+            }
+            else
+            {
+                _rowIndexFromMouseDown = -1;
+            }
         }
 
         private void dgvRules_MouseMove(object sender, MouseEventArgs e)
@@ -552,30 +566,39 @@ namespace PoE2BuildCalculator
                     dgvRules.FirstDisplayedScrollingRowIndex += 2;
             }
         }
+
         private void dgvRules_DragDrop(object sender, DragEventArgs e)
         {
             Point clientPoint = dgvRules.PointToClient(new Point(e.X, e.Y));
             _rowIndexOfItemUnderMouseToDrop = dgvRules.HitTest(clientPoint.X, clientPoint.Y).RowIndex;
 
-            if (_rowIndexOfItemUnderMouseToDrop < 0 || _rowIndexFromMouseDown < 0 || _rowIndexFromMouseDown == _rowIndexOfItemUnderMouseToDrop) return;
-
-            // Get the underlying BindingList
-            if (dgvRules.DataSource is BindingList<ValidationRuleModel> list)
+            // If dropped outside grid or on same row, cancel
+            if (_rowIndexOfItemUnderMouseToDrop < 0 || _rowIndexFromMouseDown < 0 || _rowIndexFromMouseDown == _rowIndexOfItemUnderMouseToDrop)
             {
-                var rowToMove = list[_rowIndexFromMouseDown];
-                list.RemoveAt(_rowIndexFromMouseDown);
-                list.Insert(_rowIndexOfItemUnderMouseToDrop, rowToMove);
-
-                // Refresh selection
-                dgvRules.ClearSelection();
-                dgvRules.Rows[_rowIndexOfItemUnderMouseToDrop].Selected = true;
-
                 _insertionRowIndex = -1;
+                _rowIndexFromMouseDown = -1;
                 dgvRules.Invalidate();
-
-                // Force UpdateCellStates since adjacency changed
-                UpdateCellStates();
+                return;
             }
+
+            var rowToMove = _rules[_rowIndexFromMouseDown];
+            _rules.RemoveAt(_rowIndexFromMouseDown);
+            _rules.Insert(_rowIndexOfItemUnderMouseToDrop, rowToMove);
+
+            // Clear insertion line and reset drag state
+            _insertionRowIndex = -1;
+            _rowIndexFromMouseDown = -1;
+
+            // Refresh the grid and selection
+            dgvRules.ClearSelection();
+            dgvRules.Rows[_rowIndexOfItemUnderMouseToDrop].Selected = true;
+            dgvRules.CurrentCell = dgvRules.Rows[_rowIndexOfItemUnderMouseToDrop].Cells[0];
+
+            // Force a complete refresh to ensure binding updates
+            dgvRules.Refresh();
+
+            // Update cell states after UI has settled
+            UpdateCellStates();
         }
 
         private void dgvRules_RowPostPaint(object sender, DataGridViewRowPostPaintEventArgs e)
@@ -603,28 +626,42 @@ namespace PoE2BuildCalculator
 
         private void dgvRules_KeyDown(object sender, KeyEventArgs e)
         {
-            if (dgvRules.DataSource is not BindingList<ValidationRuleModel> list) return;
             if (dgvRules.CurrentRow == null) return;
 
             int index = dgvRules.CurrentRow.Index;
             if (e.Control && e.KeyCode == Keys.Up && index > 0)
             {
-                var item = list[index];
-                list.RemoveAt(index);
-                list.Insert(index - 1, item);
+                var item = _rules[index];
+                _rules.RemoveAt(index);
+                _rules.Insert(index - 1, item);
+
+                dgvRules.ClearSelection();
+                dgvRules.Rows[index - 1].Selected = true;
                 dgvRules.CurrentCell = dgvRules.Rows[index - 1].Cells[0];
+                dgvRules.Refresh();
                 UpdateCellStates();
                 e.Handled = true;
             }
-            else if (e.Control && e.KeyCode == Keys.Down && index < list.Count - 1)
+            else if (e.Control && e.KeyCode == Keys.Down && index < _rules.Count - 1)
             {
-                var item = list[index];
-                list.RemoveAt(index);
-                list.Insert(index + 1, item);
+                var item = _rules[index];
+                _rules.RemoveAt(index);
+                _rules.Insert(index + 1, item);
+
+                dgvRules.ClearSelection();
+                dgvRules.Rows[index + 1].Selected = true;
                 dgvRules.CurrentCell = dgvRules.Rows[index + 1].Cells[0];
+                dgvRules.Refresh();
                 UpdateCellStates();
                 e.Handled = true;
             }
+        }
+
+        private void dgvRules_DragLeave(object sender, EventArgs e)
+        {
+            // Clear the insertion line when drag leaves the control
+            _insertionRowIndex = -1;
+            dgvRules.Invalidate();
         }
     }
 }
