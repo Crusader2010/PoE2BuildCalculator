@@ -786,8 +786,30 @@ namespace PoE2BuildCalculator
 
         private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
         {
-            _isClosing = true;
+            // Only intercept user-initiated closes (Alt+F4, [X], etc.)
+            // Preserves form data when reopening it.
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;   // cancel the close
+                this.Hide();       // just hide it
+                this.Owner?.BringToFront();
+                return;
+            }
 
+            _isClosing = true;
+            ResetValidationOnFormClose();
+        }
+
+        private void ButtonClose_Click(object sender, EventArgs e)
+        {
+            _isClosing = true;
+            ResetValidationOnFormClose();
+            this.Close();
+            this?.Dispose();
+        }
+
+        private void ResetValidationOnFormClose()
+        {
             try
             {
                 // Force end any edit operation without validation

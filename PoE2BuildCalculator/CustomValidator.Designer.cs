@@ -31,6 +31,7 @@
             dgvRules = new DataGridView();
             btnCreateValidator = new Button();
             panelBottom = new Panel();
+            ButtonClose = new Button();
             ((System.ComponentModel.ISupportInitialize)dgvRules).BeginInit();
             panelBottom.SuspendLayout();
             SuspendLayout();
@@ -65,7 +66,7 @@
             btnCreateValidator.ForeColor = Color.White;
             btnCreateValidator.Location = new Point(310, 12);
             btnCreateValidator.Name = "btnCreateValidator";
-            btnCreateValidator.Size = new Size(350, 40);
+            btnCreateValidator.Size = new Size(229, 40);
             btnCreateValidator.TabIndex = 1;
             btnCreateValidator.Text = "Create Validator Function";
             btnCreateValidator.UseVisualStyleBackColor = true;
@@ -77,11 +78,28 @@
             // 
             panelBottom.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             panelBottom.BackColor = Color.FromArgb(224, 224, 224);
+            panelBottom.Controls.Add(ButtonClose);
             panelBottom.Controls.Add(btnCreateValidator);
             panelBottom.Location = new Point(8, 419);
             panelBottom.Name = "panelBottom";
             panelBottom.Size = new Size(955, 64);
             panelBottom.TabIndex = 2;
+            // 
+            // ButtonClose
+            // 
+            ButtonClose.Anchor = AnchorStyles.None;
+            ButtonClose.BackColor = Color.FromArgb(70, 130, 180);
+            ButtonClose.FlatAppearance.BorderColor = Color.FromArgb(192, 0, 0);
+            ButtonClose.FlatStyle = FlatStyle.Flat;
+            ButtonClose.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            ButtonClose.ForeColor = Color.White;
+            ButtonClose.Location = new Point(734, 12);
+            ButtonClose.Name = "ButtonClose";
+            ButtonClose.Size = new Size(175, 40);
+            ButtonClose.TabIndex = 2;
+            ButtonClose.Text = "Close and reset form";
+            ButtonClose.UseVisualStyleBackColor = true;
+            ButtonClose.Click += ButtonClose_Click;
             // 
             // CustomValidator
             // 
@@ -109,5 +127,6 @@
         private DataGridView dgvRules;
         private Button btnCreateValidator;
         private Panel panelBottom;
+        private Button ButtonClose;
     }
 }

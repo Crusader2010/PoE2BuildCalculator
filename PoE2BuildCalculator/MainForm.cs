@@ -10,7 +10,8 @@ namespace PoE2BuildCalculator
         // Class references
         private Manager.FileParser _fileParser { get; set; }
         private TierManager _formTierManager { get; set; }
-        internal Func<List<Item>, bool> _itemValidatorFunction { get; set; } = null;
+        private CustomValidator _customValidator { get; set; }
+        internal Func<List<Item>, bool> _itemValidatorFunction { get; set; } = x => true;
         private ImmutableList<Item> _parsedItems { get; set; } = [];
 
         private IEnumerable<List<Item>> _combinations { get; set; } = [];
@@ -239,16 +240,14 @@ namespace PoE2BuildCalculator
             var itemsWithoutRingsInput = new List<List<Item>>();
             itemsWithoutRingsInput.AddRange(itemsForClasses.Values);
 
-            _itemValidatorFunction ??= x => true; // ItemValidator.ValidateListOfItems;
             _combinations = CombinationGenerator.GenerateCombinations(itemsWithoutRingsInput, rings, _itemValidatorFunction);
-
             TextboxDisplay.Text = $"Total number of combinations: {_combinations.LongCount()}";
         }
 
         private void ButtonManageCustomValidator_Click(object sender, EventArgs e)
         {
-            var customValidator = new CustomValidator(this);
-            customValidator.Show(this);
+            _customValidator = _customValidator == null || _customValidator.IsDisposed ? new CustomValidator(this) : _customValidator;
+            _customValidator.Show(this);
         }
     }
 }
