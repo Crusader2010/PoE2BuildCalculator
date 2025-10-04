@@ -125,7 +125,7 @@ namespace PoE2BuildCalculator
                 TableDisplayData.Columns.Add(idColumn);
 
                 // Add column headers for other non-stat properties.
-                var otherBaseColumns = new[] { "Name", "Class", "IsMine", "Corrupted" };
+                var otherBaseColumns = new[] { "Name", "Class", "Mine?", "Corrupted" };
                 foreach (var c in otherBaseColumns)
                 {
                     var col = new DataGridViewTextBoxColumn
