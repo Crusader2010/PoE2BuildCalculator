@@ -45,6 +45,7 @@
             dgvRules.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
             dgvRules.BackgroundColor = Color.FromArgb(240, 240, 240);
             dgvRules.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
+            dgvRules.CellBorderStyle = DataGridViewCellBorderStyle.Single;
             dgvRules.Location = new Point(8, 8);
             dgvRules.MultiSelect = false;
             dgvRules.Name = "dgvRules";
@@ -88,18 +89,21 @@
             // ButtonClose
             // 
             ButtonClose.Anchor = AnchorStyles.None;
-            ButtonClose.BackColor = Color.FromArgb(70, 130, 180);
+            ButtonClose.BackColor = Color.FromArgb(180, 70, 70); // Reddish to indicate destructive action
             ButtonClose.FlatAppearance.BorderColor = Color.FromArgb(192, 0, 0);
             ButtonClose.FlatStyle = FlatStyle.Flat;
             ButtonClose.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
             ButtonClose.ForeColor = Color.White;
-            ButtonClose.Location = new Point(734, 12);
+            ButtonClose.Location = new Point(545, 12);
             ButtonClose.Name = "ButtonClose";
-            ButtonClose.Size = new Size(175, 40);
+            ButtonClose.Size = new Size(260, 40);
             ButtonClose.TabIndex = 2;
-            ButtonClose.Text = "Close and reset form";
-            ButtonClose.UseVisualStyleBackColor = true;
+            ButtonClose.Text = "⚠ Reset Form (Clear All Rules)";
+            ButtonClose.UseVisualStyleBackColor = false;
             ButtonClose.Click += ButtonClose_Click;
+
+            var toolTip = new ToolTip();
+            toolTip.SetToolTip(ButtonClose, "Resets this form to empty state. Current validator in MainForm remains active.");
             // 
             // CustomValidator
             // 

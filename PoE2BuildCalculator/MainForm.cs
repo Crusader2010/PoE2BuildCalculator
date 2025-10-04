@@ -5,8 +5,11 @@ using System.Collections.Immutable;
 
 namespace PoE2BuildCalculator
 {
-    public partial class MainForm : Form
+    public partial class MainForm : Form, IDisposable
     {
+        // Field for thread synchronization
+        private readonly object _validatorLock = new();
+
         // Class references
         private Manager.FileParser _fileParser { get; set; }
         private TierManager _formTierManager { get; set; }
@@ -33,6 +36,9 @@ namespace PoE2BuildCalculator
             ConfigureOpenFileDialog();
 
             ConfigureParserControls();
+
+            // Wire up FormClosing for cleanup
+            this.FormClosing += MainForm_FormClosing;
         }
 
         private void ButtonOpenItemListFile_Click(object sender, EventArgs e)
@@ -246,8 +252,42 @@ namespace PoE2BuildCalculator
 
         private void ButtonManageCustomValidator_Click(object sender, EventArgs e)
         {
-            _customValidator = _customValidator == null || _customValidator.IsDisposed ? new CustomValidator(this) : _customValidator;
-            _customValidator.Show(this);
+            lock (_validatorLock)
+            {
+                if (_customValidator == null || _customValidator.IsDisposed)
+                {
+                    _customValidator = new CustomValidator(this);
+                }
+
+                _customValidator.Show(this);
+                _customValidator.Activate();
+            }
+        }
+
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            // Cancel any ongoing parsing
+            try
+            {
+                _cts?.Cancel();
+                _cts?.Dispose();
+                _cts = null;
+            }
+            catch { }
+
+            // Dispose custom validator if it exists
+            lock (_validatorLock)
+            {
+                try
+                {
+                    if (_customValidator != null && !_customValidator.IsDisposed)
+                    {
+                        _customValidator.Dispose();
+                    }
+                    _customValidator = null;
+                }
+                catch { }
+            }
         }
     }
 }

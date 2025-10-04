@@ -67,12 +67,30 @@ namespace PoE2BuildCalculator
 
                 if (!isChecked)
                 {
+                    // Clear the value
                     switch (colName)
                     {
                         case COL_SUM_AT_LEAST_ENABLED: ruleModel.SumAtLeastValue = string.Empty; break;
                         case COL_SUM_AT_MOST_ENABLED: ruleModel.SumAtMostValue = string.Empty; break;
                         case COL_EACH_AT_LEAST_ENABLED: ruleModel.EachAtLeastValue = string.Empty; break;
                         case COL_EACH_AT_MOST_ENABLED: ruleModel.EachAtMostValue = string.Empty; break;
+                    }
+
+                    // Reset the background color of the corresponding value cell when unchecking
+                    string valueCellName = colName switch
+                    {
+                        COL_SUM_AT_LEAST_ENABLED => COL_SUM_AT_LEAST_VALUE,
+                        COL_SUM_AT_MOST_ENABLED => COL_SUM_AT_MOST_VALUE,
+                        COL_EACH_AT_LEAST_ENABLED => COL_EACH_AT_LEAST_VALUE,
+                        COL_EACH_AT_MOST_ENABLED => COL_EACH_AT_MOST_VALUE,
+                        _ => null
+                    };
+
+                    if (valueCellName != null)
+                    {
+                        var valueCell = dgvRules.Rows[e.RowIndex].Cells[valueCellName];
+                        valueCell.Style.BackColor = _backColorValidValue;
+                        dgvRules.Rows[e.RowIndex].ErrorText = string.Empty;
                     }
                 }
 
@@ -182,16 +200,30 @@ namespace PoE2BuildCalculator
                     return;
                 }
 
-                // Validate that all active rules have values
+                // Only validate values for ENABLED conditions
                 foreach (var ruleWithIndex in activeRulesWithIndices)
                 {
                     var rule = ruleWithIndex.Rule;
-                    if ((rule.SumAtLeastEnabled && string.IsNullOrWhiteSpace(rule.SumAtLeastValue)) ||
-                        (rule.SumAtMostEnabled && string.IsNullOrWhiteSpace(rule.SumAtMostValue)) ||
-                        (rule.EachAtLeastEnabled && string.IsNullOrWhiteSpace(rule.EachAtLeastValue)) ||
-                        (rule.EachAtMostEnabled && string.IsNullOrWhiteSpace(rule.EachAtMostValue)))
+
+                    // Check each enabled condition individually
+                    if (rule.SumAtLeastEnabled && string.IsNullOrWhiteSpace(rule.SumAtLeastValue))
                     {
-                        MessageBox.Show($"Rule '{rule.PropertyName}' has an enabled condition without a value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        MessageBox.Show($"Rule '{rule.PropertyName}' has 'Sum ≥' enabled but no value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    if (rule.SumAtMostEnabled && string.IsNullOrWhiteSpace(rule.SumAtMostValue))
+                    {
+                        MessageBox.Show($"Rule '{rule.PropertyName}' has 'Sum ≤' enabled but no value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    if (rule.EachAtLeastEnabled && string.IsNullOrWhiteSpace(rule.EachAtLeastValue))
+                    {
+                        MessageBox.Show($"Rule '{rule.PropertyName}' has 'Each ≥' enabled but no value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                    if (rule.EachAtMostEnabled && string.IsNullOrWhiteSpace(rule.EachAtMostValue))
+                    {
+                        MessageBox.Show($"Rule '{rule.PropertyName}' has 'Each ≤' enabled but no value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
                 }
@@ -243,7 +275,6 @@ namespace PoE2BuildCalculator
                         return result;
                     }
 
-                    // Get the row operator from the ORIGINAL rule position
                     string rowOperator = rule.RowOperator ?? "AND";
                     validatorsWithOps.Add((propertyValidator, rowOperator));
                 }
@@ -256,7 +287,6 @@ namespace PoE2BuildCalculator
                     bool finalResult = validatorsWithOps[0].Validator(items);
                     for (int i = 1; i < validatorsWithOps.Count; i++)
                     {
-                        // Use the operator from the PREVIOUS validator
                         string rowOp = validatorsWithOps[i - 1].Operator;
                         finalResult = combine(rowOp, finalResult, validatorsWithOps[i].Validator(items));
                     }
@@ -265,11 +295,11 @@ namespace PoE2BuildCalculator
 
                 _ownerForm._itemValidatorFunction = _masterValidator;
 
-                MessageBox.Show("Validator function created successfully! Ready to test.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("Validator function created successfully! The MainForm will now use this validator when computing combinations.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (FormatException)
             {
-                MessageBox.Show("Error: A checked condition has an empty or invalid value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show("Error: A checked condition has an invalid value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             catch (Exception ex)
             {
@@ -378,7 +408,13 @@ namespace PoE2BuildCalculator
 
             // Calculate total height needed (limit to reasonable size)
             int totalHeight = dgvRules.ColumnHeadersHeight + panelBottom.Height + 50; // padding and borders
-            int visibleRowsHeight = Math.Min(dgvRules.Rows.Count * dgvRules.Rows[0].Height, 600); // max 600px for rows
+
+            // FIX: Check if there are rows before accessing Rows[0]
+            int visibleRowsHeight = 0;
+            if (dgvRules.Rows.Count > 0)
+            {
+                visibleRowsHeight = Math.Min(dgvRules.Rows.Count * dgvRules.Rows[0].Height, 600); // max 600px for rows
+            }
             totalHeight += visibleRowsHeight;
 
             // Set form size with reasonable limits
@@ -787,25 +823,33 @@ namespace PoE2BuildCalculator
         private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
         {
             // Only intercept user-initiated closes (Alt+F4, [X], etc.)
-            // Preserves form data when reopening it.
             if (e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;   // cancel the close
+                _isClosing = true; // Allow validation to pass
+
+                ResetValidationOnFormClose();
+
+                _isClosing = false;
                 this.Hide();       // just hide it
                 this.Owner?.BringToFront();
                 return;
             }
 
-            _isClosing = true;
-            ResetValidationOnFormClose();
+            // If programmatically closing (Dispose), allow it
         }
 
         private void ButtonClose_Click(object sender, EventArgs e)
         {
-            _isClosing = true;
-            ResetValidationOnFormClose();
-            this.Close();
-            this?.Dispose();
+            var result = MessageBox.Show(
+                            "This will reset the form and clear all rules. The current validator function (if created) will remain active in the MainForm.\n\nAre you sure?",
+                            "Reset Validator Form", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Yes)
+            {
+                this.Close();
+                this.Dispose();
+            }
         }
 
         private void ResetValidationOnFormClose()
@@ -828,9 +872,9 @@ namespace PoE2BuildCalculator
                     foreach (DataGridViewCell cell in row.Cells)
                     {
                         cell.ErrorText = string.Empty;
-                        if (cell.Style.BackColor == Color.FromArgb(255, 200, 200))
+                        if (cell.Style.BackColor == _backColorInvalidValue)
                         {
-                            cell.Style.BackColor = Color.White;
+                            cell.Style.BackColor = _backColorValidValue;
                         }
                     }
                 }

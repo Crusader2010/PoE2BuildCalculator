@@ -1,4 +1,8 @@
-﻿namespace Domain.Combinations
+﻿// ============================================
+// FIXED: CombinationGenerator.cs - Complete replacement
+// ============================================
+
+namespace Domain.Combinations
 {
     public static class CombinationGenerator
     {
@@ -38,6 +42,9 @@
 
         /// <summary>
         /// Recursively generates combinations from multiple lists using yield return.
+        /// Each recursive call creates a NEW list by copying the parent's combination and adding
+        ///     the current item. This ensures each yielded combination is a distinct, immutable snapshot
+        ///     that won't be affected by subsequent recursive calls.
         /// </summary>
         private static IEnumerable<List<T>> GenerateRecursiveCombinations<T>(
             List<List<T>> lists,
@@ -46,19 +53,20 @@
         {
             if (listIndex == lists.Count)
             {
-                yield return currentCombination;
+                // Yield a NEW copy of the combination to prevent mutation issues
+                yield return new List<T>(currentCombination);
                 yield break;
             }
 
             foreach (var item in lists[listIndex])
             {
-                currentCombination.Add(item);
-                foreach (var subCombination in GenerateRecursiveCombinations(lists, currentCombination, listIndex + 1))
+                // Create a NEW list for each branch instead of mutating the shared one
+                var newCombination = new List<T>(currentCombination) { item };
+
+                foreach (var subCombination in GenerateRecursiveCombinations(lists, newCombination, listIndex + 1))
                 {
                     yield return subCombination;
                 }
-
-                currentCombination.RemoveAt(currentCombination.Count - 1);
             }
         }
 

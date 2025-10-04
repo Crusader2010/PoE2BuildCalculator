@@ -107,6 +107,14 @@ namespace PoE2BuildCalculator
         }
         private void TierManager_FormClosing(object sender, FormClosingEventArgs e)
         {
+            // Dispose timer if it exists
+            try
+            {
+                _flashTimer?.Stop();
+                _flashTimer?.Dispose();
+            }
+            catch { }
+
             // Detach handlers that Designer may have attached in InitializeComponent
             try
             {
