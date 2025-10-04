@@ -43,11 +43,15 @@ namespace PoE2BuildCalculator
 
         private void ButtonOpenItemListFile_Click(object sender, EventArgs e)
         {
-            OpenPoE2ItemList.ShowDialog();
-            if (!string.IsNullOrWhiteSpace(OpenPoE2ItemList.FileName))
+            var dialogResult = OpenPoE2ItemList.ShowDialog(this);
+            if (dialogResult == DialogResult.OK && !string.IsNullOrWhiteSpace(OpenPoE2ItemList.FileName) && File.Exists(OpenPoE2ItemList.FileName))
             {
                 _fileParser = new Manager.FileParser(OpenPoE2ItemList.FileName);
                 StatusBarLabel.Text = $"Loaded file: {OpenPoE2ItemList.FileName}";
+            }
+            else
+            {
+                StatusBarLabel.Text = "No file selected or file does not exist.";
             }
         }
 
@@ -209,7 +213,7 @@ namespace PoE2BuildCalculator
 
         private void ShowItemsDataButton_Click(object sender, EventArgs e)
         {
-            if (_fileParser == null)
+            if (_fileParser == null || _fileParser.GetParsedItems().Count == 0)
             {
                 StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
                 return;

@@ -32,17 +32,17 @@ namespace PoE2BuildCalculator
             // Anchor the grid on all sides so when the form grows the grid expands to use the space.
             TableDisplayData.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
 
-            ImportDataToDisplay_Click(sender, e);
-        }
-
-        private void ImportDataToDisplay_Click(object sender, EventArgs e)
-        {
             if (_fileParser == null)
             {
                 MessageBox.Show("No FileParser provided. Set DataDisplay.FileParser before importing.");
                 return;
             }
 
+            ImportDataToDisplay_Click(sender, e);
+        }
+
+        private void ImportDataToDisplay_Click(object sender, EventArgs e)
+        {
             var items = _fileParser.GetParsedItems();
             if (items == null || items.Count == 0)
             {
