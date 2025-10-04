@@ -61,22 +61,23 @@ namespace PoE2BuildCalculator
                 AddNonStatsColumnHeadersToTable();
                 AddStatsColumnHeadersToTable(descriptors);
 
-                // Populate rows using PropertyDescriptionHelper.ToDictionary for each item.
-                foreach (var item in items)
+                const int baseColumnCount = 5; // Id, Name, Class, IsMine, Corrupted
+                foreach (var item in items) // Populate rows using PropertyDescriptionHelper.ToDictionary for each item.
                 {
                     // Build a PropertyName->value map for this item's stats.
                     var statsMap = ItemStatsHelper.ToDictionary(item.ItemStats);
 
-                    var rowValues = new object[4 + descriptors.Count];
+                    var rowValues = new object[baseColumnCount + descriptors.Count];
                     rowValues[0] = item.Id;
                     rowValues[1] = item.Name;
                     rowValues[2] = item.Class;
                     rowValues[3] = item.IsMine ? "YES" : "NO";
+                    rowValues[4] = item.IsCorrupted ? "YES" : "NO";
 
                     for (int i = 0; i < descriptors.Count; i++)
                     {
                         var d = descriptors[i];
-                        rowValues[4 + i] = statsMap.TryGetValue(d.PropertyName, out var v) ? v : GetEmptyValueForTableRow(d.PropertyType);
+                        rowValues[baseColumnCount + i] = statsMap.TryGetValue(d.PropertyName, out var v) ? v : GetEmptyValueForTableRow(d.PropertyType);
                     }
 
                     TableDisplayData.Rows.Add(rowValues);
@@ -124,7 +125,7 @@ namespace PoE2BuildCalculator
                 TableDisplayData.Columns.Add(idColumn);
 
                 // Add column headers for other non-stat properties.
-                var otherBaseColumns = new[] { "Name", "Class", "IsMine" };
+                var otherBaseColumns = new[] { "Name", "Class", "IsMine", "Corrupted" };
                 foreach (var c in otherBaseColumns)
                 {
                     var col = new DataGridViewTextBoxColumn

@@ -6,6 +6,8 @@ namespace Domain.Static
     {
         public const string ITEM_IS_MINE_TAG = "(MINE)";
         public const string ITEM_CLASS_TAG = "Item Class:";
+        public const string ITEM_RARITY_TAG = "Rarity:";
+        public const string ITEM_CORRUPTED_TAG = "Corrupted";
         public const string ITEM_CLASS_RING = "Ring";
         public const string DEFAULT_DESCRIPTION = "NONE";
         public const string TOTAL_TIERS_WEIGHT_SUFFIX = @" %";

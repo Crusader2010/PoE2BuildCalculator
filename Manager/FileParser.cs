@@ -81,6 +81,8 @@ namespace Manager
         {
             if (item?.ItemStats == null) return;
 
+            if (string.Equals(line, Constants.ITEM_CORRUPTED_TAG, StringComparison.OrdinalIgnoreCase)) item.IsCorrupted = true;
+
             var regex = RegexPatterns.ItemClassPattern().Match(line);
             if (regex.Success) item.Class = regex.Groups[1].Value.Trim();
 
@@ -348,7 +350,8 @@ namespace Manager
             // Item delimiter logic
             if (line.StartsWith(Constants.ITEM_CLASS_TAG, StringComparison.OrdinalIgnoreCase))
             {
-                string name1 = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                string secondLine = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+                string name1 = secondLine.StartsWith(Constants.ITEM_RARITY_TAG, StringComparison.OrdinalIgnoreCase) ? await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false) : secondLine;
                 string name2 = await sr.ReadLineAsync(cancellationToken).ConfigureAwait(false);
                 if (name1 is null || name2 is null) return (false, item, currentItemId);
 
