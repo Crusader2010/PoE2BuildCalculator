@@ -81,7 +81,7 @@ namespace Manager
         {
             if (item?.ItemStats == null) return;
 
-            if (string.Equals(line, Constants.ITEM_CORRUPTED_TAG, StringComparison.OrdinalIgnoreCase)) item.IsCorrupted = true;
+            if (string.Equals(line, Constants.ITEM_CORRUPTED_TAG, StringComparison.OrdinalIgnoreCase)) item.ItemStats.Corrupted = "YES";
 
             var regex = RegexPatterns.ItemClassPattern().Match(line);
             if (regex.Success) item.Class = regex.Groups[1].Value.Trim();
@@ -360,7 +360,7 @@ namespace Manager
                     Id = ++currentItemId,
                     Name = $"{name1.Trim()} {name2.Trim()}",
                     IsMine = name1.Contains(Constants.ITEM_IS_MINE_TAG, StringComparison.OrdinalIgnoreCase),
-                    ItemStats = new()
+                    ItemStats = new() { Potential = name1.Contains("POTENTIAL", StringComparison.OrdinalIgnoreCase) ? "YES" : "NO" }
                 };
 
                 _items.Add(newItem);

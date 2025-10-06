@@ -12,8 +12,6 @@
 
         public bool IsMine { get; set; } = false;
 
-        public bool IsCorrupted { get; set; } = false;
-
         public bool Equals(Item other)
         {
             if (other == null || this == null) return false;

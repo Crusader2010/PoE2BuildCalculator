@@ -165,6 +165,14 @@ namespace Domain.Main
         [ItemStatsHelper.StatColumn(73)]
         public int AllAttributes { get; set; }
 
+        [Description("Corrupted?")]
+        [ItemStatsHelper.StatColumn(74)]
+        public string Corrupted { get; set; } = "NO";
+
+        [Description("Potential?")]
+        [ItemStatsHelper.StatColumn(75)]
+        public string Potential { get; set; } = "NO";
+
         [Description("Enchant")]
         [ItemStatsHelper.StatColumn(80)]
         public string Enchant { get; set; } = string.Empty;

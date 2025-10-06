@@ -61,7 +61,7 @@ namespace PoE2BuildCalculator
                 AddNonStatsColumnHeadersToTable();
                 AddStatsColumnHeadersToTable(descriptors);
 
-                const int baseColumnCount = 5; // Id, Name, Class, IsMine, Corrupted
+                const int baseColumnCount = 4; // Id, Name, Class, IsMine, Corrupted
                 foreach (var item in items) // Populate rows using PropertyDescriptionHelper.ToDictionary for each item.
                 {
                     // Build a PropertyName->value map for this item's stats.
@@ -72,7 +72,6 @@ namespace PoE2BuildCalculator
                     rowValues[1] = item.Name;
                     rowValues[2] = item.Class;
                     rowValues[3] = item.IsMine ? "YES" : "NO";
-                    rowValues[4] = item.IsCorrupted ? "YES" : "NO";
 
                     for (int i = 0; i < descriptors.Count; i++)
                     {
@@ -125,7 +124,7 @@ namespace PoE2BuildCalculator
                 TableDisplayData.Columns.Add(idColumn);
 
                 // Add column headers for other non-stat properties.
-                var otherBaseColumns = new[] { "Name", "Class", "Mine?", "Corrupted" };
+                var otherBaseColumns = new[] { "Name", "Class", "Mine?" };
                 foreach (var c in otherBaseColumns)
                 {
                     var col = new DataGridViewTextBoxColumn
