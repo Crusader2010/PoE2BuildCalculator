@@ -17,7 +17,7 @@
         public bool Equals(Item other)
         {
             if (other == null || this == null) return false;
-            return (Id == other.Id || string.Equals(Name, other.Name, StringComparison.OrdinalIgnoreCase)) && string.Equals(Class, other.Class, StringComparison.OrdinalIgnoreCase);
+            return Id == other.Id;
         }
 
         public override int GetHashCode()
