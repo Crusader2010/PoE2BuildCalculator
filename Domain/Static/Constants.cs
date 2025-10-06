@@ -5,6 +5,7 @@ namespace Domain.Static
     public static class Constants
     {
         public const string ITEM_IS_MINE_TAG = "(MINE)";
+        public const string ITEM_HAS_POTENTIAL_TAG = "(POTENTIAL)";
         public const string ITEM_CLASS_TAG = "Item Class:";
         public const string ITEM_RARITY_TAG = "Rarity:";
         public const string ITEM_CORRUPTED_TAG = "Corrupted";
