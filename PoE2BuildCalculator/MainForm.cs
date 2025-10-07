@@ -1,7 +1,11 @@
 using Domain.Combinations;
+using Domain.Helpers;
 using Domain.Main;
 using Domain.Static;
 using System.Collections.Immutable;
+using System.Diagnostics;
+using System.Management;
+using System.Runtime.InteropServices;
 
 namespace PoE2BuildCalculator
 {
@@ -244,14 +248,17 @@ namespace PoE2BuildCalculator
                 return;
             }
 
-            var itemsForClasses = _parsedItems.Where(x => Constants.ITEM_CLASSES.Contains(x.Class, StringComparer.OrdinalIgnoreCase)).GroupBy(x => x.Class).ToDictionary(x => x.Key, x => x.ToList());
+            var itemsForClasses = _parsedItems.Where(x => Constants.ITEM_CLASSES.Contains(x.Class, StringComparer.OrdinalIgnoreCase)).GroupBy(x => x.Class, StringComparer.OrdinalIgnoreCase).ToDictionary(x => x.Key, x => x.ToList());
             itemsForClasses.Remove(Constants.ITEM_CLASS_RING, out var rings);
 
             var itemsWithoutRingsInput = new List<List<Item>>();
             itemsWithoutRingsInput.AddRange(itemsForClasses.Values);
 
-            _combinations = CombinationGenerator.GenerateCombinations(itemsWithoutRingsInput, rings, _itemValidatorFunction);
-            TextboxDisplay.Text = $"Total number of combinations: {_combinations.LongCount()}";
+            var totalCombinationsCount = CombinationGenerator.GetTotalCombinationsCount<Item>(rings.Count, itemsWithoutRingsInput);
+            TextboxDisplay.Text = $"Total number of combinations: {totalCombinationsCount}";
+
+
+            //_combinations = CombinationGenerator.GenerateCombinations(itemsWithoutRingsInput, rings, _itemValidatorFunction);
         }
 
         private void ButtonManageCustomValidator_Click(object sender, EventArgs e)
@@ -293,5 +300,7 @@ namespace PoE2BuildCalculator
                 catch { }
             }
         }
+
+
     }
 }

@@ -1,6 +1,4 @@
-﻿// ============================================
-// FIXED: CombinationGenerator.cs - Complete replacement
-// ============================================
+﻿using System.Numerics;
 
 namespace Domain.Combinations
 {
@@ -38,6 +36,22 @@ namespace Domain.Combinations
                     }
                 }
             }
+        }
+
+        public static BigInteger GetTotalCombinationsCount<T>(
+            int pairListCount,
+            List<List<T>> otherLists)
+        {
+            // The total is the product of the count of every list.
+            BigInteger totalCount = new(pairListCount);
+
+            foreach (var list in otherLists)
+            {
+                // Multiplying BigInteger with BigInteger prevents overflow
+                totalCount *= new BigInteger(list.Count);
+            }
+
+            return totalCount;
         }
 
         /// <summary>
