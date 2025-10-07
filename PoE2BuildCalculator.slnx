@@ -1,8 +1,10 @@
 <Solution>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
+    <File Path="PoE2.ico" />
   </Folder>
   <Project Path="Domain/Domain.csproj" />
+  <Project Path="InstallerSetup/InstallerSetup.vdproj" Type="Installer" />
   <Project Path="Manager/Manager.csproj" />
   <Project Path="PoE2BuildCalculator/PoE2BuildCalculator.csproj" />
 </Solution>
