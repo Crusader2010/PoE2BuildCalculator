@@ -319,7 +319,7 @@ namespace PoE2BuildCalculator
             }
 
             // Invalidate the old cell to remove the custom painting
-            if (oldSelectedCell != null)
+            if (oldSelectedCell != null && oldSelectedCell.DataGridView == TableTiers)
             {
                 TableTiers.InvalidateCell(oldSelectedCell);
             }
