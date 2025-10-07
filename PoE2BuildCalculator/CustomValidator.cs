@@ -236,33 +236,34 @@ namespace PoE2BuildCalculator
                     var ruleWithIndex = activeRulesWithIndices[i];
                     var rule = ruleWithIndex.Rule;
 
+                    double? sumAtLeastVal = rule.SumAtLeastEnabled ? Convert.ToDouble(rule.SumAtLeastValue) : null;
+                    double? sumAtMostVal = rule.SumAtMostEnabled ? Convert.ToDouble(rule.SumAtMostValue) : null;
+                    double? eachAtLeastVal = rule.EachAtLeastEnabled ? Convert.ToDouble(rule.EachAtLeastValue) : null;
+                    double? eachAtMostVal = rule.EachAtMostEnabled ? Convert.ToDouble(rule.EachAtMostValue) : null;
+
                     bool propertyValidator(List<Item> items)
                     {
                         var conditions = new List<Func<List<Item>, bool>>();
                         var operators = new List<string>();
 
-                        if (rule.SumAtLeastEnabled)
+                        if (sumAtLeastVal.HasValue)
                         {
-                            var v = Convert.ToDouble(rule.SumAtLeastValue);
-                            conditions.Add(list => list.Sum(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats))) >= v);
+                            conditions.Add(list => list.Sum(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats))) >= sumAtLeastVal.Value);
                             operators.Add(rule.Op1);
                         }
-                        if (rule.SumAtMostEnabled)
+                        if (sumAtMostVal.HasValue)
                         {
-                            var v = Convert.ToDouble(rule.SumAtMostValue);
-                            conditions.Add(list => list.Sum(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats))) <= v);
+                            conditions.Add(list => list.Sum(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats))) <= sumAtMostVal.Value);
                             operators.Add(rule.Op2);
                         }
-                        if (rule.EachAtLeastEnabled)
+                        if (eachAtLeastVal.HasValue)
                         {
-                            var v = Convert.ToDouble(rule.EachAtLeastValue);
-                            conditions.Add(list => list.All(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats)) >= v));
+                            conditions.Add(list => list.All(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats)) >= eachAtLeastVal.Value));
                             operators.Add(rule.Op3);
                         }
-                        if (rule.EachAtMostEnabled)
+                        if (eachAtMostVal.HasValue)
                         {
-                            var v = Convert.ToDouble(rule.EachAtMostValue);
-                            conditions.Add(list => list.All(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats)) <= v));
+                            conditions.Add(list => list.All(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats)) <= eachAtMostVal.Value));
                         }
 
                         if (conditions.Count == 0) return true;
