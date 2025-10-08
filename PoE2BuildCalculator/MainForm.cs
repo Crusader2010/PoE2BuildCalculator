@@ -369,6 +369,9 @@ namespace PoE2BuildCalculator
                     }
                 }, _cts.Token);
 
+                double speed = result.ElapsedTime.TotalSeconds > 0
+                    ? result.ProcessedCombinations / result.ElapsedTime.TotalSeconds
+                    : 0;
 
                 var summary = new System.Text.StringBuilder();
                 summary.AppendLine("=== COMBINATION GENERATION COMPLETE ===");
@@ -378,7 +381,7 @@ namespace PoE2BuildCalculator
                 summary.AppendLine($"Valid Combinations: {result.ValidCombinations:N0}");
                 summary.AppendLine($"Rejection Rate: {(1 - (double)result.ValidCombinations / result.ProcessedCombinations) * 100:F2}%");
                 summary.AppendLine($"Elapsed Time: {result.ElapsedTime:hh\\:mm\\:ss\\.fff}");
-                summary.AppendLine($"Speed: {result.ProcessedCombinations / result.ElapsedTime.TotalSeconds:N0} combinations/second");
+                summary.AppendLine($"Speed: {speed:N0} combinations/second");
 
                 if (result.ValidCombinations > 1000000)
                 {
