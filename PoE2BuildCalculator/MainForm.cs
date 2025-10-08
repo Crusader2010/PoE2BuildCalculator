@@ -281,7 +281,7 @@ namespace PoE2BuildCalculator
             if (totalCount > 1000000000)
             {
                 countMessage += $"\n\nThis is approximately 10^{Math.Floor(BigInteger.Log10(totalCount))} combinations.";
-                countMessage += "\n\nThis will take a VERY long time. Consider using the Benchmark feature first.";
+                countMessage += "\n\nConsider using the Benchmark feature first to estimate how much time this will take.";
                 countMessage += "\n\nDo you want to proceed?";
 
                 var result = MessageBox.Show(countMessage, "Large Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
@@ -294,7 +294,9 @@ namespace PoE2BuildCalculator
             }
             else if (totalCount > 10000000)
             {
-                countMessage += "\n\nThis may take several minutes. Do you want to proceed?";
+                countMessage += "\n\nThis may take several minutes.";
+                countMessage += "\n\nConsider using the Benchmark feature first to estimate how much time this will take.";
+                countMessage += "\n\nDo you want to proceed?";
                 var result = MessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
 
                 if (result != DialogResult.Yes)
@@ -507,12 +509,16 @@ namespace PoE2BuildCalculator
             try
             {
                 PanelButtons.Enabled = false;
+                ExecutionEstimate estimate = null;
 
-                var estimate = CombinationGenerator.EstimateExecutionTime(
-                    itemsWithoutRingsInput,
-                    rings,
-                    _itemValidatorFunction,
-                    sampleSize: 1000000);
+                for (int i = 0; i < 50; i++) // this is required because the benchmark gets more accurate with subsequent runs
+                {
+                    estimate = CombinationGenerator.EstimateExecutionTime(
+                        itemsWithoutRingsInput,
+                        rings,
+                        _itemValidatorFunction,
+                        sampleSize: 1000000);
+                }
 
                 string summary = estimate.GetFormattedSummary();
                 TextboxDisplay.Text = summary;
