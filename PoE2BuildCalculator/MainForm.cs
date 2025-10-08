@@ -338,13 +338,10 @@ namespace PoE2BuildCalculator
                                      $"Valid: {p.ValidCombinations:N0} | " +
                                      $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
 
-                if (p.ProcessedCombinations % 50000 == 0)
-                {
-                    TextboxDisplay.Text = $"Progress: {p.PercentComplete:F2}%\r\n" +
-                                         $"Processed: {p.ProcessedCombinations:N0}\r\n" +
-                                         $"Valid: {p.ValidCombinations:N0}\r\n" +
-                                         $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
-                }
+                TextboxDisplay.Text = $"Progress: {p.PercentComplete:F2}%\r\n" +
+                                     $"Processed: {p.ProcessedCombinations:N0}\r\n" +
+                                     $"Valid: {p.ValidCombinations:N0}\r\n" +
+                                     $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
             });
 
             try

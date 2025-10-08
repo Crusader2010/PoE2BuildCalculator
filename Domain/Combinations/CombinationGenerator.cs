@@ -6,17 +6,12 @@ namespace Domain.Combinations
 {
     public static class CombinationGenerator
     {
-        // Thread-safe cache for total combinations
         private static readonly ConcurrentDictionary<int, BigInteger> _totalCombinationsCache = new();
 
-        /// <summary>
-        /// Computes total combinations with caching
-        /// </summary>
         public static BigInteger ComputeTotalCombinations<T>(
             List<List<T>> listOfItemClassesWithoutRings,
             List<T> listOfRings)
         {
-            // Create cache key based on list sizes
             int cacheKey = GetCacheKey(listOfItemClassesWithoutRings, listOfRings);
 
             if (_totalCombinationsCache.TryGetValue(cacheKey, out BigInteger cached))
@@ -67,7 +62,7 @@ namespace Domain.Combinations
         }
 
         /// <summary>
-        /// MAIN GENERATION METHOD - FIXED for stability
+        /// MAIN GENERATION METHOD - Optimized with batching
         /// </summary>
         public static CombinationResult<T> GenerateCombinationsParallel<T>(
             List<List<T>> listOfItemClassesWithoutRings,
@@ -94,13 +89,13 @@ namespace Domain.Combinations
             }
 
             long processedCount = 0;
-            long validCombinationCount = 0; // Global counter
-            var finalResultCollection = new ConcurrentBag<List<T>>(); // Thread-safe collection
+            long validCombinationCount = 0;
+            var finalResultCollection = new ConcurrentBag<List<T>>();
             bool cancelled = false;
 
             int ringCount = listOfRings?.Count ?? 0;
 
-            // Progress reporting throttle
+            // Progress throttling
             long lastReportedCount = 0;
             var progressLock = new object();
 
@@ -108,6 +103,7 @@ namespace Domain.Combinations
             {
                 if (ringCount >= 2)
                 {
+                    // Parallelize over ring pairs
                     var ringPairsList = GetUniquePairs(listOfRings).ToList();
 
                     Parallel.ForEach(
@@ -117,7 +113,7 @@ namespace Domain.Combinations
                             CancellationToken = cancellationToken,
                             MaxDegreeOfParallelism = Environment.ProcessorCount
                         },
-                        (pair) => // No TLS - use ConcurrentBag directly
+                        (pair) =>
                         {
                             if (cancellationToken.IsCancellationRequested)
                             {
@@ -141,7 +137,6 @@ namespace Domain.Combinations
 
                                 if (isValid)
                                 {
-                                    // Only store if under limit
                                     if (Interlocked.Read(ref validCombinationCount) < maxValidToStore)
                                     {
                                         finalResultCollection.Add(fullCombination);
@@ -151,7 +146,7 @@ namespace Domain.Combinations
 
                                 long currentProcessed = Interlocked.Increment(ref processedCount);
 
-                                // Throttled progress reporting
+                                // Report every 100K for performance
                                 if (progress != null && currentProcessed - lastReportedCount >= 100000)
                                 {
                                     lock (progressLock)
@@ -169,6 +164,7 @@ namespace Domain.Combinations
                 }
                 else
                 {
+                    // Build all lists (including single ring if exists)
                     var allLists = new List<List<T>>(filteredLists);
                     if (ringCount == 1)
                     {
@@ -180,66 +176,41 @@ namespace Domain.Combinations
                         throw new InvalidOperationException("No item lists to process.");
                     }
 
+                    // CRITICAL: Sort lists by size descending for better parallelization
+                    allLists = [.. allLists.OrderByDescending(l => l.Count)];
+
                     // Find LARGEST list for parallelization
-                    int largestListIndex = 0;
-                    int maxSize = allLists[0].Count;
-
-                    for (int i = 1; i < allLists.Count; i++)
-                    {
-                        if (allLists[i].Count > maxSize)
-                        {
-                            maxSize = allLists[i].Count;
-                            largestListIndex = i;
-                        }
-                    }
-
+                    int largestListIndex = 0; // Already sorted, so first is largest
                     var parallelizationSource = allLists[largestListIndex];
-                    var remainingLists = new List<List<T>>();
+                    var remainingLists = allLists.Skip(1).ToList();
 
-                    for (int i = 0; i < allLists.Count; i++)
+                    // Handle single list case
+                    if (allLists.Count == 1)
                     {
-                        if (i != largestListIndex)
-                        {
-                            remainingLists.Add(allLists[i]);
-                        }
-                    }
-
-                    Parallel.ForEach(
-                        parallelizationSource,
-                        new ParallelOptions
-                        {
-                            CancellationToken = cancellationToken,
-                            MaxDegreeOfParallelism = Environment.ProcessorCount
-                        },
-                        (item) =>
-                        {
-                            if (cancellationToken.IsCancellationRequested)
+                        // Single list - still parallelize but just yield items
+                        Parallel.ForEach(
+                            parallelizationSource,
+                            new ParallelOptions
                             {
-                                cancelled = true;
-                                return;
-                            }
-
-                            var prefix = new List<T> { item };
-
-                            foreach (var combination in GenerateIterativeCombinations(remainingLists))
+                                CancellationToken = cancellationToken,
+                                MaxDegreeOfParallelism = Environment.ProcessorCount
+                            },
+                            (item) =>
                             {
-                                if (cancelled || cancellationToken.IsCancellationRequested)
+                                if (cancellationToken.IsCancellationRequested)
                                 {
                                     cancelled = true;
                                     return;
                                 }
 
-                                var fullCombination = new List<T>(prefix.Count + combination.Count);
-                                fullCombination.AddRange(prefix);
-                                fullCombination.AddRange(combination);
-
-                                bool isValid = validator(fullCombination);
+                                var singleItemList = new List<T> { item };
+                                bool isValid = validator(singleItemList);
 
                                 if (isValid)
                                 {
                                     if (Interlocked.Read(ref validCombinationCount) < maxValidToStore)
                                     {
-                                        finalResultCollection.Add(fullCombination);
+                                        finalResultCollection.Add(singleItemList);
                                     }
                                     Interlocked.Increment(ref validCombinationCount);
                                 }
@@ -258,8 +229,68 @@ namespace Domain.Combinations
                                         }
                                     }
                                 }
-                            }
-                        });
+                            });
+                    }
+                    else
+                    {
+                        // Multiple lists - normal processing
+                        Parallel.ForEach(
+                            parallelizationSource,
+                            new ParallelOptions
+                            {
+                                CancellationToken = cancellationToken,
+                                MaxDegreeOfParallelism = Environment.ProcessorCount
+                            },
+                            (item) =>
+                            {
+                                if (cancellationToken.IsCancellationRequested)
+                                {
+                                    cancelled = true;
+                                    return;
+                                }
+
+                                var prefix = new List<T> { item };
+
+                                foreach (var combination in GenerateIterativeCombinations(remainingLists))
+                                {
+                                    if (cancelled || cancellationToken.IsCancellationRequested)
+                                    {
+                                        cancelled = true;
+                                        return;
+                                    }
+
+                                    var fullCombination = new List<T>(prefix.Count + combination.Count);
+                                    fullCombination.AddRange(prefix);
+                                    fullCombination.AddRange(combination);
+
+                                    bool isValid = validator(fullCombination);
+
+                                    if (isValid)
+                                    {
+                                        if (Interlocked.Read(ref validCombinationCount) < maxValidToStore)
+                                        {
+                                            finalResultCollection.Add(fullCombination);
+                                        }
+                                        Interlocked.Increment(ref validCombinationCount);
+                                    }
+
+                                    long currentProcessed = Interlocked.Increment(ref processedCount);
+
+                                    if (progress != null && currentProcessed - lastReportedCount >= 100000)
+                                    {
+                                        lock (progressLock)
+                                        {
+                                            if (currentProcessed - lastReportedCount >= 100000)
+                                            {
+                                                lastReportedCount = currentProcessed;
+                                                ReportProgress(progress, currentProcessed,
+                                                    validCombinationCount, totalCombinations, sw.Elapsed);
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                    }
                 }
             }
             catch (OperationCanceledException)
@@ -269,7 +300,6 @@ namespace Domain.Combinations
 
             sw.Stop();
 
-            // Final progress
             if (progress != null)
             {
                 ReportProgress(progress, processedCount, validCombinationCount,
@@ -322,13 +352,14 @@ namespace Domain.Combinations
         }
 
         /// <summary>
-        /// BENCHMARK - FIXED to not freeze computer
+        /// BENCHMARK - DETERMINISTIC and mirrors main method exactly
+        /// Samples FIRST N combinations using SAME strategy as main method
         /// </summary>
         public static ExecutionEstimate EstimateExecutionTime<T>(
             List<List<T>> listOfItemClassesWithoutRings,
             List<T> listOfRings,
             Func<List<T>, bool> validator,
-            int sampleSize = 10000)
+            int sampleSize = 50000)
         {
             var filteredLists = listOfItemClassesWithoutRings
                 .Where(list => list != null && list.Count > 0)
@@ -347,95 +378,171 @@ namespace Domain.Combinations
 
             int ringCount = listOfRings?.Count ?? 0;
 
-            // CRITICAL FIX: Cap sample size to prevent memory issues
+            // Cap sample size
             int safeSampleSize = Math.Min(sampleSize, 100000);
 
-            // Measure actual single-threaded performance
-            var sw = Stopwatch.StartNew();
-            long processedInSample = 0;
-            int validCount = 0;
+            // Determine strategy EXACTLY as main method does
+            List<List<T>> allListsForBenchmark;
+            List<T> parallelizationSource;
+            List<List<T>> remainingLists;
+            bool useRingPairs;
+
+            if (ringCount >= 2)
+            {
+                // Strategy A: Use ring pairs (same as main method)
+                useRingPairs = true;
+                parallelizationSource = GetUniquePairs(listOfRings).Take(Math.Max(1, safeSampleSize / 1000)).SelectMany(pair => pair).Distinct().ToList();
+
+                // For deterministic sampling, we'll iterate over ring pairs
+                // But we need to prepare data structures
+                allListsForBenchmark = null;
+                remainingLists = filteredLists;
+            }
+            else
+            {
+                // Strategy B: Use largest list (same as main method)
+                useRingPairs = false;
+
+                allListsForBenchmark = new List<List<T>>(filteredLists);
+                if (ringCount == 1)
+                {
+                    allListsForBenchmark.Add(listOfRings);
+                }
+
+                if (allListsForBenchmark.Count == 0)
+                {
+                    return new ExecutionEstimate
+                    {
+                        TotalCombinations = totalCombinations,
+                        ErrorMessage = "No lists to process."
+                    };
+                }
+
+                // CRITICAL: Sort descending (SAME as main method)
+                allListsForBenchmark = allListsForBenchmark.OrderByDescending(l => l.Count).ToList();
+
+                parallelizationSource = allListsForBenchmark[0];
+                remainingLists = allListsForBenchmark.Skip(1).ToList();
+            }
+
+            // Calculate combinations per parallel item to determine sample count
+            BigInteger combinationsPerItem;
+            if (useRingPairs)
+            {
+                // Each ring pair generates: product of all filtered lists
+                combinationsPerItem = 1;
+                foreach (var list in filteredLists)
+                {
+                    combinationsPerItem *= list.Count;
+                }
+            }
+            else
+            {
+                // Each item from largest list generates: product of remaining lists
+                combinationsPerItem = 1;
+                foreach (var list in remainingLists)
+                {
+                    combinationsPerItem *= list.Count;
+                }
+
+                // Handle single list case
+                if (remainingLists.Count == 0)
+                {
+                    combinationsPerItem = 1;
+                }
+            }
+
+            // Determine how many parallel items to sample
+            int itemsToSample;
+            if (combinationsPerItem == 0)
+            {
+                itemsToSample = 1;
+            }
+            else if (combinationsPerItem >= safeSampleSize)
+            {
+                // One item produces enough combinations
+                itemsToSample = 1;
+            }
+            else
+            {
+                // Need multiple items
+                itemsToSample = (int)Math.Min(
+                    (long)Math.Ceiling((double)safeSampleSize / (double)combinationsPerItem),
+                    useRingPairs ? GetUniquePairs(listOfRings).Count() : parallelizationSource.Count
+                );
+            }
+
+            itemsToSample = Math.Max(1, Math.Min(itemsToSample, Environment.ProcessorCount * 2));
+
+            // STEP 1: Single-threaded benchmark (deterministic)
+            long singleThreadProcessed = 0;
+            var swSingle = Stopwatch.StartNew();
 
             try
             {
-                if (ringCount >= 2)
+                if (useRingPairs)
                 {
+                    // Process first N ring pairs
+                    int pairCount = 0;
                     foreach (var pair in GetUniquePairs(listOfRings))
                     {
-                        if (processedInSample >= safeSampleSize) break;
+                        if (pairCount >= itemsToSample) break;
+                        pairCount++;
 
-                        foreach (var combination in GenerateIterativeCombinations(filteredLists))
+                        foreach (var combination in GenerateIterativeCombinations(remainingLists))
                         {
-                            // CRITICAL: Check INSIDE inner loop
-                            if (processedInSample >= safeSampleSize) break;
+                            if (singleThreadProcessed >= safeSampleSize) break;
 
                             var fullCombination = new List<T>(pair.Count + combination.Count);
                             fullCombination.AddRange(pair);
                             fullCombination.AddRange(combination);
 
-                            try
-                            {
-                                bool isValid = validator?.Invoke(fullCombination) ?? true;
-                                if (isValid) validCount++;
-                            }
+                            try { validator?.Invoke(fullCombination); }
                             catch { }
 
-                            processedInSample++;
+                            singleThreadProcessed++;
                         }
 
-                        if (processedInSample >= safeSampleSize) break;
+                        if (singleThreadProcessed >= safeSampleSize) break;
                     }
                 }
                 else
                 {
-                    var allLists = new List<List<T>>(filteredLists);
-                    if (ringCount == 1)
+                    // Process first N items from largest list
+                    var itemsToProcess = parallelizationSource.Take(itemsToSample).ToList();
+
+                    if (remainingLists.Count == 0)
                     {
-                        allLists.Add(listOfRings);
+                        // Single list case
+                        foreach (var item in itemsToProcess)
+                        {
+                            var singleList = new List<T> { item };
+                            try { validator?.Invoke(singleList); }
+                            catch { }
+                            singleThreadProcessed++;
+                        }
                     }
-
-                    if (allLists.Count > 0)
+                    else
                     {
-                        // Find largest list
-                        int largestIdx = 0;
-                        int maxSz = allLists[0].Count;
-                        for (int i = 1; i < allLists.Count; i++)
+                        // Multiple lists
+                        foreach (var item in itemsToProcess)
                         {
-                            if (allLists[i].Count > maxSz)
-                            {
-                                maxSz = allLists[i].Count;
-                                largestIdx = i;
-                            }
-                        }
-
-                        var source = allLists[largestIdx];
-                        var remaining = new List<List<T>>();
-                        for (int i = 0; i < allLists.Count; i++)
-                        {
-                            if (i != largestIdx) remaining.Add(allLists[i]);
-                        }
-
-                        foreach (var item in source)
-                        {
-                            if (processedInSample >= safeSampleSize) break;
+                            if (singleThreadProcessed >= safeSampleSize) break;
 
                             var prefix = new List<T> { item };
 
-                            foreach (var combination in GenerateIterativeCombinations(remaining))
+                            foreach (var combination in GenerateIterativeCombinations(remainingLists))
                             {
-                                if (processedInSample >= safeSampleSize) break;
+                                if (singleThreadProcessed >= safeSampleSize) break;
 
                                 var fullCombination = new List<T>(prefix.Count + combination.Count);
                                 fullCombination.AddRange(prefix);
                                 fullCombination.AddRange(combination);
 
-                                try
-                                {
-                                    bool isValid = validator?.Invoke(fullCombination) ?? true;
-                                    if (isValid) validCount++;
-                                }
+                                try { validator?.Invoke(fullCombination); }
                                 catch { }
 
-                                processedInSample++;
+                                singleThreadProcessed++;
                             }
                         }
                     }
@@ -443,47 +550,161 @@ namespace Domain.Combinations
             }
             catch (Exception ex)
             {
-                sw.Stop();
+                swSingle.Stop();
                 return new ExecutionEstimate
                 {
                     TotalCombinations = totalCombinations,
-                    ErrorMessage = $"Error during sampling: {ex.Message}"
+                    ErrorMessage = $"Single-thread benchmark error: {ex.Message}"
                 };
             }
 
-            sw.Stop();
+            swSingle.Stop();
 
-            if (processedInSample == 0)
+            if (singleThreadProcessed == 0)
             {
                 return new ExecutionEstimate
                 {
                     TotalCombinations = totalCombinations,
-                    ErrorMessage = "Could not collect any samples."
+                    ErrorMessage = "No samples collected."
                 };
             }
 
-            // Calculate with realistic parallel efficiency
-            double singleThreadSpeed = processedInSample / Math.Max(sw.Elapsed.TotalSeconds, 0.001);
+            double singleThreadSpeed = singleThreadProcessed / Math.Max(swSingle.Elapsed.TotalSeconds, 0.001);
 
-            // Conservative parallel speedup (accounts for overhead, contention, GC)
-            double parallelEfficiency = 0.70; // 70% efficiency
-            double estimatedParallelSpeed = singleThreadSpeed * Environment.ProcessorCount * parallelEfficiency;
+            // STEP 2: Multi-threaded benchmark (SAME data, deterministic)
+            long multiThreadProcessed = 0;
+            var swMulti = Stopwatch.StartNew();
 
-            double estimatedSeconds = GetBigNumberRatio(totalCombinations,
-                new BigInteger((long)estimatedParallelSpeed));
+            try
+            {
+                if (useRingPairs)
+                {
+                    // Process SAME ring pairs in parallel
+                    var pairsToProcess = GetUniquePairs(listOfRings).Take(itemsToSample).ToList();
 
-            TimeSpan estimatedDuration = estimatedSeconds > TimeSpan.MaxValue.TotalSeconds
+                    Parallel.ForEach(
+                        pairsToProcess,
+                        new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                        (pair) =>
+                        {
+                            long localCount = 0;
+                            foreach (var combination in GenerateIterativeCombinations(remainingLists))
+                            {
+                                if (Interlocked.Read(ref multiThreadProcessed) >= safeSampleSize) break;
+
+                                var fullCombination = new List<T>(pair.Count + combination.Count);
+                                fullCombination.AddRange(pair);
+                                fullCombination.AddRange(combination);
+
+                                try { validator?.Invoke(fullCombination); }
+                                catch { }
+
+                                localCount++;
+                                Interlocked.Increment(ref multiThreadProcessed);
+                            }
+                        });
+                }
+                else
+                {
+                    // Process SAME items in parallel
+                    var itemsToProcess = parallelizationSource.Take(itemsToSample).ToList();
+
+                    if (remainingLists.Count == 0)
+                    {
+                        // Single list case
+                        Parallel.ForEach(
+                            itemsToProcess,
+                            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                            (item) =>
+                            {
+                                var singleList = new List<T> { item };
+                                try { validator?.Invoke(singleList); }
+                                catch { }
+                                Interlocked.Increment(ref multiThreadProcessed);
+                            });
+                    }
+                    else
+                    {
+                        // Multiple lists
+                        Parallel.ForEach(
+                            itemsToProcess,
+                            new ParallelOptions { MaxDegreeOfParallelism = Environment.ProcessorCount },
+                            (item) =>
+                            {
+                                long localCount = 0;
+                                var prefix = new List<T> { item };
+
+                                foreach (var combination in GenerateIterativeCombinations(remainingLists))
+                                {
+                                    if (Interlocked.Read(ref multiThreadProcessed) >= safeSampleSize) break;
+
+                                    var fullCombination = new List<T>(prefix.Count + combination.Count);
+                                    fullCombination.AddRange(prefix);
+                                    fullCombination.AddRange(combination);
+
+                                    try { validator?.Invoke(fullCombination); }
+                                    catch { }
+
+                                    localCount++;
+                                    Interlocked.Increment(ref multiThreadProcessed);
+                                }
+                            });
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                swMulti.Stop();
+                return new ExecutionEstimate
+                {
+                    TotalCombinations = totalCombinations,
+                    ErrorMessage = $"Multi-thread benchmark error: {ex.Message}"
+                };
+            }
+
+            swMulti.Stop();
+
+            if (multiThreadProcessed == 0)
+            {
+                // Fallback to single-thread
+                double estimatedSeconds = GetBigNumberRatio(totalCombinations,
+                    new BigInteger((long)singleThreadSpeed));
+
+                return new ExecutionEstimate
+                {
+                    TotalCombinations = totalCombinations,
+                    EstimatedDuration = TimeSpan.FromSeconds(Math.Min(estimatedSeconds, TimeSpan.MaxValue.TotalSeconds)),
+                    CombinationsPerSecond = singleThreadSpeed,
+                    SampleSize = singleThreadProcessed,
+                    MeasurementDuration = swSingle.Elapsed,
+                    ProcessorCount = Environment.ProcessorCount,
+                    ParallelEfficiency = 0,
+                    ErrorMessage = "Using single-thread fallback"
+                };
+            }
+
+            // Calculate EXACT parallel efficiency
+            double multiThreadSpeed = multiThreadProcessed / Math.Max(swMulti.Elapsed.TotalSeconds, 0.001);
+            double actualSpeedup = multiThreadSpeed / singleThreadSpeed;
+            double parallelEfficiency = actualSpeedup / Environment.ProcessorCount;
+
+            // Use measured multi-thread speed for final estimate
+            double finalEstimatedSeconds = GetBigNumberRatio(totalCombinations,
+                new BigInteger((long)multiThreadSpeed));
+
+            TimeSpan estimatedDuration = finalEstimatedSeconds > TimeSpan.MaxValue.TotalSeconds
                 ? TimeSpan.MaxValue
-                : TimeSpan.FromSeconds(estimatedSeconds);
+                : TimeSpan.FromSeconds(finalEstimatedSeconds);
 
             return new ExecutionEstimate
             {
                 TotalCombinations = totalCombinations,
                 EstimatedDuration = estimatedDuration,
-                CombinationsPerSecond = estimatedParallelSpeed,
-                SampleSize = processedInSample,
-                MeasurementDuration = sw.Elapsed,
+                CombinationsPerSecond = multiThreadSpeed,
+                SampleSize = singleThreadProcessed + multiThreadProcessed,
+                MeasurementDuration = swSingle.Elapsed + swMulti.Elapsed,
                 ProcessorCount = Environment.ProcessorCount,
+                ParallelEfficiency = parallelEfficiency,
                 ErrorMessage = null
             };
         }
@@ -592,6 +813,7 @@ namespace Domain.Combinations
         public long SampleSize { get; set; }
         public TimeSpan MeasurementDuration { get; set; }
         public int ProcessorCount { get; set; }
+        public double ParallelEfficiency { get; set; }
         public string ErrorMessage { get; set; }
 
         public string GetFormattedSummary()
@@ -606,18 +828,22 @@ namespace Domain.Combinations
             sb.AppendLine();
             sb.AppendLine($"Total Combinations: {TotalCombinations:N0}");
             sb.AppendLine($"CPU Cores: {ProcessorCount}");
-            sb.AppendLine($"Parallel Efficiency: 70%");
             sb.AppendLine();
+            sb.AppendLine("--- Benchmark Results (Deterministic Sample) ---");
             sb.AppendLine($"Sample Size: {SampleSize:N0} combinations");
-            sb.AppendLine($"Sample Duration: {MeasurementDuration.TotalSeconds:F3} seconds");
-            sb.AppendLine($"Estimated Speed: {CombinationsPerSecond:N0} comb/sec");
+            sb.AppendLine($"Measurement Time: {MeasurementDuration.TotalSeconds:F3} seconds");
+            sb.AppendLine($"Measured Speed: {CombinationsPerSecond:N0} comb/sec (parallel)");
             sb.AppendLine();
-            sb.AppendLine($"ESTIMATED TIME: {FormatTimeSpan(EstimatedDuration)}");
+            sb.AppendLine($"Parallel Efficiency: {ParallelEfficiency * 100:F1}%");
+            sb.AppendLine($"Actual Speedup: {ParallelEfficiency * ProcessorCount:F2}x over single-thread");
+            sb.AppendLine();
+            sb.AppendLine($"ESTIMATED TOTAL TIME: {FormatTimeSpan(EstimatedDuration)}");
             sb.AppendLine();
 
             if (EstimatedDuration.TotalHours > 24)
             {
                 sb.AppendLine($"⚠ WARNING: ~{EstimatedDuration.TotalDays:F1} DAYS!");
+                sb.AppendLine("Consider stricter validation rules.");
             }
             else if (EstimatedDuration.TotalHours > 1)
             {
@@ -634,7 +860,6 @@ namespace Domain.Combinations
 
             return sb.ToString();
         }
-
         private static string FormatTimeSpan(TimeSpan ts)
         {
             if (ts == TimeSpan.MaxValue)
