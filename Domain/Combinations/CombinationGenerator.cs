@@ -1,4 +1,5 @@
-﻿using System.Collections.Concurrent;
+﻿using Domain.Helpers;
+using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Numerics;
 
@@ -29,7 +30,7 @@ namespace Domain.Combinations
                 otherCombinations *= list.Count;
             }
 
-            int ringCount = listOfRings?.Count ?? 0;
+            long ringCount = listOfRings?.Count ?? 0;
             BigInteger result;
 
             if (ringCount == 0)
@@ -69,7 +70,7 @@ namespace Domain.Combinations
             List<T> listOfRings,
             Func<List<T>, bool> validator,
             IProgress<CombinationProgress> progress = null,
-            int maxValidToStore = 1000000,
+            long maxValidToStore = 10000000,
             CancellationToken cancellationToken = default)
         {
             var sw = Stopwatch.StartNew();
@@ -93,7 +94,7 @@ namespace Domain.Combinations
             var finalResultCollection = new ConcurrentBag<List<T>>();
             bool cancelled = false;
 
-            int ringCount = listOfRings?.Count ?? 0;
+            long ringCount = listOfRings?.Count ?? 0;
 
             // Progress throttling
             long lastReportedCount = 0;
@@ -315,9 +316,9 @@ namespace Domain.Combinations
             {
                 TotalCombinations = totalCombinations,
                 ProcessedCombinations = processedCount,
-                ValidCombinations = (int)validCombinationCount,
+                ValidCombinations = validCombinationCount,
                 ElapsedTime = sw.Elapsed,
-                ValidCombinationsCollection = [.. finalResultCollection.Take(maxValidToStore)],
+                ValidCombinationsCollection = [.. finalResultCollection.TakeLong(maxValidToStore)],
                 ErrorMessage = null
             };
         }
@@ -358,7 +359,7 @@ namespace Domain.Combinations
             List<List<T>> listOfItemClassesWithoutRings,
             List<T> listOfRings,
             Func<List<T>, bool> validator,
-            int sampleSize = 50000)
+            long safeSampleSize)
         {
             var filteredLists = listOfItemClassesWithoutRings
                 .Where(list => list != null && list.Count > 0)
@@ -375,8 +376,7 @@ namespace Domain.Combinations
                 };
             }
 
-            int ringCount = listOfRings?.Count ?? 0;
-            int safeSampleSize = Math.Min(sampleSize, 100000);
+            long ringCount = listOfRings?.Count ?? 0;
 
             // Determine strategy EXACTLY as main method
             bool useRingPairs = ringCount >= 2;
@@ -392,7 +392,7 @@ namespace Domain.Combinations
             }
             else
             {
-                workingLists = new List<List<T>>(filteredLists);
+                workingLists = [.. filteredLists];
                 if (ringCount == 1) workingLists.Add(listOfRings);
 
                 if (workingLists.Count == 0)
@@ -400,9 +400,9 @@ namespace Domain.Combinations
                     return new ExecutionEstimate { TotalCombinations = totalCombinations, ErrorMessage = "No lists." };
                 }
 
-                workingLists = workingLists.OrderByDescending(l => l.Count).ToList();
+                workingLists = [.. workingLists.OrderByDescending(l => l.Count)];
                 parallelSource = workingLists[0];
-                remainingLists = workingLists.Skip(1).ToList();
+                remainingLists = [.. workingLists.Skip(1)];
             }
 
             // Determine sample count
@@ -417,9 +417,9 @@ namespace Domain.Combinations
                 if (remainingLists.Count == 0) combsPerItem = 1;
             }
 
-            int itemsToSample = combsPerItem == 0 ? 1 :
-                (int)Math.Min(
-                    Math.Max(1, (long)Math.Ceiling((double)safeSampleSize / (double)combsPerItem)),
+            long itemsToSample = combsPerItem == 0 ? 1 :
+                (long)Math.Min(
+                    Math.Max(1, (long)Math.Ceiling(safeSampleSize / (double)combsPerItem)),
                     useRingPairs ? 100 : (parallelSource?.Count ?? 1)
                 );
 
@@ -429,11 +429,11 @@ namespace Domain.Combinations
             for (int warmupRound = 0; warmupRound < 3; warmupRound++)
             {
                 long warmupCount = 0;
-                int warmupItems = Math.Min(itemsToSample / 2, 2);
+                long warmupItems = Math.Min(itemsToSample / 2, 2);
 
                 if (useRingPairs)
                 {
-                    foreach (var pair in GetUniquePairs(listOfRings).Take(warmupItems))
+                    foreach (var pair in GetUniquePairs(listOfRings).TakeLong(warmupItems))
                     {
                         foreach (var combination in GenerateIterativeCombinations(remainingLists).Take(100))
                         {
@@ -447,8 +447,7 @@ namespace Domain.Combinations
                 }
                 else
                 {
-                    var warmupSourceItems = parallelSource.Take(warmupItems).ToList();
-
+                    var warmupSourceItems = parallelSource.TakeLong(warmupItems).ToList();
                     if (remainingLists.Count == 0)
                     {
                         foreach (var item in warmupSourceItems)
@@ -489,7 +488,7 @@ namespace Domain.Combinations
             {
                 if (useRingPairs)
                 {
-                    var pairsToProcess = GetUniquePairs(listOfRings).Take(itemsToSample).ToList();
+                    var pairsToProcess = GetUniquePairs(listOfRings).TakeLong(itemsToSample).ToList();
 
                     Parallel.ForEach(
                         pairsToProcess,
@@ -513,7 +512,7 @@ namespace Domain.Combinations
                 }
                 else
                 {
-                    var itemsToProcess = parallelSource.Take(itemsToSample).ToList();
+                    var itemsToProcess = parallelSource.TakeLong(itemsToSample).ToList();
 
                     if (remainingLists.Count == 0)
                     {
@@ -690,7 +689,7 @@ namespace Domain.Combinations
     {
         public BigInteger TotalCombinations { get; set; }
         public long ProcessedCombinations { get; set; }
-        public int ValidCombinations { get; set; }
+        public long ValidCombinations { get; set; }
         public TimeSpan ElapsedTime { get; set; }
         public List<List<T>> ValidCombinationsCollection { get; set; }
         public string ErrorMessage { get; set; }

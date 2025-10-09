@@ -1,8 +1,8 @@
 using Domain.Combinations;
+using Domain.Helpers;
 using Domain.Main;
 using Domain.Static;
 using System.Collections.Immutable;
-using System.Numerics;
 
 namespace PoE2BuildCalculator
 {
@@ -10,6 +10,8 @@ namespace PoE2BuildCalculator
     {
         // Field for thread synchronization
         private readonly object _validatorLock = new();
+        private readonly long _maxCombinationsToStore = 10000000;
+        private readonly long _safeBenchmarkSampleSize = 50000;
 
         // Class references
         private Manager.FileParser _fileParser { get; set; }
@@ -268,7 +270,6 @@ namespace PoE2BuildCalculator
 
             // Quick count first
             var totalCount = CombinationGenerator.ComputeTotalCombinations(itemsWithoutRingsInput, rings);
-
             if (totalCount == 0)
             {
                 MessageBox.Show("No combinations possible. All item class lists are empty.", "No Combinations", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -276,34 +277,16 @@ namespace PoE2BuildCalculator
             }
 
             // Show count and ask for confirmation if large
-            string countMessage = $"Total combinations to process: {totalCount:N0}";
+            string countMessage = $"Total combinations to process: {totalCount}";
+            countMessage += $"\n\nThis is approximately {CommonHelper.GetBigIntegerApproximation(totalCount)} combinations.";
+            countMessage += "\n\nConsider using the Benchmark feature first to estimate how much time this will take.";
+            countMessage += "\n\nDo you want to proceed?";
 
-            if (totalCount > 1000000000)
+            var dialog = MessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (dialog != DialogResult.Yes)
             {
-                countMessage += $"\n\nThis is approximately 10^{Math.Floor(BigInteger.Log10(totalCount))} combinations.";
-                countMessage += "\n\nConsider using the Benchmark feature first to estimate how much time this will take.";
-                countMessage += "\n\nDo you want to proceed?";
-
-                var result = MessageBox.Show(countMessage, "Large Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-
-                if (result != DialogResult.Yes)
-                {
-                    StatusBarLabel.Text = "Operation cancelled by user.";
-                    return;
-                }
-            }
-            else if (totalCount > 10000000)
-            {
-                countMessage += "\n\nThis may take several minutes.";
-                countMessage += "\n\nConsider using the Benchmark feature first to estimate how much time this will take.";
-                countMessage += "\n\nDo you want to proceed?";
-                var result = MessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Question);
-
-                if (result != DialogResult.Yes)
-                {
-                    StatusBarLabel.Text = "Operation cancelled by user.";
-                    return;
-                }
+                StatusBarLabel.Text = "Operation cancelled by user.";
+                return;
             }
 
             // Disable button during processing
@@ -336,13 +319,13 @@ namespace PoE2BuildCalculator
                 }
 
                 StatusBarLabel.Text = $"Processing: {p.PercentComplete:F2}% | " +
-                                     $"Processed: {p.ProcessedCombinations:N0} | " +
-                                     $"Valid: {p.ValidCombinations:N0} | " +
+                                     $"Processed: {p.ProcessedCombinations} | " +
+                                     $"Valid: {p.ValidCombinations} | " +
                                      $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
 
                 TextboxDisplay.Text = $"Progress: {p.PercentComplete:F2}%\r\n" +
-                                     $"Processed: {p.ProcessedCombinations:N0}\r\n" +
-                                     $"Valid: {p.ValidCombinations:N0}\r\n" +
+                                     $"Processed: {p.ProcessedCombinations}\r\n" +
+                                     $"Valid: {p.ValidCombinations}\r\n" +
                                      $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
             });
 
@@ -357,7 +340,7 @@ namespace PoE2BuildCalculator
                                         rings,
                                         _itemValidatorFunction,
                                         progress,
-                                        maxValidToStore: 1000000,
+                                        maxValidToStore: _maxCombinationsToStore,
                                         _cts.Token);
 
                         return inner;
@@ -375,21 +358,21 @@ namespace PoE2BuildCalculator
                 var summary = new System.Text.StringBuilder();
                 summary.AppendLine("=== COMBINATION GENERATION COMPLETE ===");
                 summary.AppendLine();
-                summary.AppendLine($"Total Combinations: {result.TotalCombinations:N0}");
-                summary.AppendLine($"Processed: {result.ProcessedCombinations:N0}");
-                summary.AppendLine($"Valid Combinations: {result.ValidCombinations:N0}");
+                summary.AppendLine($"Total Combinations: {result.TotalCombinations}");
+                summary.AppendLine($"Processed: {result.ProcessedCombinations}");
+                summary.AppendLine($"Valid Combinations: {result.ValidCombinations}");
                 summary.AppendLine($"Rejection Rate: {(1 - (double)result.ValidCombinations / result.ProcessedCombinations) * 100:F2}%");
                 summary.AppendLine($"Elapsed Time: {result.ElapsedTime:hh\\:mm\\:ss\\.fff}");
-                summary.AppendLine($"Speed: {speed:N0} combinations/second");
+                summary.AppendLine($"Speed: {speed:F2} combinations/second");
 
                 if (result.ValidCombinations > 1000000)
                 {
                     summary.AppendLine();
-                    summary.AppendLine($"NOTE: Only the first 1,000,000 valid combinations were stored.");
+                    summary.AppendLine($"NOTE: Only the first {_maxCombinationsToStore} valid combinations were stored.");
                 }
 
                 TextboxDisplay.Text = summary.ToString();
-                StatusBarLabel.Text = $"Complete! {result.ValidCombinations:N0} valid combinations found.";
+                StatusBarLabel.Text = $"Complete! {result.ValidCombinations} valid combinations found.";
 
                 MessageBox.Show(summary.ToString(), "Generation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
@@ -511,13 +494,13 @@ namespace PoE2BuildCalculator
                 PanelButtons.Enabled = false;
                 ExecutionEstimate estimate = null;
 
-                for (int i = 0; i < 50; i++) // this is required because the benchmark gets more accurate with subsequent runs
+                for (int i = 0; i < 100; i++) // this is required because the benchmark gets more accurate with subsequent runs. Correlate with _safeBenchmarkSampleSize value.
                 {
                     estimate = CombinationGenerator.EstimateExecutionTime(
                         itemsWithoutRingsInput,
                         rings,
                         _itemValidatorFunction,
-                        sampleSize: 1000000);
+                        safeSampleSize: _safeBenchmarkSampleSize);
                 }
 
                 string summary = estimate.GetFormattedSummary();
