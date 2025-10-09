@@ -1,4 +1,5 @@
 using Domain.Combinations;
+using Domain.Helpers;
 using Domain.Main;
 using Domain.Static;
 using System.Collections.Immutable;
@@ -9,6 +10,8 @@ namespace PoE2BuildCalculator
     {
         // Field for thread synchronization
         private readonly object _validatorLock = new();
+        private readonly long _maxCombinationsToStore = 10000000;
+        private readonly long _safeBenchmarkSampleSize = 50000;
 
         // Class references
         private Manager.FileParser _fileParser { get; set; }
@@ -17,7 +20,7 @@ namespace PoE2BuildCalculator
         internal Func<List<Item>, bool> _itemValidatorFunction { get; set; } = x => true;
         private ImmutableList<Item> _parsedItems { get; set; } = [];
 
-        private IEnumerable<List<Item>> _combinations { get; set; } = [];
+        private List<List<Item>> _combinations { get; set; } = [];
 
         // Progress UI
         private ToolStripProgressBar _statusProgressBar;
@@ -65,8 +68,7 @@ namespace PoE2BuildCalculator
 
             // Prevent reentrancy from the same button.
             var parseButton = sender as Control;
-            parseButton!.Enabled = false;
-            ButtonOpenItemListFile.Enabled = false;
+            PanelButtons!.Enabled = false;
             TextboxDisplay.Text = string.Empty;
 
             // Create a new CancellationTokenSource for this parse.
@@ -126,7 +128,7 @@ namespace PoE2BuildCalculator
                 }
 
                 parseButton.Enabled = true;
-                ButtonOpenItemListFile.Enabled = true;
+                PanelButtons.Enabled = true;
 
                 // Dispose and clear the CTS used for this parse.
                 try
@@ -151,7 +153,7 @@ namespace PoE2BuildCalculator
             try
             {
                 // Request cancellation.
-                _cts.Cancel(true);
+                _cts.Cancel();
             }
             catch
             {
@@ -229,7 +231,7 @@ namespace PoE2BuildCalculator
             display.Show(this);
         }
 
-        private void ButtonComputeCombinations_Click(object sender, EventArgs e)
+        private async void ButtonComputeCombinations_Click(object sender, EventArgs e)
         {
             if (_fileParser == null)
             {
@@ -244,14 +246,169 @@ namespace PoE2BuildCalculator
                 return;
             }
 
-            var itemsForClasses = _parsedItems.Where(x => Constants.ITEM_CLASSES.Contains(x.Class, StringComparer.OrdinalIgnoreCase)).GroupBy(x => x.Class).ToDictionary(x => x.Key, x => x.ToList());
-            itemsForClasses.Remove(Constants.ITEM_CLASS_RING, out var rings);
+            var itemsForClasses = _parsedItems
+                .Where(x => Constants.ITEM_CLASSES.Contains(x.Class, StringComparer.OrdinalIgnoreCase))
+                .GroupBy(x => x.Class)
+                .ToDictionary(x => x.Key, x => x.ToList());
 
-            var itemsWithoutRingsInput = new List<List<Item>>();
-            itemsWithoutRingsInput.AddRange(itemsForClasses.Values);
+            // Extract rings (may be null or empty)
+            itemsForClasses.TryGetValue(Constants.ITEM_CLASS_RING, out var rings);
+            itemsForClasses.Remove(Constants.ITEM_CLASS_RING);
 
-            _combinations = CombinationGenerator.GenerateCombinations(itemsWithoutRingsInput, rings, _itemValidatorFunction);
-            TextboxDisplay.Text = $"Total number of combinations: {_combinations.LongCount()}";
+            // Get other item lists (filter out empties handled in generator)
+            var itemsWithoutRingsInput = itemsForClasses.Values.ToList();
+
+            // Check if we have any items at all
+            bool hasItems = itemsWithoutRingsInput.Any(list => list.Count > 0);
+            bool hasRings = rings != null && rings.Count > 0;
+
+            if (!hasItems && !hasRings)
+            {
+                MessageBox.Show("No items found in any category. Cannot generate combinations.", "No Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Quick count first
+            var totalCount = CombinationGenerator.ComputeTotalCombinations(itemsWithoutRingsInput, rings);
+            if (totalCount == 0)
+            {
+                MessageBox.Show("No combinations possible. All item class lists are empty.", "No Combinations", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // Show count and ask for confirmation if large
+            string countMessage = $"Total combinations to process: {totalCount}";
+            countMessage += $"\n\nThis is approximately {CommonHelper.GetBigIntegerApproximation(totalCount)} combinations.";
+            countMessage += "\n\nConsider using the Benchmark feature first to estimate how much time this will take.";
+            countMessage += "\n\nDo you want to proceed?";
+
+            var dialog = MessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (dialog != DialogResult.Yes)
+            {
+                StatusBarLabel.Text = "Operation cancelled by user.";
+                return;
+            }
+
+            // Disable button during processing
+            PanelButtons.Enabled = false;
+            TextboxDisplay.Text = "Processing combinations...\r\n\r\n";
+
+            // Create cancellation token
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+
+            // Show progress bar
+            if (_statusProgressBar != null)
+            {
+                _statusProgressBar.Value = 0;
+                _statusProgressBar.Visible = true;
+            }
+
+            if (_cancelButton != null)
+            {
+                _cancelButton.Enabled = true;
+                _cancelButton.Visible = true;
+            }
+
+            // Progress reporter
+            var progress = new Progress<CombinationProgress>(p =>
+            {
+                if (_statusProgressBar != null && p?.PercentComplete <= 100)
+                {
+                    _statusProgressBar.Value = (int)p.PercentComplete;
+                }
+
+                StatusBarLabel.Text = $"Processing: {p.PercentComplete:F2}% | " +
+                                     $"Processed: {p.ProcessedCombinations} | " +
+                                     $"Valid: {p.ValidCombinations} | " +
+                                     $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
+
+                TextboxDisplay.Text = $"Progress: {p.PercentComplete:F2}%\r\n" +
+                                     $"Processed: {p.ProcessedCombinations}\r\n" +
+                                     $"Valid: {p.ValidCombinations}\r\n" +
+                                     $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
+            });
+
+            try
+            {
+                var result = await Task.Run(() =>
+                {
+                    try
+                    {
+                        var inner = CombinationGenerator.GenerateCombinationsParallel(
+                                        itemsWithoutRingsInput,
+                                        rings,
+                                        _itemValidatorFunction,
+                                        progress,
+                                        maxValidToStore: _maxCombinationsToStore,
+                                        _cts.Token);
+
+                        return inner;
+                    }
+                    catch (Exception ex) when (ex is not OperationCanceledException)
+                    {
+                        throw;
+                    }
+                }, _cts.Token);
+
+                double speed = result.ElapsedTime.TotalSeconds > 0
+                    ? result.ProcessedCombinations / result.ElapsedTime.TotalSeconds
+                    : 0;
+
+                var summary = new System.Text.StringBuilder();
+                summary.AppendLine("=== COMBINATION GENERATION COMPLETE ===");
+                summary.AppendLine();
+                summary.AppendLine($"Total Combinations: {result.TotalCombinations}");
+                summary.AppendLine($"Processed: {result.ProcessedCombinations}");
+                summary.AppendLine($"Valid Combinations: {result.ValidCombinations}");
+                summary.AppendLine($"Rejection Rate: {(1 - (double)result.ValidCombinations / result.ProcessedCombinations) * 100:F2}%");
+                summary.AppendLine($"Elapsed Time: {result.ElapsedTime:hh\\:mm\\:ss\\.fff}");
+                summary.AppendLine($"Speed: {speed:F2} combinations/second");
+
+                if (result.ValidCombinations > 1000000)
+                {
+                    summary.AppendLine();
+                    summary.AppendLine($"NOTE: Only the first {_maxCombinationsToStore} valid combinations were stored.");
+                }
+
+                TextboxDisplay.Text = summary.ToString();
+                StatusBarLabel.Text = $"Complete! {result.ValidCombinations} valid combinations found.";
+
+                MessageBox.Show(summary.ToString(), "Generation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                _combinations = result.ValidCombinationsCollection;
+            }
+            catch (OperationCanceledException)
+            {
+                TextboxDisplay.Text = "Operation cancelled by user.";
+                StatusBarLabel.Text = "Cancelled.";
+                MessageBox.Show("Combination generation was cancelled.", "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                TextboxDisplay.Text = $"Error: {ex.Message}";
+                StatusBarLabel.Text = $"Error during processing.";
+                MessageBox.Show($"An error occurred:\n\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                if (_statusProgressBar != null)
+                {
+                    _statusProgressBar.Visible = false;
+                    _statusProgressBar.Value = 0;
+                }
+
+                if (_cancelButton != null)
+                {
+                    _cancelButton.Enabled = false;
+                    _cancelButton.Visible = false;
+                }
+
+                PanelButtons.Enabled = true;
+
+                _cts?.Dispose();
+                _cts = null;
+            }
         }
 
         private void ButtonManageCustomValidator_Click(object sender, EventArgs e)
@@ -291,6 +448,77 @@ namespace PoE2BuildCalculator
                     _customValidator = null;
                 }
                 catch { }
+            }
+        }
+
+        private void ButtonBenchmark_Click(object sender, EventArgs e)
+        {
+            if (_fileParser == null)
+            {
+                MessageBox.Show("No parsed data available. Please load and parse a file first.", "No Data", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            _parsedItems = _fileParser.GetParsedItems();
+            if (_parsedItems.Count == 0)
+            {
+                MessageBox.Show("There are no valid items in the chosen file.", "No Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            var itemsForClasses = _parsedItems
+                .Where(x => Constants.ITEM_CLASSES.Contains(x.Class, StringComparer.OrdinalIgnoreCase))
+                .GroupBy(x => x.Class)
+                .ToDictionary(x => x.Key, x => x.ToList());
+
+            itemsForClasses.TryGetValue(Constants.ITEM_CLASS_RING, out var rings);
+            itemsForClasses.Remove(Constants.ITEM_CLASS_RING);
+
+            var itemsWithoutRingsInput = itemsForClasses.Values.ToList();
+
+            bool hasItems = itemsWithoutRingsInput.Any(list => list.Count > 0);
+            bool hasRings = rings != null && rings.Count > 0;
+
+            if (!hasItems && !hasRings)
+            {
+                MessageBox.Show("No items found in any category. Cannot benchmark.", "No Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            StatusBarLabel.Text = "Running benchmark...";
+            TextboxDisplay.Text = "Benchmarking...\r\nPlease wait, sampling combinations to estimate execution time...";
+            Application.DoEvents();
+
+            try
+            {
+                PanelButtons.Enabled = false;
+                ExecutionEstimate estimate = null;
+
+                for (int i = 0; i < 100; i++) // this is required because the benchmark gets more accurate with subsequent runs. Correlate with _safeBenchmarkSampleSize value.
+                {
+                    estimate = CombinationGenerator.EstimateExecutionTime(
+                        itemsWithoutRingsInput,
+                        rings,
+                        _itemValidatorFunction,
+                        safeSampleSize: _safeBenchmarkSampleSize);
+                }
+
+                string summary = estimate.GetFormattedSummary();
+                TextboxDisplay.Text = summary;
+                StatusBarLabel.Text = "Benchmark complete.";
+
+                MessageBox.Show(summary, "Benchmark Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (Exception ex)
+            {
+                string errorMsg = $"Error during benchmark:\n\n{ex.Message}";
+                TextboxDisplay.Text = errorMsg;
+                StatusBarLabel.Text = "Benchmark failed.";
+                MessageBox.Show(errorMsg, "Benchmark Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+            }
+            finally
+            {
+                PanelButtons.Enabled = true;
             }
         }
     }

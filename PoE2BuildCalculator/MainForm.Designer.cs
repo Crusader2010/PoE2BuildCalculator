@@ -38,7 +38,10 @@
             ButtonComputeCombinations = new Button();
             TextboxDisplay = new TextBox();
             ButtonManageCustomValidator = new Button();
+            ButtonBenchmark = new Button();
+            PanelButtons = new Panel();
             StatusBar.SuspendLayout();
+            PanelButtons.SuspendLayout();
             SuspendLayout();
             // 
             // OpenPoE2ItemList
@@ -48,7 +51,7 @@
             // 
             // ButtonOpenItemListFile
             // 
-            ButtonOpenItemListFile.Location = new Point(376, 91);
+            ButtonOpenItemListFile.Location = new Point(14, 13);
             ButtonOpenItemListFile.Name = "ButtonOpenItemListFile";
             ButtonOpenItemListFile.Size = new Size(126, 58);
             ButtonOpenItemListFile.TabIndex = 0;
@@ -61,7 +64,7 @@
             StatusBar.Items.AddRange(new ToolStripItem[] { StatusBarLabel });
             StatusBar.Location = new Point(0, 428);
             StatusBar.Name = "StatusBar";
-            StatusBar.Size = new Size(800, 22);
+            StatusBar.Size = new Size(837, 22);
             StatusBar.TabIndex = 1;
             StatusBar.Text = "statusStrip1";
             // 
@@ -72,7 +75,7 @@
             // 
             // ButtonParseItemListFile
             // 
-            ButtonParseItemListFile.Location = new Point(520, 91);
+            ButtonParseItemListFile.Location = new Point(158, 13);
             ButtonParseItemListFile.Name = "ButtonParseItemListFile";
             ButtonParseItemListFile.Size = new Size(126, 58);
             ButtonParseItemListFile.TabIndex = 2;
@@ -82,9 +85,9 @@
             // 
             // TierManagerButton
             // 
-            TierManagerButton.Location = new Point(12, 91);
+            TierManagerButton.Location = new Point(158, 96);
             TierManagerButton.Name = "TierManagerButton";
-            TierManagerButton.Size = new Size(137, 73);
+            TierManagerButton.Size = new Size(126, 58);
             TierManagerButton.TabIndex = 3;
             TierManagerButton.Text = "Manage tiers and weights";
             TierManagerButton.UseVisualStyleBackColor = true;
@@ -94,7 +97,7 @@
             // 
             ShowItemsDataButton.Location = new Point(12, 12);
             ShowItemsDataButton.Name = "ShowItemsDataButton";
-            ShowItemsDataButton.Size = new Size(137, 73);
+            ShowItemsDataButton.Size = new Size(126, 58);
             ShowItemsDataButton.TabIndex = 4;
             ShowItemsDataButton.Text = "Display items data";
             ShowItemsDataButton.UseVisualStyleBackColor = true;
@@ -102,7 +105,7 @@
             // 
             // ButtonComputeCombinations
             // 
-            ButtonComputeCombinations.Location = new Point(662, 91);
+            ButtonComputeCombinations.Location = new Point(158, 177);
             ButtonComputeCombinations.Name = "ButtonComputeCombinations";
             ButtonComputeCombinations.Size = new Size(126, 58);
             ButtonComputeCombinations.TabIndex = 5;
@@ -113,18 +116,18 @@
             // TextboxDisplay
             // 
             TextboxDisplay.BorderStyle = BorderStyle.FixedSingle;
-            TextboxDisplay.Location = new Point(376, 12);
+            TextboxDisplay.Location = new Point(323, 12);
             TextboxDisplay.MaxLength = int.MaxValue;
             TextboxDisplay.Multiline = true;
             TextboxDisplay.Name = "TextboxDisplay";
             TextboxDisplay.ReadOnly = true;
             TextboxDisplay.ScrollBars = ScrollBars.Both;
-            TextboxDisplay.Size = new Size(412, 58);
+            TextboxDisplay.Size = new Size(480, 384);
             TextboxDisplay.TabIndex = 6;
             // 
             // ButtonManageCustomValidator
             // 
-            ButtonManageCustomValidator.Location = new Point(376, 174);
+            ButtonManageCustomValidator.Location = new Point(14, 96);
             ButtonManageCustomValidator.Name = "ButtonManageCustomValidator";
             ButtonManageCustomValidator.Size = new Size(126, 58);
             ButtonManageCustomValidator.TabIndex = 7;
@@ -132,19 +135,38 @@
             ButtonManageCustomValidator.UseVisualStyleBackColor = true;
             ButtonManageCustomValidator.Click += ButtonManageCustomValidator_Click;
             // 
+            // ButtonBenchmark
+            // 
+            ButtonBenchmark.Location = new Point(14, 177);
+            ButtonBenchmark.Name = "ButtonBenchmark";
+            ButtonBenchmark.Size = new Size(126, 58);
+            ButtonBenchmark.TabIndex = 8;
+            ButtonBenchmark.Text = "Run Benchmark";
+            ButtonBenchmark.UseVisualStyleBackColor = true;
+            ButtonBenchmark.Click += ButtonBenchmark_Click;
+            // 
+            // PanelButtons
+            // 
+            PanelButtons.Controls.Add(ButtonOpenItemListFile);
+            PanelButtons.Controls.Add(ButtonBenchmark);
+            PanelButtons.Controls.Add(ButtonParseItemListFile);
+            PanelButtons.Controls.Add(ButtonManageCustomValidator);
+            PanelButtons.Controls.Add(TierManagerButton);
+            PanelButtons.Controls.Add(ButtonComputeCombinations);
+            PanelButtons.Location = new Point(12, 96);
+            PanelButtons.Name = "PanelButtons";
+            PanelButtons.Size = new Size(296, 248);
+            PanelButtons.TabIndex = 9;
+            // 
             // MainForm
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            ClientSize = new Size(800, 450);
-            Controls.Add(ButtonManageCustomValidator);
+            ClientSize = new Size(837, 450);
+            Controls.Add(PanelButtons);
             Controls.Add(TextboxDisplay);
-            Controls.Add(ButtonComputeCombinations);
             Controls.Add(ShowItemsDataButton);
-            Controls.Add(TierManagerButton);
-            Controls.Add(ButtonParseItemListFile);
             Controls.Add(StatusBar);
-            Controls.Add(ButtonOpenItemListFile);
             DoubleBuffered = true;
             FormBorderStyle = FormBorderStyle.FixedSingle;
             MaximizeBox = false;
@@ -154,6 +176,7 @@
             Load += MainForm_Load;
             StatusBar.ResumeLayout(false);
             StatusBar.PerformLayout();
+            PanelButtons.ResumeLayout(false);
             ResumeLayout(false);
             PerformLayout();
         }
@@ -170,5 +193,7 @@
         private Button ButtonComputeCombinations;
         private TextBox TextboxDisplay;
         private Button ButtonManageCustomValidator;
+        private Button ButtonBenchmark;
+        private Panel PanelButtons;
     }
 }
