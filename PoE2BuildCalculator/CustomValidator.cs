@@ -10,27 +10,47 @@ namespace PoE2BuildCalculator
         private readonly BindingList<ValidationGroupModel> _groups = [];
         private readonly MainForm _ownerForm;
         private int _nextGroupId = 1;
-        private bool _isClosing = false;
+        private Panel _groupsContainer;
+        private Button _btnAddGroup;
+
+        // Calculated layout constants (set on form load)
+        private int _calculatedComboBoxWidth;
+        private int _calculatedContentWidth;
+        private int _calculatedPanelWidth;
+        private int _calculatedPanelHeight;
+
+        // Grid constants
+        private const int GROUP_MARGIN = 10;
+        private const int CONTENT_PADDING = 8;
+        private const int ELEMENT_SPACING = 5;
+        private const int STATS_LISTBOX_HEIGHT = 140;
+
+        // Styling
+        private static readonly Color HEADER_COLOR = Color.FromArgb(70, 130, 180);
 
         public CustomValidator(MainForm ownerForm)
         {
-            ArgumentNullException.ThrowIfNull(ownerForm, nameof(ownerForm));
+            ArgumentNullException.ThrowIfNull(ownerForm);
             InitializeComponent();
             _ownerForm = ownerForm;
         }
 
-        private void CustomValidator_Load(object sender, EventArgs e)
-        {
-            SetupUI();
-        }
+        private void CustomValidator_Load(object sender, EventArgs e) => SetupUI();
 
         private void SetupUI()
         {
-            this.Text = "Custom Validator - Group-Based Configuration";
-            this.Size = new Size(1000, 700);
-            this.MinimumSize = new Size(800, 500);
+            // Calculate optimal combobox width based on stat names
+            CalculateDynamicSizes();
 
-            // Main layout
+            // Calculate form size for 3x2 grid
+            int formWidth = 3 * _calculatedPanelWidth + 4 * GROUP_MARGIN + 40;
+            int formHeight = 2 * _calculatedPanelHeight + 3 * GROUP_MARGIN + 150;
+
+            this.Text = "Custom Validator - Group-Based Configuration";
+            this.Size = new Size(formWidth, formHeight);
+            this.MinimumSize = new Size(_calculatedPanelWidth + 100, 600);
+            this.StartPosition = FormStartPosition.CenterScreen;
+
             var mainPanel = new TableLayoutPanel
             {
                 Dock = DockStyle.Fill,
@@ -39,9 +59,9 @@ namespace PoE2BuildCalculator
                 Padding = new Padding(10)
             };
 
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 50)); // Header
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100)); // Groups
-            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 60)); // Buttons
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 50));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 60));
 
             // Header
             var headerPanel = new Panel { Dock = DockStyle.Fill };
@@ -53,34 +73,49 @@ namespace PoE2BuildCalculator
                 AutoSize = true
             };
 
-            var btnAddGroup = new Button
+            _btnAddGroup = new Button
             {
                 Text = "+ Add Group",
                 Location = new Point(200, 8),
                 Size = new Size(120, 35),
-                BackColor = Color.FromArgb(70, 130, 180),
+                BackColor = HEADER_COLOR,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Enabled = true
             };
-            btnAddGroup.FlatAppearance.BorderSize = 0;
-            btnAddGroup.Click += BtnAddGroup_Click;
-            btnAddGroup.MouseEnter += (s, e) => btnAddGroup.BackColor = Color.FromArgb(90, 150, 200);
-            btnAddGroup.MouseLeave += (s, e) => btnAddGroup.BackColor = Color.FromArgb(70, 130, 180);
+            _btnAddGroup.FlatAppearance.BorderSize = 0;
+            _btnAddGroup.Click += BtnAddGroup_Click;
+
+            var btnHelp = new Button
+            {
+                Text = "?",
+                Location = new Point(330, 8),
+                Size = new Size(35, 35),
+                BackColor = Color.FromArgb(100, 149, 237),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 14, FontStyle.Bold),
+                Cursor = Cursors.Help
+            };
+            btnHelp.FlatAppearance.BorderSize = 0;
+            btnHelp.Click += BtnHelp_Click;
 
             headerPanel.Controls.Add(lblTitle);
-            headerPanel.Controls.Add(btnAddGroup);
+            headerPanel.Controls.Add(_btnAddGroup);
+            headerPanel.Controls.Add(btnHelp);
 
-            // Groups container (scrollable)
-            var groupsPanel = new Panel
+            // Groups container
+            _groupsContainer = new Panel
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = true,
                 BackColor = Color.FromArgb(240, 240, 240),
-                Name = "groupsPanel"
+                Name = "groupsContainer"
             };
+            _groupsContainer.Resize += (s, e) => ArrangeGroupsInGrid();
 
-            // Bottom buttons
+            // Bottom panel
             var bottomPanel = new Panel { Dock = DockStyle.Fill };
 
             var btnCreateValidator = new Button
@@ -95,8 +130,6 @@ namespace PoE2BuildCalculator
             };
             btnCreateValidator.FlatAppearance.BorderSize = 0;
             btnCreateValidator.Click += BtnCreateValidator_Click;
-            btnCreateValidator.MouseEnter += (s, e) => btnCreateValidator.BackColor = Color.FromArgb(54, 159, 54);
-            btnCreateValidator.MouseLeave += (s, e) => btnCreateValidator.BackColor = Color.FromArgb(34, 139, 34);
 
             var btnClose = new Button
             {
@@ -104,21 +137,151 @@ namespace PoE2BuildCalculator
                 Location = new Point(170, 10),
                 Size = new Size(100, 40),
                 BackColor = Color.FromArgb(220, 220, 220),
-                ForeColor = Color.Black,
                 FlatStyle = FlatStyle.Flat,
                 Font = new Font("Segoe UI", 10)
             };
-            btnClose.FlatAppearance.BorderSize = 1;
-            btnClose.Click += BtnClose_Click;
+            btnClose.Click += (s, e) => this.Close();
 
             bottomPanel.Controls.Add(btnCreateValidator);
             bottomPanel.Controls.Add(btnClose);
 
             mainPanel.Controls.Add(headerPanel, 0, 0);
-            mainPanel.Controls.Add(groupsPanel, 0, 1);
+            mainPanel.Controls.Add(_groupsContainer, 0, 1);
             mainPanel.Controls.Add(bottomPanel, 0, 2);
 
             this.Controls.Add(mainPanel);
+        }
+
+        private void CalculateDynamicSizes()
+        {
+            var tempCombo = new ComboBox
+            {
+                Font = new Font("Segoe UI", 8.5f),
+                DropDownStyle = ComboBoxStyle.DropDownList
+            };
+
+            var availableProps = typeof(ItemStats).GetProperties()
+                .Where(p => p.Name != nameof(ItemStats.Enchant) &&
+                           (p.PropertyType == typeof(int) || p.PropertyType == typeof(double)))
+                .Select(p => p.Name)
+                .ToList();
+
+            foreach (var prop in availableProps)
+                tempCombo.Items.Add(prop);
+
+            using var g = tempCombo.CreateGraphics();
+            int maxWidth = availableProps
+                .Select(item => (int)g.MeasureString(item, tempCombo.Font).Width)
+                .DefaultIfEmpty(200)
+                .Max();
+
+            _calculatedComboBoxWidth = maxWidth + 30; // Add space for dropdown arrow
+
+            // Calculate content width: "Add Stat:" label + spacing + combo + spacing + "+" button
+            int labelWidth = 60;
+            int buttonWidth = 28;
+            _calculatedContentWidth = labelWidth + ELEMENT_SPACING + _calculatedComboBoxWidth + ELEMENT_SPACING + buttonWidth;
+
+            // Panel width = content width + 2 * padding
+            _calculatedPanelWidth = _calculatedContentWidth + 2 * CONTENT_PADDING;
+
+            // Panel height calculation
+            int headerHeight = 32;
+            int addStatRowHeight = 25;
+            int constraintsHeight = 65;
+            int operatorRowHeight = 35;
+            int totalContentHeight = addStatRowHeight + ELEMENT_SPACING + STATS_LISTBOX_HEIGHT +
+                                    ELEMENT_SPACING + constraintsHeight + ELEMENT_SPACING + operatorRowHeight;
+
+            _calculatedPanelHeight = headerHeight + totalContentHeight + 2 * CONTENT_PADDING + 10;
+
+            tempCombo.Dispose();
+        }
+
+        private void BtnHelp_Click(object sender, EventArgs e)
+        {
+            string helpText = @"=== ORDER OF OPERATIONS ===
+
+WITHIN A GROUP (Stats):
+Stats are evaluated LEFT-TO-RIGHT in the order they appear.
+Example: If you have:
+  • MaxLife (+)
+  • Armour% (-)
+  • Spirit (*)
+
+Calculation: ((MaxLife + Armour%) - Spirit) * next_stat
+This is LEFT-ASSOCIATIVE evaluation.
+
+To control order:
+1. Reorder stats using ▲▼ buttons
+2. First stat evaluated first
+3. Each operator applies between result and next stat
+
+BETWEEN GROUPS:
+Groups evaluated in grid order (left→right, top→bottom).
+Each group produces TRUE/FALSE based on Min/Max constraints.
+
+Results combined using group operators (AND/OR/XOR):
+  • AND: Both groups must pass
+  • OR: At least one group must pass  
+  • XOR: Exactly one group must pass
+
+Example with 3 groups:
+  Group1 (TRUE) → AND
+  Group2 (FALSE) → OR
+  Group3 (TRUE)
+
+Evaluation: (TRUE AND FALSE) OR TRUE = FALSE OR TRUE = TRUE
+
+CONSTRAINTS:
+Each group sums all item stats per its expression,
+then checks if sum is within Min/Max bounds.
+
+Min/Max can be 0 or negative.
+At least one constraint (Min OR Max) must be enabled.
+
+Example:
+If calculated value is 150:
+  • Min=100, Max=200 → PASS ✓
+  • Min=200, Max=300 → FAIL ✗";
+
+            using var helpForm = new Form
+            {
+                Text = "Validator Help - Order of Operations",
+                Size = new Size(650, 600),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false
+            };
+
+            var txtHelp = new TextBox
+            {
+                Multiline = true,
+                ReadOnly = true,
+                ScrollBars = ScrollBars.Vertical,
+                Dock = DockStyle.Fill,
+                Font = new Font("Consolas", 9.5f),
+                Text = helpText,
+                Padding = new Padding(10)
+            };
+
+            // Prevent auto-selection of text
+            txtHelp.Select(0, 0);
+            txtHelp.GotFocus += (s, e) => txtHelp.Select(0, 0);
+
+            var btnOk = new Button
+            {
+                Text = "OK",
+                DialogResult = DialogResult.OK,
+                Dock = DockStyle.Bottom,
+                Height = 40,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            };
+
+            helpForm.Controls.Add(txtHelp);
+            helpForm.Controls.Add(btnOk);
+            helpForm.ShowDialog(this);
         }
 
         private void BtnAddGroup_Click(object sender, EventArgs e)
@@ -126,56 +289,55 @@ namespace PoE2BuildCalculator
             var group = new ValidationGroupModel
             {
                 GroupId = _nextGroupId++,
-                GroupName = $"Group {_groups.Count + 1}"
+                GroupName = $"Group {_groups.Count + 1}",
+                IsMinEnabled = true,
+                MinValue = 0.00
             };
 
             _groups.Add(group);
             CreateGroupPanel(group);
-            UpdateGroupOperatorVisibility();
+
+            ArrangeGroupsInGrid();
+            RevalidateAllGroups();
         }
 
         private void CreateGroupPanel(ValidationGroupModel group)
         {
-            if (this.Controls.Find("groupsPanel", true).FirstOrDefault() is not Panel groupsPanel) return;
-
             var groupPanel = new Panel
             {
-                Width = groupsPanel.ClientSize.Width - 30,
-                Height = 250,
+                Width = _calculatedPanelWidth,
+                Height = _calculatedPanelHeight,
                 BorderStyle = BorderStyle.FixedSingle,
                 BackColor = Color.White,
-                Margin = new Padding(5),
-                Tag = group,
-                AllowDrop = true,
-                Location = new Point(10, _groups.IndexOf(group) * 260 + 10)
+                Tag = group
             };
 
             // Header
             var headerPanel = new Panel
             {
                 Dock = DockStyle.Top,
-                Height = 40,
-                BackColor = Color.FromArgb(70, 130, 180)
+                Height = 32,
+                BackColor = HEADER_COLOR
             };
 
             var lblGroupName = new Label
             {
                 Text = group.GroupName,
                 ForeColor = Color.White,
-                Font = new Font("Segoe UI", 11, FontStyle.Bold),
-                Location = new Point(10, 10),
+                Font = new Font("Segoe UI", 10, FontStyle.Bold),
+                Location = new Point(8, 7),
                 AutoSize = true
             };
 
             var btnDelete = new Button
             {
                 Text = "×",
-                Size = new Size(30, 30),
-                Location = new Point(groupPanel.Width - 40, 5),
+                Size = new Size(24, 24),
+                Location = new Point(_calculatedPanelWidth - 28, 4),
                 BackColor = Color.FromArgb(200, 50, 50),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 14, FontStyle.Bold),
+                Font = new Font("Segoe UI", 11, FontStyle.Bold),
                 Cursor = Cursors.Hand
             };
             btnDelete.FlatAppearance.BorderSize = 0;
@@ -184,207 +346,479 @@ namespace PoE2BuildCalculator
             headerPanel.Controls.Add(lblGroupName);
             headerPanel.Controls.Add(btnDelete);
 
-            // Content area
+            // Content panel
             var contentPanel = new Panel
             {
-                Location = new Point(5, 45),
-                Size = new Size(groupPanel.Width - 10, 200),
-                AutoScroll = true
+                Location = new Point(CONTENT_PADDING, 37),
+                Size = new Size(_calculatedContentWidth, _calculatedPanelHeight - 42),
+                AutoScroll = false
             };
 
-            // Stat selector
+            int yPos = 0;
+
+            // Add Stat row
             var lblAddStat = new Label
             {
                 Text = "Add Stat:",
-                Location = new Point(5, 5),
-                AutoSize = true
+                Location = new Point(0, yPos + 3),
+                Size = new Size(60, 18),
+                Font = new Font("Segoe UI", 8.5f)
             };
 
             var cmbStats = new ComboBox
             {
-                Location = new Point(70, 3),
-                Width = 200,
-                DropDownStyle = ComboBoxStyle.DropDown,
-                AutoCompleteMode = AutoCompleteMode.SuggestAppend,
-                AutoCompleteSource = AutoCompleteSource.ListItems
+                Location = new Point(60 + ELEMENT_SPACING, yPos),
+                Width = _calculatedComboBoxWidth,
+                DropDownStyle = ComboBoxStyle.DropDownList,
+                Name = "cmbStats",
+                Font = new Font("Segoe UI", 8.5f)
             };
 
-            // Populate with available stats
-            var properties = typeof(ItemStats).GetProperties()
+            var availableProps = typeof(ItemStats).GetProperties()
                 .Where(p => p.Name != nameof(ItemStats.Enchant) &&
                            (p.PropertyType == typeof(int) || p.PropertyType == typeof(double)))
-                .OrderBy(p => p.Name);
+                .OrderBy(p => p.Name)
+                .ToList();
 
-            foreach (var prop in properties)
-            {
+            foreach (var prop in availableProps)
                 cmbStats.Items.Add(prop.Name);
-            }
 
             var btnAddStat = new Button
             {
                 Text = "+",
-                Location = new Point(280, 2),
-                Size = new Size(30, 25),
-                BackColor = Color.FromArgb(70, 130, 180),
+                Location = new Point(60 + ELEMENT_SPACING + _calculatedComboBoxWidth + ELEMENT_SPACING, yPos - 1),
+                Size = new Size(28, 23),
+                BackColor = HEADER_COLOR,
                 ForeColor = Color.White,
-                FlatStyle = FlatStyle.Flat
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9, FontStyle.Bold)
             };
             btnAddStat.FlatAppearance.BorderSize = 0;
             btnAddStat.Click += (s, e) => AddStatToGroup(group, cmbStats, contentPanel);
 
-            // Stats list
+            yPos += 25 + ELEMENT_SPACING;
+
+            // Stats ListBox
             var statsListBox = new ListBox
             {
-                Location = new Point(5, 35),
-                Size = new Size(310, 80),
+                Location = new Point(0, yPos),
+                Width = _calculatedContentWidth,
+                Height = STATS_LISTBOX_HEIGHT,
                 Name = "statsListBox",
-                DrawMode = DrawMode.OwnerDrawFixed
+                DrawMode = DrawMode.OwnerDrawFixed,
+                ItemHeight = 28,
+                SelectionMode = SelectionMode.One
             };
-            statsListBox.DrawItem += StatsListBox_DrawItem;
+            statsListBox.DrawItem += (_, e) => StatsListBox_DrawItem(e, group);
+            statsListBox.MouseClick += (s, e) => StatsListBox_MouseClick(s, e, group, cmbStats);
 
-            // Min/Max controls
+            yPos += STATS_LISTBOX_HEIGHT + ELEMENT_SPACING;
+
+            // Constraints GroupBox
+            var grpConstraints = new GroupBox
+            {
+                Text = "Constraints",
+                Location = new Point(0, yPos),
+                Width = _calculatedContentWidth,
+                Height = 65,
+                Font = new Font("Segoe UI", 8.5f, FontStyle.Bold)
+            };
+
+            // Calculate centered positions for checkboxes and inputs
+            int constraintContentWidth = grpConstraints.Width - 16;
+            int halfWidth = constraintContentWidth / 2;
+
             var chkMin = new CheckBox
             {
                 Text = "Min:",
-                Location = new Point(5, 125),
-                Width = 50
-            };
-            chkMin.CheckedChanged += (s, e) =>
-            {
-                group.IsMinEnabled = chkMin.Checked;
-                UpdateGroupOperatorVisibility();
+                Location = new Point(8, 23),
+                Width = 48,
+                Font = new Font("Segoe UI", 8.5f),
+                Name = "chkMin",
+                Checked = group.IsMinEnabled
             };
 
             var numMin = new NumericUpDown
             {
-                Location = new Point(60, 123),
-                Width = 80,
+                Location = new Point(60, 21),
+                Width = halfWidth - 64,
                 DecimalPlaces = 2,
                 Minimum = -99999,
                 Maximum = 99999,
-                Enabled = false
+                Value = (decimal)(group.MinValue ?? 0.00),
+                Enabled = group.IsMinEnabled,
+                Name = "numMin",
+                Font = new Font("Segoe UI", 8.5f)
             };
-            numMin.ValueChanged += (s, e) => group.MinValue = (double)numMin.Value;
-            chkMin.CheckedChanged += (s, e) => numMin.Enabled = chkMin.Checked;
+
+            chkMin.CheckedChanged += (s, e) =>
+            {
+                group.IsMinEnabled = chkMin.Checked;
+                numMin.Enabled = chkMin.Checked;
+                ValidateAndUpdate(group, contentPanel);
+            };
+
+            numMin.ValueChanged += (s, e) =>
+            {
+                group.MinValue = (double)numMin.Value;
+                ValidateAndUpdate(group, contentPanel);
+            };
+
+            numMin.Leave += (s, e) => ValidateAndUpdate(group, contentPanel);
 
             var chkMax = new CheckBox
             {
                 Text = "Max:",
-                Location = new Point(160, 125),
-                Width = 50
-            };
-            chkMax.CheckedChanged += (s, e) =>
-            {
-                group.IsMaxEnabled = chkMax.Checked;
-                UpdateGroupOperatorVisibility();
+                Location = new Point(halfWidth + 8, 23),
+                Width = 48,
+                Font = new Font("Segoe UI", 8.5f),
+                Name = "chkMax"
             };
 
             var numMax = new NumericUpDown
             {
-                Location = new Point(215, 123),
-                Width = 80,
+                Location = new Point(halfWidth + 60, 21),
+                Width = halfWidth - 64,
                 DecimalPlaces = 2,
                 Minimum = -99999,
                 Maximum = 99999,
-                Enabled = false
+                Enabled = false,
+                Name = "numMax",
+                Font = new Font("Segoe UI", 8.5f)
             };
-            numMax.ValueChanged += (s, e) => group.MaxValue = (double)numMax.Value;
-            chkMax.CheckedChanged += (s, e) => numMax.Enabled = chkMax.Checked;
 
-            // Group operator
-            var lblOperator = new Label
+            chkMax.CheckedChanged += (s, e) =>
             {
-                Text = "→ Operator:",
-                Location = new Point(5, 160),
-                AutoSize = true,
-                Visible = false,
-                Name = "lblOperator"
+                group.IsMaxEnabled = chkMax.Checked;
+                numMax.Enabled = chkMax.Checked;
+                if (chkMax.Checked && !group.MaxValue.HasValue)
+                    group.MaxValue = (double)numMax.Value;
+                ValidateAndUpdate(group, contentPanel);
+            };
+
+            numMax.ValueChanged += (s, e) =>
+            {
+                if (chkMax.Checked)
+                {
+                    group.MaxValue = (double)numMax.Value;
+                    ValidateAndUpdate(group, contentPanel);
+                }
+            };
+
+            numMax.Leave += (s, e) => ValidateAndUpdate(group, contentPanel);
+
+            var lblValidation = new Label
+            {
+                Location = new Point(8, 45),
+                Size = new Size(constraintContentWidth, 14),
+                ForeColor = Color.Red,
+                Font = new Font("Segoe UI", 7f),
+                Name = "lblValidation",
+                Text = "",
+                TextAlign = ContentAlignment.MiddleLeft
+            };
+
+            grpConstraints.Controls.AddRange([chkMin, numMin, chkMax, numMax, lblValidation]);
+
+            yPos += 65 + ELEMENT_SPACING;
+
+            // Group Operator Row
+            var pnlOperator = new Panel
+            {
+                Location = new Point(0, yPos),
+                Width = _calculatedContentWidth,
+                Height = 30,
+                Name = "pnlOperator",
+                Visible = false
             };
 
             var cmbOperator = new ComboBox
             {
-                Location = new Point(85, 158),
-                Width = 80,
+                Location = new Point(0, 4),
+                Width = _calculatedContentWidth - 45,
                 DropDownStyle = ComboBoxStyle.DropDownList,
-                Visible = false,
-                Name = "cmbOperator"
+                Name = "cmbOperator",
+                Font = new Font("Segoe UI", 8.5f),
+                Enabled = false
             };
             cmbOperator.Items.AddRange(["AND", "OR", "XOR"]);
             cmbOperator.SelectedIndex = 0;
             cmbOperator.SelectedIndexChanged += (s, e) => group.GroupOperator = cmbOperator.SelectedItem?.ToString();
 
-            contentPanel.Controls.Add(lblAddStat);
-            contentPanel.Controls.Add(cmbStats);
-            contentPanel.Controls.Add(btnAddStat);
-            contentPanel.Controls.Add(statsListBox);
-            contentPanel.Controls.Add(chkMin);
-            contentPanel.Controls.Add(numMin);
-            contentPanel.Controls.Add(chkMax);
-            contentPanel.Controls.Add(numMax);
-            contentPanel.Controls.Add(lblOperator);
-            contentPanel.Controls.Add(cmbOperator);
+            var lblArrow = new Label
+            {
+                Text = "→",
+                Location = new Point(_calculatedContentWidth - 35, 0),
+                Size = new Size(35, 30),
+                Font = new Font("Segoe UI", 20, FontStyle.Bold),
+                ForeColor = HEADER_COLOR,
+                TextAlign = ContentAlignment.MiddleCenter
+            };
 
-            groupPanel.Controls.Add(headerPanel);
-            groupPanel.Controls.Add(contentPanel);
+            pnlOperator.Controls.AddRange([cmbOperator, lblArrow]);
 
-            // Drag-drop for reordering
+            contentPanel.Controls.AddRange([lblAddStat, cmbStats, btnAddStat, statsListBox, grpConstraints, pnlOperator]);
+            groupPanel.Controls.AddRange([headerPanel, contentPanel]);
+
+            // Drag-drop
+            groupPanel.AllowDrop = true;
             groupPanel.MouseDown += GroupPanel_MouseDown;
             groupPanel.MouseMove += GroupPanel_MouseMove;
-            groupPanel.DragOver += GroupPanel_DragOver;
+            groupPanel.DragOver += (s, e) => e.Effect = DragDropEffects.Move;
             groupPanel.DragDrop += GroupPanel_DragDrop;
 
-            groupsPanel.Controls.Add(groupPanel);
-            RearrangeGroupPanels();
+            _groupsContainer.Controls.Add(groupPanel);
+
+            ValidateAndUpdate(group, contentPanel);
         }
 
-        private Point _dragStartPoint;
-        private Panel _draggedPanel;
-
-        private void GroupPanel_MouseDown(object sender, MouseEventArgs e)
+        private void ValidateAndUpdate(ValidationGroupModel group, Panel contentPanel)
         {
-            if (e.Button == MouseButtons.Left)
+            var lblValidation = contentPanel.Controls.Find("lblValidation", true).FirstOrDefault() as Label;
+
+            bool isValid = true;
+            string errorMsg = "";
+
+            if (!group.IsMinEnabled && !group.IsMaxEnabled)
             {
-                _dragStartPoint = e.Location;
-                _draggedPanel = sender as Panel;
+                errorMsg = "Enable Min or Max";
+                isValid = false;
+            }
+            else if (group.IsMinEnabled && group.IsMaxEnabled &&
+                     group.MinValue.HasValue && group.MaxValue.HasValue &&
+                     group.MinValue.Value >= group.MaxValue.Value)
+            {
+                errorMsg = "Min must be < Max";
+                isValid = false;
+            }
+
+            if (lblValidation is not null)
+            {
+                lblValidation.Text = errorMsg;
+                lblValidation.ForeColor = isValid ? Color.Green : Color.Red;
+            }
+
+            RevalidateAllGroups();
+        }
+
+        private void RevalidateAllGroups()
+        {
+            // Update "Add Group" button state
+            if (_groups.Count == 0)
+            {
+                UpdateAddGroupButton(true);
+            }
+            else
+            {
+                var lastGroup = _groups[^1];
+                bool hasConstraint = lastGroup.IsMinEnabled || lastGroup.IsMaxEnabled;
+                bool hasStats = lastGroup.Stats.Count > 0;
+                bool isValid = !(lastGroup.IsMinEnabled && lastGroup.IsMaxEnabled &&
+                               lastGroup.MinValue.HasValue && lastGroup.MaxValue.HasValue &&
+                               lastGroup.MinValue.Value >= lastGroup.MaxValue.Value);
+
+                UpdateAddGroupButton(hasConstraint && hasStats && isValid);
+            }
+
+            // Update group operator visibility for all groups
+            UpdateAllGroupOperatorVisibility();
+        }
+
+        private void UpdateAddGroupButton(bool enabled)
+        {
+            _btnAddGroup.Enabled = enabled;
+            _btnAddGroup.ForeColor = enabled ? Color.White : Color.Gray;
+        }
+
+        private void UpdateAllGroupOperatorVisibility()
+        {
+            for (int i = 0; i < _groups.Count; i++)
+            {
+                var group = _groups[i];
+                var panel = _groupsContainer.Controls.OfType<Panel>().FirstOrDefault(p => p.Tag == group);
+                if (panel is null) continue;
+
+                var contentPanel = panel.Controls.OfType<Panel>().FirstOrDefault();
+                if (contentPanel is null) continue;
+
+                if (contentPanel.Controls.Find("pnlOperator", false).FirstOrDefault() is not Panel pnlOperator ||
+                    pnlOperator?.Controls.Find("cmbOperator", false).FirstOrDefault() is not ComboBox cmbOperator) continue;
+
+                bool currentHasConstraint = group.IsMinEnabled || group.IsMaxEnabled;
+                bool currentHasStats = group.Stats.Count > 0;
+
+                bool hasNextValidGroup = false;
+                if (i < _groups.Count - 1)
+                {
+                    for (int j = i + 1; j < _groups.Count; j++)
+                    {
+                        var nextGroup = _groups[j];
+                        bool nextHasConstraint = nextGroup.IsMinEnabled || nextGroup.IsMaxEnabled;
+                        bool nextHasStats = nextGroup.Stats.Count > 0;
+
+                        if (nextHasConstraint && nextHasStats)
+                        {
+                            hasNextValidGroup = true;
+                            break;
+                        }
+                    }
+                }
+
+                bool shouldShow = currentHasConstraint && currentHasStats && hasNextValidGroup;
+                pnlOperator.Visible = shouldShow;
+                cmbOperator.Enabled = shouldShow;
             }
         }
 
-        private void GroupPanel_MouseMove(object sender, MouseEventArgs e)
+        private static void StatsListBox_DrawItem(DrawItemEventArgs e, ValidationGroupModel group)
         {
-            if (e.Button == MouseButtons.Left && _draggedPanel != null)
+            if (e.Index < 0 || e.Index >= group.Stats.Count) return;
+
+            var stat = group.Stats[e.Index];
+            bool isLastStat = e.Index == group.Stats.Count - 1;
+
+            e.DrawBackground();
+
+            var bounds = e.Bounds;
+
+            // Draw stat name
+            using (var brush = new SolidBrush(e.ForeColor))
             {
-                if (Math.Abs(e.X - _dragStartPoint.X) > 5 || Math.Abs(e.Y - _dragStartPoint.Y) > 5)
+                var textRect = new Rectangle(bounds.Left + 4, bounds.Top + 7, bounds.Width - 100, bounds.Height);
+                e.Graphics.DrawString(stat.PropertyName, e.Font, brush, textRect);
+            }
+
+            // Operator dropdown (only if NOT last stat)
+            if (!isLastStat)
+            {
+                var opRect = new Rectangle(bounds.Right - 95, bounds.Top + 2, 50, bounds.Height - 4);
+                using var bgBrush = new SolidBrush(Color.FromArgb(240, 240, 240));
+                e.Graphics.FillRectangle(bgBrush, opRect);
+                e.Graphics.DrawRectangle(Pens.Gray, opRect);
+
+                using var textBrush = new SolidBrush(Color.Black);
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString(stat.Operator, e.Font, textBrush, opRect, sf);
+            }
+
+            // Up button
+            var upRect = new Rectangle(bounds.Right - 42, bounds.Top + 2, 18, 11);
+            using (var btnBrush = new SolidBrush(Color.FromArgb(100, 150, 200)))
+                e.Graphics.FillRectangle(btnBrush, upRect);
+            e.Graphics.DrawRectangle(Pens.DarkBlue, upRect);
+            using (var textBrush = new SolidBrush(Color.White))
+            {
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString("▲", new Font("Arial", 6), textBrush, upRect, sf);
+            }
+
+            // Down button
+            var downRect = new Rectangle(bounds.Right - 42, bounds.Top + 15, 18, 11);
+            using (var btnBrush = new SolidBrush(Color.FromArgb(100, 150, 200)))
+                e.Graphics.FillRectangle(btnBrush, downRect);
+            e.Graphics.DrawRectangle(Pens.DarkBlue, downRect);
+            using (var textBrush = new SolidBrush(Color.White))
+            {
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString("▼", new Font("Arial", 6), textBrush, downRect, sf);
+            }
+
+            // Remove button
+            var removeRect = new Rectangle(bounds.Right - 22, bounds.Top + 2, 18, bounds.Height - 4);
+            using (var btnBrush = new SolidBrush(Color.FromArgb(200, 50, 50)))
+                e.Graphics.FillRectangle(btnBrush, removeRect);
+            using (var textBrush = new SolidBrush(Color.White))
+            {
+                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+                e.Graphics.DrawString("×", new Font("Segoe UI", 10, FontStyle.Bold), textBrush, removeRect, sf);
+            }
+
+            e.DrawFocusRectangle();
+        }
+
+        private void StatsListBox_MouseClick(object sender, MouseEventArgs e, ValidationGroupModel group, ComboBox cmbStats)
+        {
+            var listBox = sender as ListBox;
+            int index = listBox.IndexFromPoint(e.Location);
+            if (index < 0 || index >= group.Stats.Count) return;
+
+            var bounds = listBox.GetItemRectangle(index);
+            bool isLastStat = index == group.Stats.Count - 1;
+
+            // Operator dropdown
+            if (!isLastStat)
+            {
+                var opRect = new Rectangle(bounds.Right - 95, bounds.Top + 2, 50, bounds.Height - 4);
+                if (opRect.Contains(e.Location))
                 {
-                    _draggedPanel.DoDragDrop(_draggedPanel, DragDropEffects.Move);
+                    ShowOperatorMenu(group.Stats[index], listBox, e.Location);
+                    return;
                 }
             }
+
+            // Up button
+            var upRect = new Rectangle(bounds.Right - 42, bounds.Top + 2, 18, 11);
+            if (upRect.Contains(e.Location) && index > 0)
+            {
+                (group.Stats[index], group.Stats[index - 1]) = (group.Stats[index - 1], group.Stats[index]);
+                RefreshStatsListBox(listBox, group);
+                return;
+            }
+
+            // Down button
+            var downRect = new Rectangle(bounds.Right - 42, bounds.Top + 15, 18, 11);
+            if (downRect.Contains(e.Location) && index < group.Stats.Count - 1)
+            {
+                (group.Stats[index], group.Stats[index + 1]) = (group.Stats[index + 1], group.Stats[index]);
+                RefreshStatsListBox(listBox, group);
+                return;
+            }
+
+            // Remove button
+            var removeRect = new Rectangle(bounds.Right - 22, bounds.Top + 2, 18, bounds.Height - 4);
+            if (removeRect.Contains(e.Location))
+            {
+                string propName = group.Stats[index].PropertyName;
+                group.Stats.RemoveAt(index);
+                RefreshStatsListBox(listBox, group);
+
+                // Re-add to dropdown
+                if (!cmbStats.Items.Contains(propName))
+                {
+                    var items = cmbStats.Items.Cast<string>().Append(propName).OrderBy(x => x).ToList();
+                    cmbStats.Items.Clear();
+                    cmbStats.Items.AddRange([.. items]);
+                }
+
+                RevalidateAllGroups();
+            }
         }
 
-        private void GroupPanel_DragOver(object sender, DragEventArgs e)
+        private static void ShowOperatorMenu(GroupStatModel stat, ListBox listBox, Point location)
         {
-            e.Effect = DragDropEffects.Move;
+            using var menu = new ContextMenuStrip();
+            foreach (var op in new[] { "+", "-", "*", "/" })
+            {
+                var item = new ToolStripMenuItem(op) { Checked = stat.Operator == op };
+                item.Click += (s, e) =>
+                {
+                    stat.Operator = op;
+                    listBox.Invalidate();
+                };
+                menu.Items.Add(item);
+            }
+            menu.Show(listBox, location);
         }
 
-        private void GroupPanel_DragDrop(object sender, DragEventArgs e)
+        private static void RefreshStatsListBox(ListBox listBox, ValidationGroupModel group)
         {
-            if (sender is not Panel targetPanel || e.Data.GetData(typeof(Panel)) is not Panel sourcePanel || targetPanel == sourcePanel) return;
-
-            var sourceGroup = sourcePanel.Tag as ValidationGroupModel;
-            var targetGroup = targetPanel.Tag as ValidationGroupModel;
-
-            int sourceIndex = _groups.IndexOf(sourceGroup);
-            int targetIndex = _groups.IndexOf(targetGroup);
-
-            _groups.RemoveAt(sourceIndex);
-            _groups.Insert(targetIndex, sourceGroup);
-
-            RearrangeGroupPanels();
-            UpdateGroupOperatorVisibility();
+            listBox.Items.Clear();
+            listBox.Items.AddRange([.. group.Stats.Select(s => s.PropertyName)]);
         }
 
-        private static void AddStatToGroup(ValidationGroupModel group, ComboBox cmbStats, Panel contentPanel)
+        private void AddStatToGroup(ValidationGroupModel group, ComboBox cmbStats, Panel contentPanel)
         {
-            if (cmbStats.SelectedItem == null)
+            if (cmbStats.SelectedItem is null)
             {
                 MessageBox.Show("Please select a stat.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
@@ -395,7 +829,7 @@ namespace PoE2BuildCalculator
 
             if (group.Stats.Any(s => s.PropertyName == propName))
             {
-                MessageBox.Show("This stat is already in the group.", "Duplicate", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("Stat already in group.", "Duplicate", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
@@ -406,122 +840,133 @@ namespace PoE2BuildCalculator
                 Operator = "+"
             });
 
-            if (contentPanel.Controls.Find("statsListBox", false).FirstOrDefault() is ListBox listBox)
-            {
-                listBox.Items.Add($"{propName} (+)");
-            }
-
+            cmbStats.Items.Remove(propName);
             cmbStats.SelectedIndex = -1;
+
+            if (contentPanel.Controls.Find("statsListBox", false).FirstOrDefault() is ListBox listBox)
+                RefreshStatsListBox(listBox, group);
+
+            RevalidateAllGroups();
         }
 
-        private void StatsListBox_DrawItem(object sender, DrawItemEventArgs e)
+        private Point _dragStartPoint;
+        private Panel _draggedPanel;
+
+        private void GroupPanel_MouseDown(object sender, MouseEventArgs e)
         {
-            if (e.Index < 0) return;
-
-            var listBox = sender as ListBox;
-            var item = listBox.Items[e.Index].ToString();
-
-            e.DrawBackground();
-
-            // Draw stat name
-            using (var brush = new SolidBrush(e.ForeColor))
+            if (e.Button == MouseButtons.Left && e.Y < 32)
             {
-                e.Graphics.DrawString(item, e.Font, brush, e.Bounds.Left + 5, e.Bounds.Top + 2);
+                _dragStartPoint = e.Location;
+                _draggedPanel = sender as Panel;
             }
+        }
 
-            // Draw remove button
-            var btnRect = new Rectangle(e.Bounds.Right - 25, e.Bounds.Top + 2, 20, e.Bounds.Height - 4);
-            using (var btnBrush = new SolidBrush(Color.FromArgb(200, 50, 50)))
+        private void GroupPanel_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left && _draggedPanel is not null)
             {
-                e.Graphics.FillRectangle(btnBrush, btnRect);
+                if (Math.Abs(e.X - _dragStartPoint.X) > 5 || Math.Abs(e.Y - _dragStartPoint.Y) > 5)
+                    _draggedPanel.DoDragDrop(_draggedPanel, DragDropEffects.Move);
             }
-            using (var textBrush = new SolidBrush(Color.White))
-            {
-                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                e.Graphics.DrawString("×", e.Font, textBrush, btnRect, sf);
-            }
+        }
 
-            e.DrawFocusRectangle();
+        private void GroupPanel_DragDrop(object sender, DragEventArgs e)
+        {
+            if (sender is not Panel targetPanel ||
+                e.Data.GetData(typeof(Panel)) is not Panel sourcePanel ||
+                targetPanel == sourcePanel)
+                return;
+
+            var sourceGroup = sourcePanel.Tag as ValidationGroupModel;
+            var targetGroup = targetPanel.Tag as ValidationGroupModel;
+
+            int sourceIndex = _groups.IndexOf(sourceGroup);
+            int targetIndex = _groups.IndexOf(targetGroup);
+
+            _groups.RemoveAt(sourceIndex);
+            _groups.Insert(targetIndex, sourceGroup);
+
+            ArrangeGroupsInGrid();
+            RevalidateAllGroups();
         }
 
         private void DeleteGroup(ValidationGroupModel group, Panel panel)
         {
             _groups.Remove(group);
+            _groupsContainer.Controls.Remove(panel);
+            panel.Dispose();
 
-            if (this.Controls.Find("groupsPanel", true).FirstOrDefault() is Panel groupsPanel)
-            {
-                groupsPanel.Controls.Remove(panel);
-            }
-
-            RearrangeGroupPanels();
-            UpdateGroupOperatorVisibility();
+            ArrangeGroupsInGrid();
+            RevalidateAllGroups();
         }
 
-        private void RearrangeGroupPanels()
+        private void ArrangeGroupsInGrid()
         {
-            if (this.Controls.Find("groupsPanel", true).FirstOrDefault() is not Panel groupsPanel) return;
+            if (_groupsContainer is null || _groups.Count == 0) return;
 
-            int yOffset = 10;
+            int containerWidth = _groupsContainer.ClientSize.Width - 5;
+            int columnsPerRow = Math.Max(1, (containerWidth - GROUP_MARGIN) / (_calculatedPanelWidth + GROUP_MARGIN));
+
+            int currentRow = 0;
+            int currentCol = 0;
+
             foreach (var group in _groups)
             {
-                var panel = groupsPanel.Controls.OfType<Panel>()
+                var panel = _groupsContainer.Controls.OfType<Panel>()
                     .FirstOrDefault(p => p.Tag == group);
 
-                if (panel != null)
+                if (panel is not null)
                 {
-                    panel.Location = new Point(10, yOffset);
-                    yOffset += panel.Height + 10;
+                    int x = GROUP_MARGIN + currentCol * (_calculatedPanelWidth + GROUP_MARGIN);
+                    int y = GROUP_MARGIN + currentRow * (_calculatedPanelHeight + GROUP_MARGIN);
+
+                    panel.Location = new Point(x, y);
+
+                    currentCol++;
+                    if (currentCol >= columnsPerRow)
+                    {
+                        currentCol = 0;
+                        currentRow++;
+                    }
                 }
             }
-        }
 
-        private void UpdateGroupOperatorVisibility()
-        {
-            if (this.Controls.Find("groupsPanel", true).FirstOrDefault() is not Panel groupsPanel) return;
-
-            for (int i = 0; i < _groups.Count; i++)
-            {
-                var group = _groups[i];
-                var panel = groupsPanel.Controls.OfType<Panel>().FirstOrDefault(p => p.Tag == group);
-                if (panel == null) continue;
-
-                var contentPanel = panel.Controls.OfType<Panel>().FirstOrDefault();
-                if (contentPanel == null) continue;
-
-                var lblOperator = contentPanel.Controls.Find("lblOperator", false).FirstOrDefault();
-                var cmbOperator = contentPanel.Controls.Find("cmbOperator", false).FirstOrDefault();
-
-                bool isLastGroup = (i == _groups.Count - 1);
-                bool hasNextActiveGroup = !isLastGroup && _groups.Skip(i + 1).Any(g => g.IsActive);
-
-                if (lblOperator != null && cmbOperator != null)
-                {
-                    lblOperator.Visible = group.IsActive && hasNextActiveGroup;
-                    cmbOperator.Visible = group.IsActive && hasNextActiveGroup;
-                }
-            }
+            int totalRows = (int)Math.Ceiling((double)_groups.Count / columnsPerRow);
+            int minHeight = totalRows * (_calculatedPanelHeight + GROUP_MARGIN) + GROUP_MARGIN;
+            _groupsContainer.AutoScrollMinSize = new Size(0, minHeight);
         }
 
         private void BtnCreateValidator_Click(object sender, EventArgs e)
         {
             try
             {
-                var activeGroups = _groups.Where(g => g.IsActive).ToList();
+                var activeGroups = _groups.Where(g => g.IsMinEnabled || g.IsMaxEnabled).ToList();
 
                 if (activeGroups.Count == 0)
                 {
-                    MessageBox.Show("No active groups with conditions. Validator will always return true.",
+                    MessageBox.Show("No active groups. Validator will always return true.",
                         "Validator Created", MessageBoxButtons.OK, MessageBoxIcon.Information);
                     _masterValidator = x => true;
                     _ownerForm._itemValidatorFunction = _masterValidator;
                     return;
                 }
 
-                // Build validator function
+                foreach (var group in activeGroups)
+                {
+                    if (group.IsMinEnabled && group.IsMaxEnabled &&
+                        group.MinValue.HasValue && group.MaxValue.HasValue &&
+                        group.MinValue.Value >= group.MaxValue.Value)
+                    {
+                        MessageBox.Show($"{group.GroupName}: Min must be less than Max.",
+                            "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+                }
+
                 _masterValidator = BuildValidatorFunction(activeGroups);
                 _ownerForm._itemValidatorFunction = _masterValidator;
 
-                MessageBox.Show("Validator function created successfully!",
+                MessageBox.Show($"Validator created with {activeGroups.Count} group(s)!",
                     "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
@@ -533,14 +978,16 @@ namespace PoE2BuildCalculator
 
         private static Func<List<Item>, bool> BuildValidatorFunction(List<ValidationGroupModel> activeGroups)
         {
-            return (items) =>
+            return items =>
             {
+                if (activeGroups.Count == 0) return true;
+
                 bool result = EvaluateGroup(activeGroups[0], items);
 
                 for (int i = 1; i < activeGroups.Count; i++)
                 {
                     bool nextResult = EvaluateGroup(activeGroups[i], items);
-                    string op = activeGroups[i - 1].GroupOperator;
+                    string op = activeGroups[i - 1].GroupOperator ?? "AND";
 
                     result = op switch
                     {
@@ -559,13 +1006,9 @@ namespace PoE2BuildCalculator
         {
             if (group.Stats.Count == 0) return true;
 
-            // Calculate expression for each item
             var values = items.Select(item => EvaluateExpression(group.Stats, item.ItemStats)).ToList();
-
-            // Sum all values
             double sum = values.Sum();
 
-            // Check min/max constraints
             if (group.IsMinEnabled && group.MinValue.HasValue && sum < group.MinValue.Value)
                 return false;
 
@@ -599,20 +1042,13 @@ namespace PoE2BuildCalculator
             return result;
         }
 
-        private void BtnClose_Click(object sender, EventArgs e)
-        {
-            this.Close();
-        }
-
         private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
         {
             if (e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
-                _isClosing = true;
                 this.Hide();
                 this.Owner?.BringToFront();
-                _isClosing = false;
             }
         }
     }
