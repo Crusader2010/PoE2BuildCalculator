@@ -57,6 +57,7 @@ Example: If you have:
   • MaxLife (+)
   • Armour% (-)
   • Spirit (*)
+  • next_stat
 
 Calculation: ((MaxLife + Armour%) - Spirit) * next_stat
 This is LEFT-ASSOCIATIVE evaluation.
@@ -87,11 +88,6 @@ Each group sums all item stats per its expression,
 then checks if sum is within Min/Max bounds.
 
 Min/Max can be 0 or negative.
-At least one constraint (Min OR Max) must be enabled.
-
-Example:
-If calculated value is 150:
-  • Min=100, Max=200 → PASS ✓
-  • Min=200, Max=300 → FAIL ✗";
+At least one constraint (Min OR Max) must be enabled.";
     }
 }

@@ -167,29 +167,28 @@
             headerPanel.PerformLayout();
             bottomPanel.ResumeLayout(false);
             ResumeLayout(false);
-
         }
 
         #endregion
 
-        private System.Windows.Forms.TableLayoutPanel mainPanel;
-        private System.Windows.Forms.Panel headerPanel;
-        private System.Windows.Forms.Label lblTitle;
-        private System.Windows.Forms.Button btnAddGroup;
-        private System.Windows.Forms.Button btnHelp;
-        private System.Windows.Forms.Panel groupsContainer;
-        private System.Windows.Forms.Panel bottomPanel;
-        private System.Windows.Forms.Button btnCreateValidator;
-        private System.Windows.Forms.Button btnClose;
+        private TableLayoutPanel mainPanel;
+        private Panel headerPanel;
+        private Label lblTitle;
+        private Button btnAddGroup;
+        private Button btnHelp;
+        private Panel groupsContainer;
+        private Panel bottomPanel;
+        private Button btnCreateValidator;
+        private Button btnClose;
 
         private void BtnClose_Click(object sender, EventArgs e)
         {
             this.Close();
         }
 
-        private void CustomValidator_FormClosing(object sender, System.Windows.Forms.FormClosingEventArgs e)
+        private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (e.CloseReason == System.Windows.Forms.CloseReason.UserClosing)
+            if (e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
                 this.Hide();

@@ -15,15 +15,25 @@ namespace PoE2BuildCalculator
         private Point _dragStartPoint;
         private ItemStatGroupValidatorUserControl _draggedControl;
 
+        // Cached layout calculations
+        private int _lastContainerWidth = -1;
+        private int _cachedColumnsPerRow = -1;
+
         private const int GROUP_MARGIN = 10;
-        private const int CONTROL_WIDTH = 350;
-        private const int CONTROL_HEIGHT = 370;
+        private const int GROUP_CONTROL_WIDTH = 350;
+        private const int GROUP_CONTROL_HEIGHT = 350;
 
         public CustomValidator(MainForm ownerForm)
         {
             ArgumentNullException.ThrowIfNull(ownerForm);
             InitializeComponent();
             _ownerForm = ownerForm;
+
+            // Enable double buffering for smoother rendering
+            SetStyle(ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.UserPaint, true);
+            UpdateStyles();
         }
 
         private void BtnHelp_Click(object sender, EventArgs e)
@@ -77,9 +87,18 @@ namespace PoE2BuildCalculator
             };
 
             _groups.Add(group);
-            CreateGroupControl(group);
-            ArrangeGroupsInGrid();
-            RevalidateAllGroups();
+
+            groupsContainer.SuspendLayout();
+            try
+            {
+                CreateGroupControl(group);
+                ArrangeGroupsInGrid();
+                RevalidateAllGroups();
+            }
+            finally
+            {
+                groupsContainer.ResumeLayout(true);
+            }
         }
 
         private void CreateGroupControl(ValidationGroupModel group)
@@ -87,8 +106,8 @@ namespace PoE2BuildCalculator
             var control = new ItemStatGroupValidatorUserControl
             {
                 Group = group,
-                Width = CONTROL_WIDTH,
-                Height = CONTROL_HEIGHT,
+                Width = GROUP_CONTROL_WIDTH,
+                Height = GROUP_CONTROL_HEIGHT,
                 Tag = group,
                 AllowDrop = true
             };
@@ -105,23 +124,20 @@ namespace PoE2BuildCalculator
 
         private void RevalidateAllGroups()
         {
-            if (_groups.Count == 0)
-            {
-                btnAddGroup.Enabled = true;
-            }
-            else
-            {
-                var lastGroup = _groups[^1];
-                bool hasConstraint = lastGroup.IsMinEnabled || lastGroup.IsMaxEnabled;
-                bool hasStats = lastGroup.Stats.Count > 0;
-                bool isValid = !(lastGroup.IsMinEnabled && lastGroup.IsMaxEnabled &&
-                               lastGroup.MinValue.HasValue && lastGroup.MaxValue.HasValue &&
-                               lastGroup.MinValue.Value >= lastGroup.MaxValue.Value);
-
-                btnAddGroup.Enabled = hasConstraint && hasStats && isValid;
-            }
-
+            btnAddGroup.Enabled = _groups.Count == 0 || ValidateLastGroup();
             UpdateAllGroupOperatorVisibility();
+        }
+
+        private bool ValidateLastGroup()
+        {
+            var lastGroup = _groups[^1];
+            bool hasConstraint = lastGroup.IsMinEnabled || lastGroup.IsMaxEnabled;
+            bool hasStats = lastGroup.Stats.Count > 0;
+            bool isValid = !(lastGroup.IsMinEnabled && lastGroup.IsMaxEnabled &&
+                           lastGroup.MinValue.HasValue && lastGroup.MaxValue.HasValue &&
+                           lastGroup.MinValue.Value > lastGroup.MaxValue.Value);
+
+            return hasConstraint && hasStats && isValid;
         }
 
         private void UpdateAllGroupOperatorVisibility()
@@ -129,27 +145,32 @@ namespace PoE2BuildCalculator
             for (int i = 0; i < _groups.Count; i++)
             {
                 var group = _groups[i];
-                var control = groupsContainer.Controls.OfType<ItemStatGroupValidatorUserControl>()
-                    .FirstOrDefault(c => c.Tag == group);
-
+                var control = FindControlForGroup(group);
                 if (control == null) continue;
 
                 bool currentHasConstraint = group.IsMinEnabled || group.IsMaxEnabled;
                 bool currentHasStats = group.Stats.Count > 0;
-                bool hasNextValidGroup = false;
-
-                for (int j = i + 1; j < _groups.Count; j++)
-                {
-                    var nextGroup = _groups[j];
-                    if ((nextGroup.IsMinEnabled || nextGroup.IsMaxEnabled) && nextGroup.Stats.Count > 0)
-                    {
-                        hasNextValidGroup = true;
-                        break;
-                    }
-                }
+                bool hasNextValidGroup = HasNextValidGroup(i);
 
                 control.UpdateOperatorVisibility(currentHasConstraint && currentHasStats && hasNextValidGroup);
             }
+        }
+
+        private bool HasNextValidGroup(int currentIndex)
+        {
+            for (int j = currentIndex + 1; j < _groups.Count; j++)
+            {
+                var nextGroup = _groups[j];
+                if ((nextGroup.IsMinEnabled || nextGroup.IsMaxEnabled) && nextGroup.Stats.Count > 0)
+                    return true;
+            }
+            return false;
+        }
+
+        private ItemStatGroupValidatorUserControl FindControlForGroup(ValidationGroupModel group)
+        {
+            return groupsContainer.Controls.OfType<ItemStatGroupValidatorUserControl>()
+                .FirstOrDefault(c => c.Tag == group);
         }
 
         private void GroupControl_MouseDown(object sender, MouseEventArgs e)
@@ -186,18 +207,34 @@ namespace PoE2BuildCalculator
             _groups.RemoveAt(sourceIndex);
             _groups.Insert(targetIndex, sourceGroup);
 
-            ArrangeGroupsInGrid();
-            RevalidateAllGroups();
+            groupsContainer.SuspendLayout();
+            try
+            {
+                ArrangeGroupsInGrid();
+                RevalidateAllGroups();
+            }
+            finally
+            {
+                groupsContainer.ResumeLayout(true);
+            }
         }
 
         private void DeleteGroup(ValidationGroupModel group, ItemStatGroupValidatorUserControl control)
         {
             _groups.Remove(group);
-            groupsContainer.Controls.Remove(control);
-            control.Dispose();
 
-            ArrangeGroupsInGrid();
-            RevalidateAllGroups();
+            groupsContainer.SuspendLayout();
+            try
+            {
+                groupsContainer.Controls.Remove(control);
+                control.Dispose();
+                ArrangeGroupsInGrid();
+                RevalidateAllGroups();
+            }
+            finally
+            {
+                groupsContainer.ResumeLayout(true);
+            }
         }
 
         private void ArrangeGroupsInGrid()
@@ -205,20 +242,30 @@ namespace PoE2BuildCalculator
             if (groupsContainer == null || _groups.Count == 0) return;
 
             int containerWidth = groupsContainer.ClientSize.Width - 5;
-            int columnsPerRow = Math.Max(1, (containerWidth - GROUP_MARGIN) / (CONTROL_WIDTH + GROUP_MARGIN));
+
+            // Use cached calculation if width hasn't changed
+            int columnsPerRow;
+            if (containerWidth == _lastContainerWidth && _cachedColumnsPerRow > 0)
+            {
+                columnsPerRow = _cachedColumnsPerRow;
+            }
+            else
+            {
+                columnsPerRow = Math.Max(1, (containerWidth - GROUP_MARGIN) / (GROUP_CONTROL_WIDTH + GROUP_MARGIN));
+                _lastContainerWidth = containerWidth;
+                _cachedColumnsPerRow = columnsPerRow;
+            }
 
             int currentRow = 0, currentCol = 0;
 
             foreach (var group in _groups)
             {
-                var control = groupsContainer.Controls.OfType<ItemStatGroupValidatorUserControl>()
-                    .FirstOrDefault(c => c.Tag == group);
-
+                var control = FindControlForGroup(group);
                 if (control != null)
                 {
                     control.Location = new Point(
-                        GROUP_MARGIN + currentCol * (CONTROL_WIDTH + GROUP_MARGIN),
-                        GROUP_MARGIN + currentRow * (CONTROL_HEIGHT + GROUP_MARGIN)
+                        GROUP_MARGIN + currentCol * (GROUP_CONTROL_WIDTH + GROUP_MARGIN),
+                        GROUP_MARGIN + currentRow * (GROUP_CONTROL_HEIGHT + GROUP_MARGIN)
                     );
 
                     if (++currentCol >= columnsPerRow)
@@ -230,7 +277,7 @@ namespace PoE2BuildCalculator
             }
 
             int totalRows = (int)Math.Ceiling((double)_groups.Count / columnsPerRow);
-            groupsContainer.AutoScrollMinSize = new Size(0, totalRows * (CONTROL_HEIGHT + GROUP_MARGIN) + GROUP_MARGIN);
+            groupsContainer.AutoScrollMinSize = new Size(0, totalRows * (GROUP_CONTROL_HEIGHT + GROUP_MARGIN) + GROUP_MARGIN);
         }
 
         private void BtnCreateValidator_Click(object sender, EventArgs e)
@@ -238,7 +285,6 @@ namespace PoE2BuildCalculator
             try
             {
                 var activeGroups = _groups.Where(g => g.IsMinEnabled || g.IsMaxEnabled).ToList();
-
                 if (activeGroups.Count == 0)
                 {
                     MessageBox.Show("No active groups. Validator will always return true.",
@@ -248,17 +294,7 @@ namespace PoE2BuildCalculator
                     return;
                 }
 
-                foreach (var group in activeGroups)
-                {
-                    if (group.IsMinEnabled && group.IsMaxEnabled &&
-                        group.MinValue.HasValue && group.MaxValue.HasValue &&
-                        group.MinValue.Value >= group.MaxValue.Value)
-                    {
-                        MessageBox.Show($"{group.GroupName}: Min must be less than Max.",
-                            "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
-                }
+                if (!ValidateAllGroupConstraints(activeGroups)) return;
 
                 _masterValidator = BuildValidatorFunction(activeGroups);
                 _ownerForm._itemValidatorFunction = _masterValidator;
@@ -271,6 +307,22 @@ namespace PoE2BuildCalculator
                 MessageBox.Show($"Error creating validator: {ex.Message}",
                     "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
+        }
+
+        private static bool ValidateAllGroupConstraints(List<ValidationGroupModel> activeGroups)
+        {
+            foreach (var group in activeGroups)
+            {
+                if (group.IsMinEnabled && group.IsMaxEnabled &&
+                    group.MinValue.HasValue && group.MaxValue.HasValue &&
+                    group.MinValue.Value > group.MaxValue.Value)
+                {
+                    MessageBox.Show($"{group.GroupName}: Min must be less than Max.",
+                        "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return false;
+                }
+            }
+            return true;
         }
 
         private static Func<List<Item>, bool> BuildValidatorFunction(List<ValidationGroupModel> activeGroups)
@@ -339,7 +391,19 @@ namespace PoE2BuildCalculator
 
         private void GroupsContainer_Resize(object sender, EventArgs e)
         {
-            ArrangeGroupsInGrid();
+            // Invalidate cache on resize
+            _lastContainerWidth = -1;
+            _cachedColumnsPerRow = -1;
+
+            groupsContainer.SuspendLayout();
+            try
+            {
+                ArrangeGroupsInGrid();
+            }
+            finally
+            {
+                groupsContainer.ResumeLayout(true);
+            }
         }
     }
 }

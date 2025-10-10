@@ -20,6 +20,9 @@ namespace Domain.UserControls
                 .OrderBy(p => p.Name)];
         });
 
+        // Cache for combo box state restoration
+        private readonly Dictionary<string, int> _comboBoxIndexCache = [];
+
         public event EventHandler DeleteRequested;
         public event EventHandler ValidationChanged;
 
@@ -36,6 +39,7 @@ namespace Domain.UserControls
         public ItemStatGroupValidatorUserControl()
         {
             InitializeComponent();
+            InitializeComboBoxCache();
         }
 
         private void ItemStatGroupValidatorUserControl_Load(object sender, EventArgs e)
@@ -45,30 +49,45 @@ namespace Domain.UserControls
                 UpdateDisplay();
             }
 
-            // Add Leave handlers for validation
             numMin.Leave += NumericInput_Leave;
             numMax.Leave += NumericInput_Leave;
+        }
+
+        private void InitializeComboBoxCache()
+        {
+            for (int i = 0; i < _availableProperties.Value.Count; i++)
+            {
+                _comboBoxIndexCache[_availableProperties.Value[i].Name] = i;
+            }
         }
 
         private void UpdateDisplay()
         {
             if (_group == null) return;
 
-            lblGroupName.Text = _group.GroupName;
+            SuspendLayout();
+            try
+            {
+                lblGroupName.Text = _group.GroupName;
 
-            chkMin.Checked = _group.IsMinEnabled;
-            numMin.Value = (decimal)(_group.MinValue ?? 0.00);
-            numMin.Enabled = _group.IsMinEnabled;
+                chkMin.Checked = _group.IsMinEnabled;
+                numMin.Value = (decimal)(_group.MinValue ?? 0.00);
+                numMin.Enabled = _group.IsMinEnabled;
 
-            chkMax.Checked = _group.IsMaxEnabled;
-            numMax.Value = (decimal)(_group.MaxValue ?? 0.00);
-            numMax.Enabled = _group.IsMaxEnabled;
+                chkMax.Checked = _group.IsMaxEnabled;
+                numMax.Value = (decimal)(_group.MaxValue ?? 0.00);
+                numMax.Enabled = _group.IsMaxEnabled;
 
-            UpdateStatsComboBox();
-            RefreshStatsListBox();
+                UpdateStatsComboBox();
+                RefreshStatsListBox();
 
-            cmbOperator.SelectedItem = _group.GroupOperator ?? "AND";
-            ValidateGroup();
+                cmbOperator.SelectedItem = _group.GroupOperator ?? "AND";
+                ValidateGroup();
+            }
+            finally
+            {
+                ResumeLayout(true);
+            }
         }
 
         private void UpdateStatsComboBox()
@@ -76,25 +95,36 @@ namespace Domain.UserControls
             var usedStats = new HashSet<string>(_group.Stats.Select(s => s.PropertyName), StringComparer.OrdinalIgnoreCase);
 
             cmbStats.BeginUpdate();
-            cmbStats.Items.Clear();
-
-            foreach (var prop in _availableProperties.Value)
+            try
             {
-                if (!usedStats.Contains(prop.Name))
-                {
-                    cmbStats.Items.Add(prop.Name);
-                }
-            }
+                cmbStats.Items.Clear();
 
-            cmbStats.EndUpdate();
+                // Use LINQ for efficient filtering and ordering
+                var availableItems = _availableProperties.Value
+                    .Where(p => !usedStats.Contains(p.Name))
+                    .Select(p => p.Name)
+                    .ToArray();
+
+                cmbStats.Items.AddRange(availableItems);
+            }
+            finally
+            {
+                cmbStats.EndUpdate();
+            }
         }
 
         private void RefreshStatsListBox()
         {
             statsListBox.BeginUpdate();
-            statsListBox.Items.Clear();
-            statsListBox.Items.AddRange([.. _group.Stats.Select(s => s.PropertyName)]);
-            statsListBox.EndUpdate();
+            try
+            {
+                statsListBox.Items.Clear();
+                statsListBox.Items.AddRange([.. _group.Stats.Select(s => s.PropertyName)]);
+            }
+            finally
+            {
+                statsListBox.EndUpdate();
+            }
         }
 
         private void ValidateGroup()
@@ -109,7 +139,7 @@ namespace Domain.UserControls
             }
             else if (_group.IsMinEnabled && _group.IsMaxEnabled &&
                      _group.MinValue.HasValue && _group.MaxValue.HasValue &&
-                     _group.MinValue.Value >= _group.MaxValue.Value)
+                     _group.MinValue.Value > _group.MaxValue.Value)
             {
                 errorMsg = "Min must be < Max";
                 isValid = false;
@@ -127,9 +157,12 @@ namespace Domain.UserControls
             cmbOperator.Enabled = visible;
         }
 
-        private void NumericInput_Leave(object sender, EventArgs e)
+        private static void NumericInput_Leave(object sender, EventArgs e)
         {
-            ValidateGroup();
+            if (sender is NumericUpDown nud && nud.Parent is ItemStatGroupValidatorUserControl uc)
+            {
+                uc.ValidateGroup();
+            }
         }
 
         private void btnDelete_Click(object sender, EventArgs e)
@@ -155,8 +188,11 @@ namespace Domain.UserControls
                 Operator = "+"
             });
 
-            cmbStats.Items.Remove(propName);
+            // Remove from combo using cached index for efficiency
+            int selectedIndex = cmbStats.SelectedIndex;
+            cmbStats.Items.RemoveAt(selectedIndex);
             cmbStats.SelectedIndex = -1;
+
             RefreshStatsListBox();
             ValidateGroup();
         }
@@ -207,11 +243,6 @@ namespace Domain.UserControls
             _group.GroupOperator = cmbOperator.SelectedItem?.ToString();
         }
 
-        private void contentPanel_Click(object sender, EventArgs e)
-        {
-            ValidateGroup();
-        }
-
         private void statsListBox_DrawItem(object sender, DrawItemEventArgs e)
         {
             if (e.Index < 0 || e.Index >= _group.Stats.Count) return;
@@ -223,11 +254,9 @@ namespace Domain.UserControls
             e.DrawBackground();
 
             // Draw stat name
-            using (var brush = new SolidBrush(e.ForeColor))
-            {
-                var textRect = new Rectangle(bounds.Left + 4, bounds.Top + 9, bounds.Width - 100, bounds.Height);
-                e.Graphics.DrawString(stat.PropertyName, e.Font, brush, textRect);
-            }
+            using var brush = new SolidBrush(e.ForeColor);
+            var textRect = new Rectangle(bounds.Left + 4, bounds.Top + 9, bounds.Width - 100, bounds.Height);
+            e.Graphics.DrawString(stat.PropertyName, e.Font, brush, textRect);
 
             // Operator dropdown (skip for last stat)
             if (!isLastStat)
@@ -241,47 +270,38 @@ namespace Domain.UserControls
             e.DrawFocusRectangle();
         }
 
-        private void DrawOperatorBox(Graphics g, Rectangle rect, string op)
+        private static void DrawOperatorBox(Graphics g, Rectangle rect, string op)
         {
-            using (var bgBrush = new SolidBrush(Color.FromArgb(240, 240, 240)))
-                g.FillRectangle(bgBrush, rect);
-
+            using var bgBrush = new SolidBrush(Color.FromArgb(240, 240, 240));
+            g.FillRectangle(bgBrush, rect);
             g.DrawRectangle(Pens.Gray, rect);
 
-            using (var textBrush = new SolidBrush(Color.Black))
-            {
-                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                g.DrawString(op, Font, textBrush, rect, sf);
-            }
+            using var textBrush = new SolidBrush(Color.Black);
+            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            g.DrawString(op, SystemFonts.DefaultFont, textBrush, rect, sf);
         }
 
         private static void DrawControlButtons(Graphics g, Rectangle bounds)
         {
-            // Up button
             var upRect = new Rectangle(bounds.Right - 42, bounds.Top + 3, 18, 14);
             DrawButton(g, upRect, "▲", Color.FromArgb(100, 150, 200));
 
-            // Down button
             var downRect = new Rectangle(bounds.Right - 42, bounds.Top + 18, 18, 14);
             DrawButton(g, downRect, "▼", Color.FromArgb(100, 150, 200));
 
-            // Remove button
             var removeRect = new Rectangle(bounds.Right - 22, bounds.Top + 3, 18, 29);
             DrawButton(g, removeRect, "×", Color.FromArgb(200, 50, 50), new Font("Segoe UI", 10, FontStyle.Bold));
         }
 
         private static void DrawButton(Graphics g, Rectangle rect, string text, Color bgColor, Font font = null)
         {
-            using (var bgBrush = new SolidBrush(bgColor))
-                g.FillRectangle(bgBrush, rect);
-
+            using var bgBrush = new SolidBrush(bgColor);
+            g.FillRectangle(bgBrush, rect);
             g.DrawRectangle(font != null ? Pens.DarkRed : Pens.DarkBlue, rect);
 
-            using (var textBrush = new SolidBrush(Color.White))
-            {
-                var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-                g.DrawString(text, font ?? new Font("Arial", 7), textBrush, rect, sf);
-            }
+            using var textBrush = new SolidBrush(Color.White);
+            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
+            g.DrawString(text, font ?? new Font("Arial", 7), textBrush, rect, sf);
         }
 
         private void statsListBox_MouseClick(object sender, MouseEventArgs e)
@@ -293,42 +313,39 @@ namespace Domain.UserControls
             bool isLastStat = index == _group.Stats.Count - 1;
 
             // Check operator dropdown (skip for last stat)
-            if (!isLastStat && IsPointInRect(e.Location, bounds, -95, 5, 50, -10))
+            // Operator box is at: bounds.Right - 95, width 50
+            if (!isLastStat)
             {
-                ShowOperatorMenu(_group.Stats[index], e.Location);
-                return;
+                var opRect = new Rectangle(bounds.Right - 95, bounds.Top + 5, 50, bounds.Height - 10);
+                if (opRect.Contains(e.Location))
+                {
+                    ShowOperatorMenu(_group.Stats[index], e.Location);
+                    return;
+                }
             }
 
             // Check up button
-            if (IsPointInRect(e.Location, bounds, -42, 3, 18, 14) && index > 0)
+            var upRect = new Rectangle(bounds.Right - 42, bounds.Top + 3, 18, 14);
+            if (upRect.Contains(e.Location) && index > 0)
             {
                 SwapStats(index, index - 1);
                 return;
             }
 
             // Check down button
-            if (IsPointInRect(e.Location, bounds, -42, 18, 18, 14) && index < _group.Stats.Count - 1)
+            var downRect = new Rectangle(bounds.Right - 42, bounds.Top + 18, 18, 14);
+            if (downRect.Contains(e.Location) && index < _group.Stats.Count - 1)
             {
                 SwapStats(index, index + 1);
                 return;
             }
 
             // Check remove button
-            if (IsPointInRect(e.Location, bounds, -22, 3, 18, 29))
+            var removeRect = new Rectangle(bounds.Right - 22, bounds.Top + 3, 18, 29);
+            if (removeRect.Contains(e.Location))
             {
                 RemoveStat(index);
             }
-        }
-
-        private static bool IsPointInRect(Point point, Rectangle bounds, int xOffset, int yOffset, int width, int height)
-        {
-            var rect = new Rectangle(
-                xOffset < 0 ? bounds.Right + xOffset : bounds.Left + xOffset,
-                bounds.Top + yOffset,
-                width,
-                height < 0 ? bounds.Height + height : height
-            );
-            return rect.Contains(point);
         }
 
         private void SwapStats(int index1, int index2)
@@ -341,21 +358,42 @@ namespace Domain.UserControls
         {
             string propName = _group.Stats[index].PropertyName;
             _group.Stats.RemoveAt(index);
+
+            // Restore to combo box at original cached index
+            if (_comboBoxIndexCache.TryGetValue(propName, out int originalIndex))
+            {
+                cmbStats.BeginUpdate();
+                try
+                {
+                    // Find correct insertion position based on sorted order
+                    int insertPos = 0;
+                    for (int i = 0; i < cmbStats.Items.Count; i++)
+                    {
+                        if (_comboBoxIndexCache.TryGetValue(cmbStats.Items[i].ToString(), out int cachedIdx) && cachedIdx < originalIndex)
+                        {
+                            insertPos = i + 1;
+                        }
+                    }
+                    cmbStats.Items.Insert(insertPos, propName);
+                }
+                finally
+                {
+                    cmbStats.EndUpdate();
+                }
+            }
+            else
+            {
+                // Fallback: re-sort entire list
+                UpdateStatsComboBox();
+            }
+
             RefreshStatsListBox();
-
-            // Re-add to dropdown
-            var items = cmbStats.Items.Cast<string>().Append(propName).OrderBy(x => x).ToArray();
-            cmbStats.BeginUpdate();
-            cmbStats.Items.Clear();
-            cmbStats.Items.AddRange(items);
-            cmbStats.EndUpdate();
-
             ValidateGroup();
         }
 
         private void ShowOperatorMenu(GroupStatModel stat, Point location)
         {
-            using var menu = new ContextMenuStrip();
+            var menu = new ContextMenuStrip();
 
             foreach (var op in Constants.MATH_OPERATORS)
             {
@@ -364,6 +402,7 @@ namespace Domain.UserControls
                 {
                     stat.Operator = op;
                     statsListBox.Invalidate();
+                    menu.Close();
                 };
                 menu.Items.Add(item);
             }

@@ -87,7 +87,7 @@
             contentPanel.Location = new Point(0, 32);
             contentPanel.Name = "contentPanel";
             contentPanel.Padding = new Padding(8);
-            contentPanel.Size = new Size(357, 315);
+            contentPanel.Size = new Size(357, 305);
             contentPanel.TabIndex = 1;
             // 
             // lblAddStat
@@ -131,7 +131,7 @@
             statsListBox.ItemHeight = 34;
             statsListBox.Location = new Point(8, 38);
             statsListBox.Name = "statsListBox";
-            statsListBox.Size = new Size(334, 170);
+            statsListBox.Size = new Size(334, 106);
             statsListBox.TabIndex = 3;
             statsListBox.MouseClick += statsListBox_MouseClick;
             statsListBox.DrawItem += statsListBox_DrawItem;
@@ -230,10 +230,10 @@
             lblOperatorLabel.ForeColor = Color.FromArgb(60, 60, 60);
             lblOperatorLabel.Location = new Point(4, 15);
             lblOperatorLabel.Name = "lblOperatorLabel";
-            lblOperatorLabel.Size = new Size(38, 20);
+            lblOperatorLabel.Size = new Size(152, 20);
             lblOperatorLabel.TabIndex = 0;
             lblOperatorLabel.Text = "Then:";
-            lblOperatorLabel.TextAlign = ContentAlignment.MiddleLeft;
+            lblOperatorLabel.TextAlign = ContentAlignment.MiddleRight;
             // 
             // cmbOperator
             // 
@@ -241,9 +241,9 @@
             cmbOperator.Font = new Font("Segoe UI", 9F);
             cmbOperator.FormattingEnabled = true;
             cmbOperator.Items.AddRange(new object[] { "AND", "OR", "XOR" });
-            cmbOperator.Location = new Point(45, 13);
+            cmbOperator.Location = new Point(162, 13);
             cmbOperator.Name = "cmbOperator";
-            cmbOperator.Size = new Size(244, 23);
+            cmbOperator.Size = new Size(127, 23);
             cmbOperator.TabIndex = 1;
             cmbOperator.SelectedIndexChanged += cmbOperator_SelectedIndexChanged;
             // 
@@ -268,7 +268,7 @@
             Controls.Add(headerPanel);
             DoubleBuffered = true;
             Name = "ItemStatGroupValidatorUserControl";
-            Size = new Size(357, 347);
+            Size = new Size(357, 337);
             Load += ItemStatGroupValidatorUserControl_Load;
             headerPanel.ResumeLayout(false);
             headerPanel.PerformLayout();
@@ -278,28 +278,27 @@
             ((System.ComponentModel.ISupportInitialize)numMax).EndInit();
             pnlOperatorContainer.ResumeLayout(false);
             ResumeLayout(false);
-
         }
 
         #endregion
 
-        private System.Windows.Forms.Panel headerPanel;
-        private System.Windows.Forms.Label lblGroupName;
-        private System.Windows.Forms.Button btnDelete;
-        private System.Windows.Forms.Panel contentPanel;
-        private System.Windows.Forms.Label lblAddStat;
-        private System.Windows.Forms.ComboBox cmbStats;
-        private System.Windows.Forms.Button btnAddStat;
-        private System.Windows.Forms.ListBox statsListBox;
-        private System.Windows.Forms.GroupBox grpConstraints;
-        private System.Windows.Forms.CheckBox chkMin;
-        private System.Windows.Forms.NumericUpDown numMin;
-        private System.Windows.Forms.CheckBox chkMax;
-        private System.Windows.Forms.NumericUpDown numMax;
-        private System.Windows.Forms.Label lblValidation;
-        private System.Windows.Forms.Panel pnlOperatorContainer;
-        private System.Windows.Forms.Label lblOperatorLabel;
-        private System.Windows.Forms.ComboBox cmbOperator;
-        private System.Windows.Forms.Label lblArrow;
+        private Panel headerPanel;
+        private Label lblGroupName;
+        private Button btnDelete;
+        private Panel contentPanel;
+        private Label lblAddStat;
+        private ComboBox cmbStats;
+        private Button btnAddStat;
+        private ListBox statsListBox;
+        private GroupBox grpConstraints;
+        private CheckBox chkMin;
+        private NumericUpDown numMin;
+        private CheckBox chkMax;
+        private NumericUpDown numMax;
+        private Label lblValidation;
+        private Panel pnlOperatorContainer;
+        private Label lblOperatorLabel;
+        private ComboBox cmbOperator;
+        private Label lblArrow;
     }
 }
