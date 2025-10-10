@@ -284,53 +284,32 @@ namespace PoE2BuildCalculator
         {
             try
             {
-                var activeGroups = _groups.Where(g => g.IsMinEnabled || g.IsMaxEnabled).ToList();
-                if (activeGroups.Count == 0)
+                var validatorFunction = BuildValidatorFunction([.. _groups]);
+                if (validatorFunction == null)
                 {
-                    MessageBox.Show("No active groups. Validator will always return true.",
-                        "Validator Created", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    _masterValidator = x => true;
-                    _ownerForm._itemValidatorFunction = _masterValidator;
+                    MessageBox.Show("No validation function can be computed based on the existing groups.\n\nKeeping default logic -> all combinations are valid.", "No usable groups", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                if (!ValidateAllGroupConstraints(activeGroups)) return;
-
-                _masterValidator = BuildValidatorFunction(activeGroups);
+                _masterValidator = validatorFunction;
                 _ownerForm._itemValidatorFunction = _masterValidator;
-
-                MessageBox.Show($"Validator created with {activeGroups.Count} group(s)!",
-                    "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Validator created with {_groups.Where(x => x.IsActive).Count()} ACTIVE group(s)!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"Error creating validator: {ex.Message}",
-                    "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error creating validator: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private static bool ValidateAllGroupConstraints(List<ValidationGroupModel> activeGroups)
+        private static Func<List<Item>, bool> BuildValidatorFunction(List<ValidationGroupModel> groups)
         {
-            foreach (var group in activeGroups)
-            {
-                if (group.IsMinEnabled && group.IsMaxEnabled &&
-                    group.MinValue.HasValue && group.MaxValue.HasValue &&
-                    group.MinValue.Value > group.MaxValue.Value)
-                {
-                    MessageBox.Show($"{group.GroupName}: Min must be less than Max.",
-                        "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    return false;
-                }
-            }
-            return true;
-        }
+            if (groups == null || groups.Count == 0) return null;
 
-        private static Func<List<Item>, bool> BuildValidatorFunction(List<ValidationGroupModel> activeGroups)
-        {
+            var activeGroups = groups.Where(g => g.IsActive).ToList();
+            if (groups.Count == activeGroups.Count) return null;
+
             return items =>
             {
-                if (activeGroups.Count == 0) return true;
-
                 bool result = EvaluateGroup(activeGroups[0], items);
 
                 for (int i = 1; i < activeGroups.Count; i++)
@@ -355,6 +334,16 @@ namespace PoE2BuildCalculator
         {
             if (group.Stats.Count == 0) return true;
 
+            /*
+             * TO DO:
+             * Evaluated expression = item stats within the same group, with applied value operators.
+             * Currently, this only allows for summing the evaluated expression across all items, then checking if it's between min and max group constraints.
+             * Need to add the following for SINGLE STAT groups only:
+             *      - Any of the items has the evaluated expression between min and max (OR logic)
+             *      - All items have the evaluated expression between min and max (AND logic)
+             *      - At least X items have the evaluated expression between min and max
+             *      - At most Y items have the evaluated expression between min and max
+             */
             double sum = items.Sum(item => EvaluateExpression(group.Stats, item.ItemStats));
 
             if (group.IsMinEnabled && group.MinValue.HasValue && sum < group.MinValue.Value)

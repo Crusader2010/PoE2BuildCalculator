@@ -95,7 +95,12 @@ namespace Domain.Validation
         }
 
         [Browsable(false)]
-        public bool IsActive => (IsMinEnabled && MinValue.HasValue) || (IsMaxEnabled && MaxValue.HasValue);
+        public bool IsActive => Stats.Count > 0 &&
+                    (
+                        (IsMinEnabled && MinValue.HasValue && !IsMaxEnabled) ||
+                        (IsMaxEnabled && MaxValue.HasValue && !IsMinEnabled) ||
+                        (IsMinEnabled && MinValue.HasValue && IsMaxEnabled && MaxValue.HasValue && MaxValue.Value >= MinValue.Value)
+                    );
 
         public event PropertyChangedEventHandler PropertyChanged;
         protected void OnPropertyChanged(string propertyName)

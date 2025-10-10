@@ -228,11 +228,11 @@
             // 
             lblOperatorLabel.Font = new Font("Segoe UI", 8.5F, FontStyle.Bold);
             lblOperatorLabel.ForeColor = Color.FromArgb(60, 60, 60);
-            lblOperatorLabel.Location = new Point(4, 15);
+            lblOperatorLabel.Location = new Point(4, 12);
             lblOperatorLabel.Name = "lblOperatorLabel";
-            lblOperatorLabel.Size = new Size(152, 20);
+            lblOperatorLabel.Size = new Size(169, 23);
             lblOperatorLabel.TabIndex = 0;
-            lblOperatorLabel.Text = "Then:";
+            lblOperatorLabel.Text = "Then (next valid group):";
             lblOperatorLabel.TextAlign = ContentAlignment.MiddleRight;
             // 
             // cmbOperator
@@ -241,9 +241,9 @@
             cmbOperator.Font = new Font("Segoe UI", 9F);
             cmbOperator.FormattingEnabled = true;
             cmbOperator.Items.AddRange(new object[] { "AND", "OR", "XOR" });
-            cmbOperator.Location = new Point(162, 13);
+            cmbOperator.Location = new Point(179, 13);
             cmbOperator.Name = "cmbOperator";
-            cmbOperator.Size = new Size(127, 23);
+            cmbOperator.Size = new Size(90, 23);
             cmbOperator.TabIndex = 1;
             cmbOperator.SelectedIndexChanged += cmbOperator_SelectedIndexChanged;
             // 
@@ -251,9 +251,9 @@
             // 
             lblArrow.Font = new Font("Segoe UI", 18F, FontStyle.Bold);
             lblArrow.ForeColor = Color.FromArgb(70, 130, 180);
-            lblArrow.Location = new Point(292, 6);
+            lblArrow.Location = new Point(275, 0);
             lblArrow.Name = "lblArrow";
-            lblArrow.Size = new Size(38, 38);
+            lblArrow.Size = new Size(55, 49);
             lblArrow.TabIndex = 2;
             lblArrow.Text = "→";
             lblArrow.TextAlign = ContentAlignment.MiddleCenter;
