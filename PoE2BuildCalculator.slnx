@@ -1,12 +1,24 @@
 <Solution>
+  <Configurations>
+    <BuildType Name="Debug" />
+    <BuildType Name="DefaultBuild" />
+    <BuildType Name="Release" />
+  </Configurations>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path="PoE2.ico" />
   </Folder>
-  <Project Path="Domain/Domain.csproj" />
-  <Project Path="InstallerSetup/InstallerSetup.vdproj" Type="Installer">
-    <Build />
+  <Project Path="Domain/Domain.csproj">
+    <BuildType Solution="DefaultBuild|*" Project="Release" />
   </Project>
-  <Project Path="Manager/Manager.csproj" />
-  <Project Path="PoE2BuildCalculator/PoE2BuildCalculator.csproj" />
+  <Project Path="InstallerSetup/InstallerSetup.aiproj" Type="840c416c-b8f3-42bc-b0dd-f6bb14c9f8cb" Id="fc297aba-c316-4015-afbf-cca8be5f25eb">
+    <BuildType Project="DefaultBuild" />
+    <Platform Project="?" />
+  </Project>
+  <Project Path="Manager/Manager.csproj">
+    <BuildType Solution="DefaultBuild|*" Project="Release" />
+  </Project>
+  <Project Path="PoE2BuildCalculator/PoE2BuildCalculator.csproj">
+    <BuildType Solution="DefaultBuild|*" Project="Release" />
+  </Project>
 </Solution>
