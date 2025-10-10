@@ -1,4 +1,5 @@
 ﻿using Domain.Main;
+using Domain.Static;
 using Domain.UserControls;
 using Domain.Validation;
 using System.ComponentModel;
@@ -11,8 +12,9 @@ namespace PoE2BuildCalculator
         private readonly BindingList<ValidationGroupModel> _groups = [];
         private readonly MainForm _ownerForm;
         private int _nextGroupId = 1;
+        private Point _dragStartPoint;
+        private ItemStatGroupValidatorUserControl _draggedControl;
 
-        // Grid constants
         private const int GROUP_MARGIN = 10;
         private const int CONTROL_WIDTH = 350;
         private const int CONTROL_HEIGHT = 370;
@@ -26,51 +28,6 @@ namespace PoE2BuildCalculator
 
         private void BtnHelp_Click(object sender, EventArgs e)
         {
-            string helpText = @"=== ORDER OF OPERATIONS ===
-
-WITHIN A GROUP (Stats):
-Stats are evaluated LEFT-TO-RIGHT in the order they appear.
-Example: If you have:
-  • MaxLife (+)
-  • Armour% (-)
-  • Spirit (*)
-
-Calculation: ((MaxLife + Armour%) - Spirit) * next_stat
-This is LEFT-ASSOCIATIVE evaluation.
-
-To control order:
-1. Reorder stats using ▲▼ buttons
-2. First stat evaluated first
-3. Each operator applies between result and next stat
-
-BETWEEN GROUPS:
-Groups evaluated in grid order (left→right, top→bottom).
-Each group produces TRUE/FALSE based on Min/Max constraints.
-
-Results combined using group operators (AND/OR/XOR):
-  • AND: Both groups must pass
-  • OR: At least one group must pass  
-  • XOR: Exactly one group must pass
-
-Example with 3 groups:
-  Group1 (TRUE) → AND
-  Group2 (FALSE) → OR
-  Group3 (TRUE)
-
-Evaluation: (TRUE AND FALSE) OR TRUE = FALSE OR TRUE = TRUE
-
-CONSTRAINTS:
-Each group sums all item stats per its expression,
-then checks if sum is within Min/Max bounds.
-
-Min/Max can be 0 or negative.
-At least one constraint (Min OR Max) must be enabled.
-
-Example:
-If calculated value is 150:
-  • Min=100, Max=200 → PASS ✓
-  • Min=200, Max=300 → FAIL ✗";
-
             using var helpForm = new Form
             {
                 Text = "Validator Help - Order of Operations",
@@ -88,7 +45,7 @@ If calculated value is 150:
                 ScrollBars = ScrollBars.Vertical,
                 Dock = DockStyle.Fill,
                 Font = new Font("Consolas", 9.5f),
-                Text = helpText,
+                Text = Constants.VALIDATOR_HELP_TEXT,
                 Padding = new Padding(10)
             };
 
@@ -132,14 +89,12 @@ If calculated value is 150:
                 Group = group,
                 Width = CONTROL_WIDTH,
                 Height = CONTROL_HEIGHT,
-                Tag = group
+                Tag = group,
+                AllowDrop = true
             };
 
             control.DeleteRequested += (s, e) => DeleteGroup(group, control);
             control.ValidationChanged += (s, e) => RevalidateAllGroups();
-
-            // Drag-drop support
-            control.AllowDrop = true;
             control.MouseDown += GroupControl_MouseDown;
             control.MouseMove += GroupControl_MouseMove;
             control.DragOver += (s, e) => e.Effect = DragDropEffects.Move;
@@ -150,7 +105,6 @@ If calculated value is 150:
 
         private void RevalidateAllGroups()
         {
-            // Update "Add Group" button state
             if (_groups.Count == 0)
             {
                 btnAddGroup.Enabled = true;
@@ -167,7 +121,6 @@ If calculated value is 150:
                 btnAddGroup.Enabled = hasConstraint && hasStats && isValid;
             }
 
-            // Update operator visibility for all groups
             UpdateAllGroupOperatorVisibility();
         }
 
@@ -183,31 +136,21 @@ If calculated value is 150:
 
                 bool currentHasConstraint = group.IsMinEnabled || group.IsMaxEnabled;
                 bool currentHasStats = group.Stats.Count > 0;
-
                 bool hasNextValidGroup = false;
-                if (i < _groups.Count - 1)
-                {
-                    for (int j = i + 1; j < _groups.Count; j++)
-                    {
-                        var nextGroup = _groups[j];
-                        bool nextHasConstraint = nextGroup.IsMinEnabled || nextGroup.IsMaxEnabled;
-                        bool nextHasStats = nextGroup.Stats.Count > 0;
 
-                        if (nextHasConstraint && nextHasStats)
-                        {
-                            hasNextValidGroup = true;
-                            break;
-                        }
+                for (int j = i + 1; j < _groups.Count; j++)
+                {
+                    var nextGroup = _groups[j];
+                    if ((nextGroup.IsMinEnabled || nextGroup.IsMaxEnabled) && nextGroup.Stats.Count > 0)
+                    {
+                        hasNextValidGroup = true;
+                        break;
                     }
                 }
 
-                bool shouldShow = currentHasConstraint && currentHasStats && hasNextValidGroup;
-                control.UpdateOperatorVisibility(shouldShow);
+                control.UpdateOperatorVisibility(currentHasConstraint && currentHasStats && hasNextValidGroup);
             }
         }
-
-        private Point _dragStartPoint;
-        private ItemStatGroupValidatorUserControl _draggedControl;
 
         private void GroupControl_MouseDown(object sender, MouseEventArgs e)
         {
@@ -220,10 +163,10 @@ If calculated value is 150:
 
         private void GroupControl_MouseMove(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left && _draggedControl != null)
+            if (e.Button == MouseButtons.Left && _draggedControl != null &&
+                (Math.Abs(e.X - _dragStartPoint.X) > 5 || Math.Abs(e.Y - _dragStartPoint.Y) > 5))
             {
-                if (Math.Abs(e.X - _dragStartPoint.X) > 5 || Math.Abs(e.Y - _dragStartPoint.Y) > 5)
-                    _draggedControl.DoDragDrop(_draggedControl, DragDropEffects.Move);
+                _draggedControl.DoDragDrop(_draggedControl, DragDropEffects.Move);
             }
         }
 
@@ -251,7 +194,7 @@ If calculated value is 150:
         {
             _groups.Remove(group);
             groupsContainer.Controls.Remove(control);
-            if (control != null && !control.IsDisposed) control.Dispose();
+            control.Dispose();
 
             ArrangeGroupsInGrid();
             RevalidateAllGroups();
@@ -264,8 +207,7 @@ If calculated value is 150:
             int containerWidth = groupsContainer.ClientSize.Width - 5;
             int columnsPerRow = Math.Max(1, (containerWidth - GROUP_MARGIN) / (CONTROL_WIDTH + GROUP_MARGIN));
 
-            int currentRow = 0;
-            int currentCol = 0;
+            int currentRow = 0, currentCol = 0;
 
             foreach (var group in _groups)
             {
@@ -274,13 +216,12 @@ If calculated value is 150:
 
                 if (control != null)
                 {
-                    int x = GROUP_MARGIN + currentCol * (CONTROL_WIDTH + GROUP_MARGIN);
-                    int y = GROUP_MARGIN + currentRow * (CONTROL_HEIGHT + GROUP_MARGIN);
+                    control.Location = new Point(
+                        GROUP_MARGIN + currentCol * (CONTROL_WIDTH + GROUP_MARGIN),
+                        GROUP_MARGIN + currentRow * (CONTROL_HEIGHT + GROUP_MARGIN)
+                    );
 
-                    control.Location = new Point(x, y);
-
-                    currentCol++;
-                    if (currentCol >= columnsPerRow)
+                    if (++currentCol >= columnsPerRow)
                     {
                         currentCol = 0;
                         currentRow++;
@@ -289,8 +230,7 @@ If calculated value is 150:
             }
 
             int totalRows = (int)Math.Ceiling((double)_groups.Count / columnsPerRow);
-            int minHeight = totalRows * (CONTROL_HEIGHT + GROUP_MARGIN) + GROUP_MARGIN;
-            groupsContainer.AutoScrollMinSize = new Size(0, minHeight);
+            groupsContainer.AutoScrollMinSize = new Size(0, totalRows * (CONTROL_HEIGHT + GROUP_MARGIN) + GROUP_MARGIN);
         }
 
         private void BtnCreateValidator_Click(object sender, EventArgs e)
@@ -312,9 +252,9 @@ If calculated value is 150:
                 {
                     if (group.IsMinEnabled && group.IsMaxEnabled &&
                         group.MinValue.HasValue && group.MaxValue.HasValue &&
-                        group.MinValue.Value > group.MaxValue.Value)
+                        group.MinValue.Value >= group.MaxValue.Value)
                     {
-                        MessageBox.Show($"{group.GroupName}: Min must be less or equal to Max.",
+                        MessageBox.Show($"{group.GroupName}: Min must be less than Max.",
                             "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
@@ -363,8 +303,7 @@ If calculated value is 150:
         {
             if (group.Stats.Count == 0) return true;
 
-            var values = items.Select(item => EvaluateExpression(group.Stats, item.ItemStats)).ToList();
-            double sum = values.Sum();
+            double sum = items.Sum(item => EvaluateExpression(group.Stats, item.ItemStats));
 
             if (group.IsMinEnabled && group.MinValue.HasValue && sum < group.MinValue.Value)
                 return false;
@@ -379,14 +318,13 @@ If calculated value is 150:
         {
             if (stats.Count == 0) return 0;
 
-            double result = Convert.ToDouble(stats[0].PropInfo.GetValue(itemStats) ?? "0.00");
+            double result = Convert.ToDouble(stats[0].PropInfo.GetValue(itemStats));
 
             for (int i = 1; i < stats.Count; i++)
             {
-                double nextValue = Convert.ToDouble(stats[i].PropInfo.GetValue(itemStats) ?? "0.00");
-                string op = stats[i].Operator;
+                double nextValue = Convert.ToDouble(stats[i].PropInfo.GetValue(itemStats));
 
-                result = op switch
+                result = stats[i].Operator switch
                 {
                     "+" => result + nextValue,
                     "-" => result - nextValue,
