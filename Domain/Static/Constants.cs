@@ -45,5 +45,49 @@ namespace Domain.Static
             "Flask",
             "Ring"
         ];
+
+        public static readonly ImmutableArray<string> MATH_OPERATORS = ["+", "-", "*", "/"];
+        public static readonly ImmutableArray<string> LOGICAL_OPERATORS = ["AND", "OR", "XOR"];
+
+        public const string VALIDATOR_HELP_TEXT = @"=== ORDER OF OPERATIONS ===
+
+WITHIN A GROUP (Stats):
+Stats are evaluated LEFT-TO-RIGHT in the order they appear.
+Example: If you have:
+  • MaxLife (+)
+  • Armour% (-)
+  • Spirit (*)
+  • next_stat
+
+Calculation: ((MaxLife + Armour%) - Spirit) * next_stat
+This is LEFT-ASSOCIATIVE evaluation.
+
+To control order:
+1. Reorder stats using ▲▼ buttons
+2. First stat evaluated first
+3. Each operator applies between result and next stat
+
+BETWEEN GROUPS:
+Groups evaluated in grid order (left→right, top→bottom).
+Each group produces TRUE/FALSE based on Min/Max constraints.
+
+Results combined using group operators (AND/OR/XOR):
+  • AND: Both groups must pass
+  • OR: At least one group must pass  
+  • XOR: Exactly one group must pass
+
+Example with 3 groups:
+  Group1 (TRUE) → AND
+  Group2 (FALSE) → OR
+  Group3 (TRUE)
+
+Evaluation: (TRUE AND FALSE) OR TRUE = FALSE OR TRUE = TRUE
+
+CONSTRAINTS:
+Each group sums all item stats per its expression,
+then checks if sum is within Min/Max bounds.
+
+Min/Max can be 0 or negative.
+At least one constraint (Min OR Max) must be enabled.";
     }
 }

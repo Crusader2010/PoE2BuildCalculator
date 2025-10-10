@@ -1,888 +1,397 @@
-﻿using Domain.Combinations;
-using Domain.Main;
+﻿using Domain.Main;
+using Domain.Static;
+using Domain.UserControls;
+using Domain.Validation;
 using System.ComponentModel;
-using System.Windows.Forms.VisualStyles;
 
 namespace PoE2BuildCalculator
 {
     public partial class CustomValidator : Form
     {
-        #region Constants
-        private const string COL_PROPERTY_NAME = "PropertyName";
-        private const string COL_SUM_AT_LEAST_ENABLED = "SumAtLeastEnabled";
-        private const string COL_SUM_AT_LEAST_VALUE = "SumAtLeastValue";
-        private const string COL_OP1 = "Op1";
-        private const string COL_SUM_AT_MOST_ENABLED = "SumAtMostEnabled";
-        private const string COL_SUM_AT_MOST_VALUE = "SumAtMostValue";
-        private const string COL_OP2 = "Op2";
-        private const string COL_EACH_AT_LEAST_ENABLED = "EachAtLeastEnabled";
-        private const string COL_EACH_AT_LEAST_VALUE = "EachAtLeastValue";
-        private const string COL_OP3 = "Op3";
-        private const string COL_EACH_AT_MOST_ENABLED = "EachAtMostEnabled";
-        private const string COL_EACH_AT_MOST_VALUE = "EachAtMostValue";
-        private const string COL_ROW_OPERATOR = "RowOperator";
-        #endregion
-
-        // This will hold the final, combined validation function.
         private Func<List<Item>, bool> _masterValidator = x => true;
-        private BindingList<ValidationRuleModel> _rules;
+        private readonly BindingList<ValidationGroupModel> _groups = [];
         private readonly MainForm _ownerForm;
+        private int _nextGroupId = 1;
+        private Point _dragStartPoint;
+        private ItemStatGroupValidatorUserControl _draggedControl;
 
-        private DataGridViewCellStyle _enabledOpStyle;
-        private DataGridViewCellStyle _disabledOpStyle;
-        private int _rowIndexFromMouseDown;
-        private int _rowIndexOfItemUnderMouseToDrop;
-        private int _insertionRowIndex = -1;
-        private bool _isClosing = false;
-        private Color _initialCellSelectionColor;
-        private readonly Color _backColorInvalidValue = Color.FromArgb(255, 200, 200);
-        private readonly Color _backColorValidValue = Color.White;
+        // Cached layout calculations
+        private int _lastContainerWidth = -1;
+        private int _cachedColumnsPerRow = -1;
+
+        private const int GROUP_MARGIN = 10;
+        private const int GROUP_CONTROL_WIDTH = 350;
+        private const int GROUP_CONTROL_HEIGHT = 350;
 
         public CustomValidator(MainForm ownerForm)
         {
-            ArgumentNullException.ThrowIfNull(ownerForm, nameof(ownerForm));
+            ArgumentNullException.ThrowIfNull(ownerForm);
             InitializeComponent();
             _ownerForm = ownerForm;
 
-            typeof(DataGridView).GetProperty("DoubleBuffered", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)?.SetValue(dgvRules, true);
+            // Enable double buffering for smoother rendering
+            SetStyle(ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.UserPaint, true);
+            UpdateStyles();
         }
 
-        private void dgvRules_CellValueChanged(object sender, DataGridViewCellEventArgs e)
+        private void BtnHelp_Click(object sender, EventArgs e)
         {
-            if (e.RowIndex < 0) return;
-
-            var colName = dgvRules.Columns[e.ColumnIndex].DataPropertyName;
-
-            // Check if the changed cell is one of our checkbox columns
-            bool isCheckboxColumn = colName == COL_SUM_AT_LEAST_ENABLED ||
-                                   colName == COL_SUM_AT_MOST_ENABLED ||
-                                   colName == COL_EACH_AT_LEAST_ENABLED ||
-                                   colName == COL_EACH_AT_MOST_ENABLED;
-
-            if (isCheckboxColumn)
+            using var helpForm = new Form
             {
-                dgvRules.CommitEdit(DataGridViewDataErrorContexts.Commit);
-                var ruleModel = _rules[e.RowIndex];
-                bool isChecked = (bool)(dgvRules[e.ColumnIndex, e.RowIndex]?.Value ?? false);
-
-                if (!isChecked)
-                {
-                    // Clear the value
-                    switch (colName)
-                    {
-                        case COL_SUM_AT_LEAST_ENABLED: ruleModel.SumAtLeastValue = string.Empty; break;
-                        case COL_SUM_AT_MOST_ENABLED: ruleModel.SumAtMostValue = string.Empty; break;
-                        case COL_EACH_AT_LEAST_ENABLED: ruleModel.EachAtLeastValue = string.Empty; break;
-                        case COL_EACH_AT_MOST_ENABLED: ruleModel.EachAtMostValue = string.Empty; break;
-                    }
-
-                    // Reset the background color of the corresponding value cell when unchecking
-                    string valueCellName = colName switch
-                    {
-                        COL_SUM_AT_LEAST_ENABLED => COL_SUM_AT_LEAST_VALUE,
-                        COL_SUM_AT_MOST_ENABLED => COL_SUM_AT_MOST_VALUE,
-                        COL_EACH_AT_LEAST_ENABLED => COL_EACH_AT_LEAST_VALUE,
-                        COL_EACH_AT_MOST_ENABLED => COL_EACH_AT_MOST_VALUE,
-                        _ => null
-                    };
-
-                    if (valueCellName != null)
-                    {
-                        var valueCell = dgvRules.Rows[e.RowIndex].Cells[valueCellName];
-                        valueCell.Style.BackColor = _backColorValidValue;
-                        dgvRules.Rows[e.RowIndex].ErrorText = string.Empty;
-                    }
-                }
-
-                UpdateCellStates();
-            }
-        }
-
-        private void dgvRules_CellValidating(object sender, DataGridViewCellValidatingEventArgs e)
-        {
-            if (_isClosing)
-            {
-                e.Cancel = false;
-                return;
-            }
-
-            var colName = dgvRules.Columns[e.ColumnIndex].DataPropertyName;
-
-            // Only validate value columns
-            bool isValueColumn = colName == COL_SUM_AT_LEAST_VALUE ||
-                                colName == COL_SUM_AT_MOST_VALUE ||
-                                colName == COL_EACH_AT_LEAST_VALUE ||
-                                colName == COL_EACH_AT_MOST_VALUE;
-
-            if (!isValueColumn) return;
-
-            var rule = _rules[e.RowIndex];
-            bool isValidationRequired = colName switch
-            {
-                COL_SUM_AT_LEAST_VALUE => rule.SumAtLeastEnabled,
-                COL_SUM_AT_MOST_VALUE => rule.SumAtMostEnabled,
-                COL_EACH_AT_LEAST_VALUE => rule.EachAtLeastEnabled,
-                COL_EACH_AT_MOST_VALUE => rule.EachAtMostEnabled,
-                _ => false
+                Text = "Validator Help - Order of Operations",
+                Size = new Size(650, 600),
+                StartPosition = FormStartPosition.CenterParent,
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                MaximizeBox = false,
+                MinimizeBox = false
             };
 
-            if (!isValidationRequired)
+            var txtHelp = new TextBox
             {
-                e.Cancel = false;
-                dgvRules.Rows[e.RowIndex].ErrorText = string.Empty;
-                dgvRules[e.ColumnIndex, e.RowIndex].Style.BackColor = _backColorValidValue;
+                Multiline = true,
+                ReadOnly = true,
+                ScrollBars = ScrollBars.Vertical,
+                Dock = DockStyle.Fill,
+                Font = new Font("Consolas", 9.5f),
+                Text = Constants.VALIDATOR_HELP_TEXT,
+                Padding = new Padding(10)
+            };
 
-                // Update editing control if still in edit mode
-                if (dgvRules.EditingControl is TextBox tb) tb.BackColor = _backColorValidValue;
+            txtHelp.Select(0, 0);
+            txtHelp.GotFocus += (s, e) => txtHelp.Select(0, 0);
 
-                return;
+            var btnOk = new Button
+            {
+                Text = "OK",
+                DialogResult = DialogResult.OK,
+                Dock = DockStyle.Bottom,
+                Height = 40,
+                Font = new Font("Segoe UI", 10, FontStyle.Bold)
+            };
+
+            helpForm.Controls.Add(txtHelp);
+            helpForm.Controls.Add(btnOk);
+            helpForm.ShowDialog(this);
+        }
+
+        private void BtnAddGroup_Click(object sender, EventArgs e)
+        {
+            var group = new ValidationGroupModel
+            {
+                GroupId = _nextGroupId++,
+                GroupName = $"Group {_groups.Count + 1}",
+                IsMinEnabled = true,
+                MinValue = 0.00
+            };
+
+            _groups.Add(group);
+
+            groupsContainer.SuspendLayout();
+            try
+            {
+                CreateGroupControl(group);
+                ArrangeGroupsInGrid();
+                RevalidateAllGroups();
             }
-
-            var propType = rule.PropInfo.PropertyType;
-            string value = e.FormattedValue?.ToString();
-
-            if (string.IsNullOrWhiteSpace(value))
+            finally
             {
-                //e.Cancel = true;
-                //dgvRules.Rows[e.RowIndex].ErrorText = $"Value required for {rule.PropertyName}";
-                //dgvRules[e.ColumnIndex, e.RowIndex].Style.BackColor = _backColorInvalidValue;
-                return;
+                groupsContainer.ResumeLayout(true);
             }
+        }
 
-            bool isValid = propType == typeof(int)
-                ? int.TryParse(value, out _)
-                : double.TryParse(value, out _);
-
-            if (!isValid)
+        private void CreateGroupControl(ValidationGroupModel group)
+        {
+            var control = new ItemStatGroupValidatorUserControl
             {
-                e.Cancel = true;
-                dgvRules.Rows[e.RowIndex].ErrorText = $"Invalid {propType.Name} for {rule.PropertyName}";
-                dgvRules[e.ColumnIndex, e.RowIndex].Style.BackColor = _backColorInvalidValue;
+                Group = group,
+                Width = GROUP_CONTROL_WIDTH,
+                Height = GROUP_CONTROL_HEIGHT,
+                Tag = group,
+                AllowDrop = true
+            };
 
-                if (dgvRules.EditingControl is TextBox tb) tb.BackColor = _backColorInvalidValue;
+            control.DeleteRequested += (s, e) => DeleteGroup(group, control);
+            control.ValidationChanged += (s, e) => RevalidateAllGroups();
+            control.MouseDown += GroupControl_MouseDown;
+            control.MouseMove += GroupControl_MouseMove;
+            control.DragOver += (s, e) => e.Effect = DragDropEffects.Move;
+            control.DragDrop += GroupControl_DragDrop;
+
+            groupsContainer.Controls.Add(control);
+        }
+
+        private void RevalidateAllGroups()
+        {
+            btnAddGroup.Enabled = _groups.Count == 0 || ValidateLastGroup();
+            UpdateAllGroupOperatorVisibility();
+        }
+
+        private bool ValidateLastGroup()
+        {
+            var lastGroup = _groups[^1];
+            bool hasConstraint = lastGroup.IsMinEnabled || lastGroup.IsMaxEnabled;
+            bool hasStats = lastGroup.Stats.Count > 0;
+            bool isValid = !(lastGroup.IsMinEnabled && lastGroup.IsMaxEnabled &&
+                           lastGroup.MinValue.HasValue && lastGroup.MaxValue.HasValue &&
+                           lastGroup.MinValue.Value > lastGroup.MaxValue.Value);
+
+            return hasConstraint && hasStats && isValid;
+        }
+
+        private void UpdateAllGroupOperatorVisibility()
+        {
+            for (int i = 0; i < _groups.Count; i++)
+            {
+                var group = _groups[i];
+                var control = FindControlForGroup(group);
+                if (control == null) continue;
+
+                bool currentHasConstraint = group.IsMinEnabled || group.IsMaxEnabled;
+                bool currentHasStats = group.Stats.Count > 0;
+                bool hasNextValidGroup = HasNextValidGroup(i);
+
+                control.UpdateOperatorVisibility(currentHasConstraint && currentHasStats && hasNextValidGroup);
+            }
+        }
+
+        private bool HasNextValidGroup(int currentIndex)
+        {
+            for (int j = currentIndex + 1; j < _groups.Count; j++)
+            {
+                var nextGroup = _groups[j];
+                if ((nextGroup.IsMinEnabled || nextGroup.IsMaxEnabled) && nextGroup.Stats.Count > 0)
+                    return true;
+            }
+            return false;
+        }
+
+        private ItemStatGroupValidatorUserControl FindControlForGroup(ValidationGroupModel group)
+        {
+            return groupsContainer.Controls.OfType<ItemStatGroupValidatorUserControl>()
+                .FirstOrDefault(c => c.Tag == group);
+        }
+
+        private void GroupControl_MouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left && e.Y < 32)
+            {
+                _dragStartPoint = e.Location;
+                _draggedControl = sender as ItemStatGroupValidatorUserControl;
+            }
+        }
+
+        private void GroupControl_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Left && _draggedControl != null &&
+                (Math.Abs(e.X - _dragStartPoint.X) > 5 || Math.Abs(e.Y - _dragStartPoint.Y) > 5))
+            {
+                _draggedControl.DoDragDrop(_draggedControl, DragDropEffects.Move);
+            }
+        }
+
+        private void GroupControl_DragDrop(object sender, DragEventArgs e)
+        {
+            if (sender is not ItemStatGroupValidatorUserControl targetControl ||
+                e.Data.GetData(typeof(ItemStatGroupValidatorUserControl)) is not ItemStatGroupValidatorUserControl sourceControl ||
+                targetControl == sourceControl)
+                return;
+
+            var sourceGroup = sourceControl.Tag as ValidationGroupModel;
+            var targetGroup = targetControl.Tag as ValidationGroupModel;
+
+            int sourceIndex = _groups.IndexOf(sourceGroup);
+            int targetIndex = _groups.IndexOf(targetGroup);
+
+            _groups.RemoveAt(sourceIndex);
+            _groups.Insert(targetIndex, sourceGroup);
+
+            groupsContainer.SuspendLayout();
+            try
+            {
+                ArrangeGroupsInGrid();
+                RevalidateAllGroups();
+            }
+            finally
+            {
+                groupsContainer.ResumeLayout(true);
+            }
+        }
+
+        private void DeleteGroup(ValidationGroupModel group, ItemStatGroupValidatorUserControl control)
+        {
+            _groups.Remove(group);
+
+            groupsContainer.SuspendLayout();
+            try
+            {
+                groupsContainer.Controls.Remove(control);
+                control.Dispose();
+                ArrangeGroupsInGrid();
+                RevalidateAllGroups();
+            }
+            finally
+            {
+                groupsContainer.ResumeLayout(true);
+            }
+        }
+
+        private void ArrangeGroupsInGrid()
+        {
+            if (groupsContainer == null || _groups.Count == 0) return;
+
+            int containerWidth = groupsContainer.ClientSize.Width - 5;
+
+            // Use cached calculation if width hasn't changed
+            int columnsPerRow;
+            if (containerWidth == _lastContainerWidth && _cachedColumnsPerRow > 0)
+            {
+                columnsPerRow = _cachedColumnsPerRow;
             }
             else
             {
-                dgvRules.Rows[e.RowIndex].ErrorText = string.Empty;
-                dgvRules[e.ColumnIndex, e.RowIndex].Style.BackColor = _backColorValidValue;
-
-                if (dgvRules.EditingControl is TextBox tb) tb.BackColor = _backColorValidValue;
+                columnsPerRow = Math.Max(1, (containerWidth - GROUP_MARGIN) / (GROUP_CONTROL_WIDTH + GROUP_MARGIN));
+                _lastContainerWidth = containerWidth;
+                _cachedColumnsPerRow = columnsPerRow;
             }
+
+            int currentRow = 0, currentCol = 0;
+
+            foreach (var group in _groups)
+            {
+                var control = FindControlForGroup(group);
+                if (control != null)
+                {
+                    control.Location = new Point(
+                        GROUP_MARGIN + currentCol * (GROUP_CONTROL_WIDTH + GROUP_MARGIN),
+                        GROUP_MARGIN + currentRow * (GROUP_CONTROL_HEIGHT + GROUP_MARGIN)
+                    );
+
+                    if (++currentCol >= columnsPerRow)
+                    {
+                        currentCol = 0;
+                        currentRow++;
+                    }
+                }
+            }
+
+            int totalRows = (int)Math.Ceiling((double)_groups.Count / columnsPerRow);
+            groupsContainer.AutoScrollMinSize = new Size(0, totalRows * (GROUP_CONTROL_HEIGHT + GROUP_MARGIN) + GROUP_MARGIN);
         }
 
-        private void btnCreateValidator_Click(object sender, EventArgs e)
+        private void BtnCreateValidator_Click(object sender, EventArgs e)
         {
-            static bool combine(string op, bool current, bool next)
-            {
-                return op switch
-                {
-                    "AND" => current && next,
-                    "OR" => current || next,
-                    "XOR" => current ^ next,
-                    _ => throw new InvalidOperationException($"Unknown operator: {op}"),
-                };
-            }
-
-            dgvRules.CommitEdit(DataGridViewDataErrorContexts.Commit);
-
             try
             {
-                // Get active rules with their ORIGINAL indices for proper operator lookup
-                var activeRulesWithIndices = _rules
-                    .Select((rule, index) => new { Rule = rule, OriginalIndex = index })
-                    .Where(x => x.Rule.SumAtLeastEnabled || x.Rule.SumAtMostEnabled ||
-                               x.Rule.EachAtLeastEnabled || x.Rule.EachAtMostEnabled)
-                    .ToList();
-
-                if (activeRulesWithIndices.Count == 0)
+                var validatorFunction = BuildValidatorFunction([.. _groups]);
+                if (validatorFunction == null)
                 {
-                    MessageBox.Show("No rules defined. Validator will always return true.", "Validator Created", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                    MessageBox.Show("No validation function can be computed based on the existing groups.\n\nKeeping default logic -> all combinations are valid.", "No usable groups", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
 
-                // Only validate values for ENABLED conditions
-                foreach (var ruleWithIndex in activeRulesWithIndices)
-                {
-                    var rule = ruleWithIndex.Rule;
-
-                    // Check each enabled condition individually
-                    if (rule.SumAtLeastEnabled && string.IsNullOrWhiteSpace(rule.SumAtLeastValue))
-                    {
-                        MessageBox.Show($"Rule '{rule.PropertyName}' has 'Sum ≥' enabled but no value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
-                    if (rule.SumAtMostEnabled && string.IsNullOrWhiteSpace(rule.SumAtMostValue))
-                    {
-                        MessageBox.Show($"Rule '{rule.PropertyName}' has 'Sum ≤' enabled but no value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
-                    if (rule.EachAtLeastEnabled && string.IsNullOrWhiteSpace(rule.EachAtLeastValue))
-                    {
-                        MessageBox.Show($"Rule '{rule.PropertyName}' has 'Each ≥' enabled but no value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
-                    if (rule.EachAtMostEnabled && string.IsNullOrWhiteSpace(rule.EachAtMostValue))
-                    {
-                        MessageBox.Show($"Rule '{rule.PropertyName}' has 'Each ≤' enabled but no value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        return;
-                    }
-                }
-
-                // Build validators with their operators
-                var validatorsWithOps = new List<(Func<List<Item>, bool> Validator, string Operator)>();
-
-                for (int i = 0; i < activeRulesWithIndices.Count; i++)
-                {
-                    var ruleWithIndex = activeRulesWithIndices[i];
-                    var rule = ruleWithIndex.Rule;
-
-                    double? sumAtLeastVal = rule.SumAtLeastEnabled ? Convert.ToDouble(rule.SumAtLeastValue) : null;
-                    double? sumAtMostVal = rule.SumAtMostEnabled ? Convert.ToDouble(rule.SumAtMostValue) : null;
-                    double? eachAtLeastVal = rule.EachAtLeastEnabled ? Convert.ToDouble(rule.EachAtLeastValue) : null;
-                    double? eachAtMostVal = rule.EachAtMostEnabled ? Convert.ToDouble(rule.EachAtMostValue) : null;
-
-                    bool propertyValidator(List<Item> items)
-                    {
-                        var conditions = new List<Func<List<Item>, bool>>();
-                        var operators = new List<string>();
-
-                        if (sumAtLeastVal.HasValue)
-                        {
-                            conditions.Add(list => list.Sum(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats))) >= sumAtLeastVal.Value);
-                            operators.Add(rule.Op1);
-                        }
-                        if (sumAtMostVal.HasValue)
-                        {
-                            conditions.Add(list => list.Sum(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats))) <= sumAtMostVal.Value);
-                            operators.Add(rule.Op2);
-                        }
-                        if (eachAtLeastVal.HasValue)
-                        {
-                            conditions.Add(list => list.All(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats)) >= eachAtLeastVal.Value));
-                            operators.Add(rule.Op3);
-                        }
-                        if (eachAtMostVal.HasValue)
-                        {
-                            conditions.Add(list => list.All(item => Convert.ToDouble(rule.PropInfo.GetValue(item.ItemStats)) <= eachAtMostVal.Value));
-                        }
-
-                        if (conditions.Count == 0) return true;
-
-                        bool result = conditions[0](items);
-                        for (int j = 1; j < conditions.Count; j++)
-                        {
-                            result = combine(operators[j - 1], result, conditions[j](items));
-                        }
-                        return result;
-                    }
-
-                    string rowOperator = rule.RowOperator ?? "AND";
-                    validatorsWithOps.Add((propertyValidator, rowOperator));
-                }
-
-                // Combine all validators
-                _masterValidator = (items) =>
-                {
-                    if (validatorsWithOps.Count == 0) return true;
-
-                    bool finalResult = validatorsWithOps[0].Validator(items);
-                    for (int i = 1; i < validatorsWithOps.Count; i++)
-                    {
-                        string rowOp = validatorsWithOps[i - 1].Operator;
-                        finalResult = combine(rowOp, finalResult, validatorsWithOps[i].Validator(items));
-                    }
-                    return finalResult;
-                };
-
+                _masterValidator = validatorFunction;
                 _ownerForm._itemValidatorFunction = _masterValidator;
-
-                MessageBox.Show("Validator function created successfully! The MainForm will now use this validator when computing combinations.", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (FormatException)
-            {
-                MessageBox.Show("Error: A checked condition has an invalid value.", "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Validator created with {_groups.Where(x => x.IsActive).Count()} ACTIVE group(s)!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"An unexpected error occurred: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                MessageBox.Show($"Error creating validator: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
-        private void CustomValidator_Load(object sender, EventArgs e)
+        private static Func<List<Item>, bool> BuildValidatorFunction(List<ValidationGroupModel> groups)
         {
-            SetupDataGridView();
-            PopulateRules();
+            if (groups == null || groups.Count == 0) return null;
 
-            AutoResizeForm();
+            var activeGroups = groups.Where(g => g.IsActive).ToList();
+            if (groups.Count == activeGroups.Count) return null;
+
+            return items =>
+            {
+                bool result = EvaluateGroup(activeGroups[0], items);
+
+                for (int i = 1; i < activeGroups.Count; i++)
+                {
+                    bool nextResult = EvaluateGroup(activeGroups[i], items);
+                    string op = activeGroups[i - 1].GroupOperator ?? "AND";
+
+                    result = op switch
+                    {
+                        "AND" => result && nextResult,
+                        "OR" => result || nextResult,
+                        "XOR" => result ^ nextResult,
+                        _ => result && nextResult
+                    };
+                }
+
+                return result;
+            };
         }
 
-        private void SetupDataGridView()
+        private static bool EvaluateGroup(ValidationGroupModel group, List<Item> items)
         {
-            _enabledOpStyle = new DataGridViewCellStyle
+            if (group.Stats.Count == 0) return true;
+
+            /*
+             * TO DO:
+             * Evaluated expression = item stats within the same group, with applied value operators.
+             * Currently, this only allows for summing the evaluated expression across all items, then checking if it's between min and max group constraints.
+             * Need to add the following for SINGLE STAT groups only:
+             *      - Any of the items has the evaluated expression between min and max (OR logic)
+             *      - All items have the evaluated expression between min and max (AND logic)
+             *      - At least X items have the evaluated expression between min and max
+             *      - At most Y items have the evaluated expression between min and max
+             */
+            double sum = items.Sum(item => EvaluateExpression(group.Stats, item.ItemStats));
+
+            if (group.IsMinEnabled && group.MinValue.HasValue && sum < group.MinValue.Value)
+                return false;
+
+            if (group.IsMaxEnabled && group.MaxValue.HasValue && sum > group.MaxValue.Value)
+                return false;
+
+            return true;
+        }
+
+        private static double EvaluateExpression(List<GroupStatModel> stats, ItemStats itemStats)
+        {
+            if (stats.Count == 0) return 0;
+
+            double result = Convert.ToDouble(stats[0].PropInfo.GetValue(itemStats));
+
+            for (int i = 1; i < stats.Count; i++)
             {
-                BackColor = Color.GreenYellow,
-                ForeColor = Color.DarkRed,
-                SelectionBackColor = Color.AliceBlue,
-            };
-            _disabledOpStyle = new DataGridViewCellStyle
-            {
-                BackColor = Color.FromArgb(224, 224, 224),
-                ForeColor = Color.DarkGray,
-                SelectionBackColor = Color.FromArgb(224, 224, 224)
-            };
+                double nextValue = Convert.ToDouble(stats[i].PropInfo.GetValue(itemStats));
 
-            dgvRules.SuspendLayout();
-            dgvRules.AutoGenerateColumns = false;
-            dgvRules.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-
-            dgvRules.RowHeadersVisible = true;
-            dgvRules.RowHeadersWidth = 30;
-            dgvRules.RowHeadersWidthSizeMode = DataGridViewRowHeadersWidthSizeMode.AutoSizeToFirstHeader;
-            dgvRules.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            dgvRules.DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-
-            var opItems = new[] { "AND", "OR", "XOR" };
-
-            DataGridViewComboBoxColumn createOpColumn(string header, string dataProperty)
-            {
-                var col = new DataGridViewComboBoxColumn
+                result = stats[i].Operator switch
                 {
-                    HeaderText = header,
-                    DataPropertyName = dataProperty,
-                    Name = dataProperty,
-                    FlatStyle = FlatStyle.Standard,
-                    FillWeight = 30,
-                    DisplayStyle = DataGridViewComboBoxDisplayStyle.DropDownButton
+                    "+" => result + nextValue,
+                    "-" => result - nextValue,
+                    "*" => result * nextValue,
+                    "/" => nextValue != 0 ? result / nextValue : result,
+                    _ => result + nextValue
                 };
-                col.Items.AddRange(opItems);
-                return col;
             }
 
-            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Statistic", DataPropertyName = COL_PROPERTY_NAME, Name = COL_PROPERTY_NAME, ReadOnly = true, FillWeight = 150 });
-            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Sum ≥", DataPropertyName = COL_SUM_AT_LEAST_ENABLED, Name = COL_SUM_AT_LEAST_ENABLED, FillWeight = 50 });
-            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = COL_SUM_AT_LEAST_VALUE, Name = COL_SUM_AT_LEAST_VALUE, FillWeight = 70 });
-            dgvRules.Columns.Add(createOpColumn("Operator", COL_OP1));
-            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Sum ≤", DataPropertyName = COL_SUM_AT_MOST_ENABLED, Name = COL_SUM_AT_MOST_ENABLED, FillWeight = 50 });
-            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = COL_SUM_AT_MOST_VALUE, Name = COL_SUM_AT_MOST_VALUE, FillWeight = 70 });
-            dgvRules.Columns.Add(createOpColumn("Operator", COL_OP2));
-            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Each ≥", DataPropertyName = COL_EACH_AT_LEAST_ENABLED, Name = COL_EACH_AT_LEAST_ENABLED, FillWeight = 50 });
-            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = COL_EACH_AT_LEAST_VALUE, Name = COL_EACH_AT_LEAST_VALUE, FillWeight = 70 });
-            dgvRules.Columns.Add(createOpColumn("Operator", COL_OP3));
-            dgvRules.Columns.Add(new DataGridViewCheckBoxColumn { HeaderText = "Each ≤", DataPropertyName = COL_EACH_AT_MOST_ENABLED, Name = COL_EACH_AT_MOST_ENABLED, FillWeight = 50 });
-            dgvRules.Columns.Add(new DataGridViewTextBoxColumn { HeaderText = "Value", DataPropertyName = COL_EACH_AT_MOST_VALUE, Name = COL_EACH_AT_MOST_VALUE, FillWeight = 70 });
-            dgvRules.Columns.Add(createOpColumn("Row Operator", COL_ROW_OPERATOR));
-
-            dgvRules.CellPainting -= dgvRules_CellPainting;
-            dgvRules.CellPainting += dgvRules_CellPainting;
-
-            dgvRules.MouseDown -= dgvRules_MouseDown;
-            dgvRules.MouseMove -= dgvRules_MouseMove;
-            dgvRules.DragOver -= dgvRules_DragOver;
-            dgvRules.DragDrop -= dgvRules_DragDrop;
-            dgvRules.DragLeave -= dgvRules_DragLeave;
-            dgvRules.RowPostPaint -= dgvRules_RowPostPaint;
-            dgvRules.KeyDown -= dgvRules_KeyDown;
-
-            dgvRules.MouseDown += dgvRules_MouseDown;
-            dgvRules.MouseMove += dgvRules_MouseMove;
-            dgvRules.DragOver += dgvRules_DragOver;
-            dgvRules.DragDrop += dgvRules_DragDrop;
-            dgvRules.DragLeave += dgvRules_DragLeave;
-            dgvRules.RowPostPaint += dgvRules_RowPostPaint;
-            dgvRules.KeyDown += dgvRules_KeyDown;
-
-            dgvRules.AllowDrop = true;
-            dgvRules.ResumeLayout();
+            return result;
         }
 
-        private void AutoResizeForm()
+        private void GroupsContainer_Resize(object sender, EventArgs e)
         {
-            // Auto-size columns to fit their content
-            dgvRules.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
-
-            // Calculate total width needed
-            int totalWidth = dgvRules.RowHeadersWidth + SystemInformation.VerticalScrollBarWidth + 20; // padding
-            foreach (DataGridViewColumn col in dgvRules.Columns)
-            {
-                totalWidth += col.Width;
-            }
-
-            // Calculate total height needed (limit to reasonable size)
-            int totalHeight = dgvRules.ColumnHeadersHeight + panelBottom.Height + 50; // padding and borders
-
-            // FIX: Check if there are rows before accessing Rows[0]
-            int visibleRowsHeight = 0;
-            if (dgvRules.Rows.Count > 0)
-            {
-                visibleRowsHeight = Math.Min(dgvRules.Rows.Count * dgvRules.Rows[0].Height, 600); // max 600px for rows
-            }
-            totalHeight += visibleRowsHeight;
-
-            // Set form size with reasonable limits
-            int newWidth = Math.Max(800, Math.Min(totalWidth, Screen.PrimaryScreen.WorkingArea.Width - 100));
-            int newHeight = Math.Max(400, Math.Min(totalHeight, Screen.PrimaryScreen.WorkingArea.Height - 100));
-
-            this.Size = new Size(newWidth, newHeight);
-
-            // After sizing, switch back to Fill mode for responsive behavior
-            dgvRules.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.Fill;
-        }
-
-        private void PopulateRules()
-        {
-            var properties = typeof(ItemStats).GetProperties()
-                .Where(p => p.Name != nameof(ItemStats.Enchant) && (p.PropertyType == typeof(int) || p.PropertyType == typeof(double)));
-
-            var rulesList = new List<ValidationRuleModel>();
-            foreach (var prop in properties)
-            {
-                rulesList.Add(new ValidationRuleModel { PropertyName = prop.Name, PropInfo = prop });
-            }
-
-            _rules = new BindingList<ValidationRuleModel>(rulesList);
-
-            dgvRules.SuspendLayout();
-            dgvRules.DataSource = _rules;
-            dgvRules.ResumeLayout();
-
-            UpdateCellStates();
-        }
-
-        private void UpdateCellStates()
-        {
-            dgvRules.SuspendLayout();
-            for (int i = 0; i < dgvRules.Rows.Count; i++)
-            {
-                var row = dgvRules.Rows[i];
-                if (row.DataBoundItem is not ValidationRuleModel ruleModel) continue;
-
-                // Helper to set cell state by column name
-                void setCellState(string colName, bool isEnabled)
-                {
-                    var cell = row.Cells[colName];
-                    cell.ReadOnly = !isEnabled;
-                    if (dgvRules.Columns[colName] is DataGridViewComboBoxColumn)
-                    {
-                        cell.Style = isEnabled ? _enabledOpStyle : _disabledOpStyle;
-                    }
-                }
-
-                // Value cells
-                setCellState(COL_SUM_AT_LEAST_VALUE, ruleModel.SumAtLeastEnabled);
-                setCellState(COL_SUM_AT_MOST_VALUE, ruleModel.SumAtMostEnabled);
-                setCellState(COL_EACH_AT_LEAST_VALUE, ruleModel.EachAtLeastEnabled);
-                setCellState(COL_EACH_AT_MOST_VALUE, ruleModel.EachAtMostEnabled);
-
-                // Operator cells
-                setCellState(COL_OP1, ruleModel.SumAtLeastEnabled && ruleModel.SumAtMostEnabled);
-                setCellState(COL_OP2, ruleModel.SumAtMostEnabled && ruleModel.EachAtLeastEnabled);
-                setCellState(COL_OP3, ruleModel.EachAtLeastEnabled && ruleModel.EachAtMostEnabled);
-
-                // Row operator
-                bool isLastRow = (i == dgvRules.Rows.Count - 1);
-                if (isLastRow)
-                {
-                    setCellState(COL_ROW_OPERATOR, false);
-                }
-                else
-                {
-                    var nextRuleModel = dgvRules.Rows[i + 1].DataBoundItem as ValidationRuleModel;
-                    setCellState(COL_ROW_OPERATOR, ruleModel.IsActive && nextRuleModel?.IsActive == true);
-                }
-            }
-            dgvRules.Invalidate();
-            dgvRules.ResumeLayout();
-        }
-
-        private void dgvRules_EditingControlShowing(object sender, DataGridViewEditingControlShowingEventArgs e)
-        {
-            var colName = dgvRules.Columns[dgvRules.CurrentCell.ColumnIndex].DataPropertyName;
-
-            bool isValueColumn = colName == COL_SUM_AT_LEAST_VALUE ||
-                                colName == COL_SUM_AT_MOST_VALUE ||
-                                colName == COL_EACH_AT_LEAST_VALUE ||
-                                colName == COL_EACH_AT_MOST_VALUE;
-
-            _initialCellSelectionColor = dgvRules.CurrentCell.Style.SelectionBackColor;
-            if (isValueColumn && e.Control is TextBox textBox)
-            {
-                textBox.KeyDown -= EditingControl_KeyDown;
-                textBox.KeyDown += EditingControl_KeyDown;
-
-                // Set the editing control's background to match the cell's background
-                var cell = dgvRules.CurrentCell;
-                textBox.BackColor = cell.Style.BackColor != Color.Empty
-                    ? cell.Style.BackColor
-                    : _backColorValidValue;
-            }
-            else if (e.Control is ComboBox comboBox)
-            {
-                comboBox.DrawItem -= ComboBox_DrawItem;
-                comboBox.DrawMode = DrawMode.OwnerDrawFixed;
-                comboBox.DropDownStyle = ComboBoxStyle.DropDownList;
-                comboBox.DrawItem += ComboBox_DrawItem;
-            }
-        }
-
-        private void EditingControl_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (e.KeyCode == Keys.Escape)
-            {
-                e.SuppressKeyPress = true;
-                if (sender is TextBox textBox)
-                {
-                    textBox.Text = string.Empty;
-                }
-            }
-            else if (e.KeyCode == Keys.Enter)
-            {
-                e.SuppressKeyPress = true;
-                e.Handled = true;
-
-                // Commit the edit and move to next cell
-                dgvRules.EndEdit();
-                dgvRules.CommitEdit(DataGridViewDataErrorContexts.Commit);
-
-                // Move to next row, same column
-                if (dgvRules.CurrentCell.RowIndex < dgvRules.Rows.Count - 1)
-                {
-                    dgvRules.CurrentCell = dgvRules[dgvRules.CurrentCell.ColumnIndex, dgvRules.CurrentCell.RowIndex + 1];
-                }
-            }
-        }
-
-        private void ComboBox_DrawItem(object sender, DrawItemEventArgs e)
-        {
-            // Ignore if the index is invalid
-            if (e.Index < 0) { return; }
-
-            var comboBox = sender as ComboBox;
-            string text = comboBox.Items[e.Index].ToString();
-
-            // Draw the background of the item
-            e.DrawBackground();
-
-            // Use TextRenderer for high-quality text drawing
-            TextRenderer.DrawText(
-                e.Graphics,
-                text,
-                e.Font,
-                e.Bounds,
-                e.ForeColor,
-                TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter
-            );
-
-            // Draw the focus rectangle if the mouse is over the item
-            e.DrawFocusRectangle();
-        }
-
-        /// <summary>
-        /// Opens the dropdown list on the first click for combo box cells.
-        /// </summary>
-        private void dgvRules_CellClick(object sender, DataGridViewCellEventArgs e)
-        {
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-
-            // Check if the clicked column is a combo box column and not read-only
-            if (dgvRules.Columns[e.ColumnIndex] is DataGridViewComboBoxColumn && !dgvRules[e.ColumnIndex, e.RowIndex].ReadOnly)
-            {
-                dgvRules.BeginEdit(true);
-                if (dgvRules.EditingControl is ComboBox comboBox)
-                {
-                    comboBox.DroppedDown = true;
-                }
-            }
-            else if (dgvRules.Columns[e.ColumnIndex] is DataGridViewCheckBoxColumn)
-            {
-                bool currentValue = (bool?)dgvRules[e.ColumnIndex, e.RowIndex].Value ?? false;
-                dgvRules[e.ColumnIndex, e.RowIndex].Value = !currentValue;
-                dgvRules.CommitEdit(DataGridViewDataErrorContexts.Commit);
-                dgvRules.InvalidateCell(e.ColumnIndex, e.RowIndex);
-                dgvRules.EndEdit();
-            }
-        }
-
-        private void dgvRules_CellPainting(object sender, DataGridViewCellPaintingEventArgs e)
-        {
-            // leave headers untouched
-            if (e.RowIndex < 0 || e.ColumnIndex < 0) return;
-
-            // Only handle ComboBox columns
-            if (dgvRules.Columns[e.ColumnIndex] is not DataGridViewComboBoxColumn) return;
-
-            // Get the cell and choose the style we want (enabled vs disabled)
-            var cell = dgvRules[e.ColumnIndex, e.RowIndex];
-            var style = cell.ReadOnly ? _disabledOpStyle : _enabledOpStyle;
-
-            // Fill the complete cell rectangle with our desired backcolor (this ensures no white band)
-            using (var b = new SolidBrush(style.BackColor))
-            {
-                e.Graphics.FillRectangle(b, e.CellBounds);
-            }
-
-            string text = e.FormattedValue?.ToString() ?? string.Empty;
-
-            // Use TextRenderer for crisp text and high-DPI correctness
-            var textFlags = TextFormatFlags.HorizontalCenter | TextFormatFlags.VerticalCenter | TextFormatFlags.EndEllipsis;
-            int glyphWidth = SystemInformation.VerticalScrollBarWidth + 4; // ~18-20 px: keeps a reasonable button width
-            var textRect = new Rectangle(e.CellBounds.X, e.CellBounds.Y, e.CellBounds.Width - glyphWidth, e.CellBounds.Height); // or e.CellBounds
-            var buttonRect = new Rectangle(e.CellBounds.Right - glyphWidth, e.CellBounds.Y, glyphWidth, e.CellBounds.Height);
-
-            TextRenderer.DrawText(e.Graphics, text, e.CellStyle.Font, textRect, style.ForeColor, textFlags);
-            if (ComboBoxRenderer.IsSupported)
-            {
-                // Draw native-looking drop-down button on the right
-                ComboBoxRenderer.DrawDropDownButton(e.Graphics, buttonRect, ComboBoxState.Hot);
-            }
-            else
-            {
-                // Simple fallback: draw a tiny triangle arrow
-                Point center = new(buttonRect.Left + buttonRect.Width / 2, buttonRect.Top + buttonRect.Height / 2);
-                var p1 = new Point(center.X - 5, center.Y - 1);
-                var p2 = new Point(center.X + 5, center.Y - 1);
-                var p3 = new Point(center.X, center.Y + 3);
-                using (var br = new SolidBrush(style.ForeColor))
-                {
-                    e.Graphics.FillPolygon(br, new[] { p1, p2, p3 });
-                }
-            }
-
-            e.Paint(e.CellBounds, DataGridViewPaintParts.Border);
-
-            // Draw a focus rectangle if needed (keeps existing UX consistent)
-            if ((e.State & DataGridViewElementStates.Selected) == DataGridViewElementStates.Selected)
-            {
-                var focusRect = e.CellBounds;
-                //focusRect.Inflate(-2, -2);
-                ControlPaint.DrawFocusRectangle(e.Graphics, focusRect);
-            }
-
-            e.Handled = true;
-        }
-
-        private void dgvRules_MouseDown(object sender, MouseEventArgs e)
-        {
-            var hitTest = dgvRules.HitTest(e.X, e.Y);
-
-            // Only allow drag from row headers or cells, not from column headers
-            if (hitTest.RowIndex >= 0)
-            {
-                _rowIndexFromMouseDown = hitTest.RowIndex;
-            }
-            else
-            {
-                _rowIndexFromMouseDown = -1;
-            }
-        }
-
-        private void dgvRules_MouseMove(object sender, MouseEventArgs e)
-        {
-            // Don't allow drag if currently editing a cell
-            if (dgvRules.IsCurrentCellInEditMode)
-            {
-                return;
-            }
-
-            if ((e.Button & MouseButtons.Left) == MouseButtons.Left && _rowIndexFromMouseDown >= 0)
-            {
-                dgvRules.DoDragDrop(dgvRules.Rows[_rowIndexFromMouseDown], DragDropEffects.Move);
-            }
-        }
-
-        private void dgvRules_DragOver(object sender, DragEventArgs e)
-        {
-            e.Effect = DragDropEffects.Move;
-
-            Point clientPoint = dgvRules.PointToClient(new Point(e.X, e.Y));
-            int rowIndex = dgvRules.HitTest(clientPoint.X, clientPoint.Y).RowIndex;
-
-            // update insertion line
-            if (rowIndex != _insertionRowIndex)
-            {
-                _insertionRowIndex = rowIndex;
-                dgvRules.Invalidate();
-            }
-
-            // --- auto-scroll ---
-            int scrollZone = 30; // px near top/bottom edge
-            if (clientPoint.Y < scrollZone)
-            {
-                // scroll up
-                if (dgvRules.FirstDisplayedScrollingRowIndex > 1)
-                    dgvRules.FirstDisplayedScrollingRowIndex -= 2;
-            }
-            else if (clientPoint.Y > dgvRules.Height - scrollZone)
-            {
-                // scroll down
-                int last = dgvRules.Rows.Count - 1;
-                if (dgvRules.FirstDisplayedScrollingRowIndex < last - 1)
-                    dgvRules.FirstDisplayedScrollingRowIndex += 2;
-            }
-        }
-
-        private void dgvRules_DragDrop(object sender, DragEventArgs e)
-        {
-            Point clientPoint = dgvRules.PointToClient(new Point(e.X, e.Y));
-            _rowIndexOfItemUnderMouseToDrop = dgvRules.HitTest(clientPoint.X, clientPoint.Y).RowIndex;
-
-            if (_rowIndexOfItemUnderMouseToDrop < 0 || _rowIndexFromMouseDown < 0 || _rowIndexFromMouseDown == _rowIndexOfItemUnderMouseToDrop)
-            {
-                _insertionRowIndex = -1;
-                _rowIndexFromMouseDown = -1;
-                dgvRules.Invalidate();
-                return;
-            }
-
-            var rowToMove = _rules[_rowIndexFromMouseDown];
-            _rules.RemoveAt(_rowIndexFromMouseDown);
-            _rules.Insert(_rowIndexOfItemUnderMouseToDrop, rowToMove);
-
-            _insertionRowIndex = -1;
-            _rowIndexFromMouseDown = -1;
-
-            dgvRules.ClearSelection();
-            dgvRules.Rows[_rowIndexOfItemUnderMouseToDrop].Selected = true;
-            dgvRules.CurrentCell = dgvRules.Rows[_rowIndexOfItemUnderMouseToDrop].Cells[0];
-
-            dgvRules.Refresh();
-            UpdateCellStates();
-        }
-
-        private void dgvRules_RowPostPaint(object sender, DataGridViewRowPostPaintEventArgs e)
-        {
-            if (_insertionRowIndex < 0) return;
-
-            using (var pen = new Pen(Color.Red, 2))
-            {
-                if (e.RowIndex == _insertionRowIndex)
-                {
-                    int y = e.RowBounds.Top;
-                    e.Graphics.DrawLine(pen, e.RowBounds.Left, y, e.RowBounds.Right, y);
-                }
-                else if (_insertionRowIndex == dgvRules.Rows.Count)
-                {
-                    // line after the last row
-                    if (e.RowIndex == dgvRules.Rows.Count - 1)
-                    {
-                        int y = e.RowBounds.Bottom;
-                        e.Graphics.DrawLine(pen, e.RowBounds.Left, y, e.RowBounds.Right, y);
-                    }
-                }
-            }
-        }
-
-        private void dgvRules_KeyDown(object sender, KeyEventArgs e)
-        {
-            if (dgvRules.CurrentRow == null) return;
-
-            int index = dgvRules.CurrentRow.Index;
-            if (e.Control && e.KeyCode == Keys.Up && index > 0)
-            {
-                var item = _rules[index];
-                _rules.RemoveAt(index);
-                _rules.Insert(index - 1, item);
-
-                dgvRules.ClearSelection();
-                dgvRules.Rows[index - 1].Selected = true;
-                dgvRules.CurrentCell = dgvRules.Rows[index - 1].Cells[0];
-                dgvRules.Refresh();
-                UpdateCellStates();
-                e.Handled = true;
-            }
-            else if (e.Control && e.KeyCode == Keys.Down && index < _rules.Count - 1)
-            {
-                var item = _rules[index];
-                _rules.RemoveAt(index);
-                _rules.Insert(index + 1, item);
-
-                dgvRules.ClearSelection();
-                dgvRules.Rows[index + 1].Selected = true;
-                dgvRules.CurrentCell = dgvRules.Rows[index + 1].Cells[0];
-                dgvRules.Refresh();
-                UpdateCellStates();
-                e.Handled = true;
-            }
-        }
-
-        private void dgvRules_DragLeave(object sender, EventArgs e)
-        {
-            // Clear the insertion line when drag leaves the control
-            _insertionRowIndex = -1;
-            dgvRules.Invalidate();
-        }
-
-        private void btnCreateValidator_MouseEnter(object sender, EventArgs e)
-        {
-            btnCreateValidator.BackColor = Color.FromArgb(90, 150, 200);
-        }
-
-        private void btnCreateValidator_MouseLeave(object sender, EventArgs e)
-        {
-            btnCreateValidator.BackColor = Color.FromArgb(70, 130, 180);
-        }
-
-        private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            // Only intercept user-initiated closes (Alt+F4, [X], etc.)
-            if (e.CloseReason == CloseReason.UserClosing)
-            {
-                e.Cancel = true;   // cancel the close
-                _isClosing = true; // Allow validation to pass
-
-                ResetValidationOnFormClose();
-
-                _isClosing = false;
-                this.Hide();       // just hide it
-                this.Owner?.BringToFront();
-                return;
-            }
-
-            // If programmatically closing (Dispose), allow it
-        }
-
-        private void ButtonClose_Click(object sender, EventArgs e)
-        {
-            var result = MessageBox.Show(
-                            "This will reset the form and clear all rules. The current validator function (if created) will remain active in the MainForm.\n\nAre you sure?",
-                            "Reset Validator Form", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-
-            if (result == DialogResult.Yes)
-            {
-                this.Close();
-                this.Dispose();
-            }
-        }
-
-        private void ResetValidationOnFormClose()
-        {
+            // Invalidate cache on resize
+            _lastContainerWidth = -1;
+            _cachedColumnsPerRow = -1;
+
+            groupsContainer.SuspendLayout();
             try
             {
-                // Force end any edit operation without validation
-                if (dgvRules.IsCurrentCellInEditMode)
-                {
-                    dgvRules.CancelEdit();
-                    dgvRules.EndEdit();
-                }
-
-                dgvRules.CurrentCell = null;
-
-                // Clear all errors
-                foreach (DataGridViewRow row in dgvRules.Rows)
-                {
-                    row.ErrorText = string.Empty;
-                    foreach (DataGridViewCell cell in row.Cells)
-                    {
-                        cell.ErrorText = string.Empty;
-                        if (cell.Style.BackColor == _backColorInvalidValue)
-                        {
-                            cell.Style.BackColor = _backColorValidValue;
-                        }
-                    }
-                }
+                ArrangeGroupsInGrid();
             }
-            catch
+            finally
             {
-                // Ignore errors
+                groupsContainer.ResumeLayout(true);
             }
         }
     }

@@ -2,15 +2,8 @@
 {
     partial class CustomValidator
     {
-        /// <summary>
-        /// Required designer variable.
-        /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        /// Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
         protected override void Dispose(bool disposing)
         {
             if (disposing && (components != null))
@@ -22,115 +15,185 @@
 
         #region Windows Form Designer generated code
 
-        /// <summary>
-        /// Required method for Designer support - do not modify
-        /// the contents of this method with the code editor.
-        /// </summary>
         private void InitializeComponent()
         {
-            dgvRules = new DataGridView();
+            mainPanel = new TableLayoutPanel();
+            headerPanel = new Panel();
+            lblTitle = new Label();
+            btnAddGroup = new Button();
+            btnHelp = new Button();
+            groupsContainer = new Panel();
+            bottomPanel = new Panel();
             btnCreateValidator = new Button();
-            panelBottom = new Panel();
-            ButtonClose = new Button();
-            ((System.ComponentModel.ISupportInitialize)dgvRules).BeginInit();
-            panelBottom.SuspendLayout();
+            btnClose = new Button();
+            mainPanel.SuspendLayout();
+            headerPanel.SuspendLayout();
+            bottomPanel.SuspendLayout();
             SuspendLayout();
             // 
-            // dgvRules
+            // mainPanel
             // 
-            dgvRules.AllowUserToAddRows = false;
-            dgvRules.AllowUserToDeleteRows = false;
-            dgvRules.AllowUserToResizeColumns = false;
-            dgvRules.AllowUserToResizeRows = false;
-            dgvRules.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            dgvRules.BackgroundColor = Color.FromArgb(240, 240, 240);
-            dgvRules.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-            dgvRules.CellBorderStyle = DataGridViewCellBorderStyle.Single;
-            dgvRules.Location = new Point(8, 8);
-            dgvRules.MultiSelect = false;
-            dgvRules.Name = "dgvRules";
-            dgvRules.RowHeadersWidth = 25;
-            dgvRules.Size = new Size(955, 405);
-            dgvRules.TabIndex = 0;
-            dgvRules.CellClick += dgvRules_CellClick;
-            dgvRules.CellValidating += dgvRules_CellValidating;
-            dgvRules.CellValueChanged += dgvRules_CellValueChanged;
-            dgvRules.EditingControlShowing += dgvRules_EditingControlShowing;
+            mainPanel.ColumnCount = 1;
+            mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
+            mainPanel.Controls.Add(headerPanel, 0, 0);
+            mainPanel.Controls.Add(groupsContainer, 0, 1);
+            mainPanel.Controls.Add(bottomPanel, 0, 2);
+            mainPanel.Dock = DockStyle.Fill;
+            mainPanel.Location = new Point(0, 0);
+            mainPanel.Name = "mainPanel";
+            mainPanel.Padding = new Padding(10);
+            mainPanel.RowCount = 3;
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 50F));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
+            mainPanel.RowStyles.Add(new RowStyle(SizeType.Absolute, 60F));
+            mainPanel.Size = new Size(1200, 700);
+            mainPanel.TabIndex = 0;
+            // 
+            // headerPanel
+            // 
+            headerPanel.Controls.Add(lblTitle);
+            headerPanel.Controls.Add(btnAddGroup);
+            headerPanel.Controls.Add(btnHelp);
+            headerPanel.Dock = DockStyle.Fill;
+            headerPanel.Location = new Point(13, 13);
+            headerPanel.Name = "headerPanel";
+            headerPanel.Size = new Size(1174, 44);
+            headerPanel.TabIndex = 0;
+            // 
+            // lblTitle
+            // 
+            lblTitle.AutoSize = true;
+            lblTitle.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+            lblTitle.Location = new Point(5, 10);
+            lblTitle.Name = "lblTitle";
+            lblTitle.Size = new Size(173, 25);
+            lblTitle.TabIndex = 0;
+            lblTitle.Text = "Validation Groups";
+            // 
+            // btnAddGroup
+            // 
+            btnAddGroup.BackColor = Color.FromArgb(70, 130, 180);
+            btnAddGroup.FlatAppearance.BorderSize = 0;
+            btnAddGroup.FlatStyle = FlatStyle.Flat;
+            btnAddGroup.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnAddGroup.ForeColor = Color.White;
+            btnAddGroup.Location = new Point(200, 8);
+            btnAddGroup.Name = "btnAddGroup";
+            btnAddGroup.Size = new Size(120, 35);
+            btnAddGroup.TabIndex = 1;
+            btnAddGroup.Text = "+ Add Group";
+            btnAddGroup.UseVisualStyleBackColor = false;
+            btnAddGroup.Click += BtnAddGroup_Click;
+            // 
+            // btnHelp
+            // 
+            btnHelp.BackColor = Color.FromArgb(100, 149, 237);
+            btnHelp.Cursor = Cursors.Help;
+            btnHelp.FlatAppearance.BorderSize = 0;
+            btnHelp.FlatStyle = FlatStyle.Flat;
+            btnHelp.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+            btnHelp.ForeColor = Color.White;
+            btnHelp.Location = new Point(330, 8);
+            btnHelp.Name = "btnHelp";
+            btnHelp.Size = new Size(35, 35);
+            btnHelp.TabIndex = 2;
+            btnHelp.Text = "?";
+            btnHelp.UseVisualStyleBackColor = false;
+            btnHelp.Click += BtnHelp_Click;
+            // 
+            // groupsContainer
+            // 
+            groupsContainer.AutoScroll = true;
+            groupsContainer.BackColor = Color.FromArgb(240, 240, 240);
+            groupsContainer.Dock = DockStyle.Fill;
+            groupsContainer.Location = new Point(13, 63);
+            groupsContainer.Name = "groupsContainer";
+            groupsContainer.Size = new Size(1174, 564);
+            groupsContainer.TabIndex = 1;
+            groupsContainer.Resize += GroupsContainer_Resize;
+            // 
+            // bottomPanel
+            // 
+            bottomPanel.Controls.Add(btnCreateValidator);
+            bottomPanel.Controls.Add(btnClose);
+            bottomPanel.Dock = DockStyle.Fill;
+            bottomPanel.Location = new Point(13, 633);
+            bottomPanel.Name = "bottomPanel";
+            bottomPanel.Size = new Size(1174, 54);
+            bottomPanel.TabIndex = 2;
             // 
             // btnCreateValidator
             // 
-            btnCreateValidator.Anchor = AnchorStyles.None;
-            btnCreateValidator.BackColor = Color.FromArgb(70, 130, 180);
-            btnCreateValidator.FlatAppearance.BorderColor = Color.Lime;
+            btnCreateValidator.BackColor = Color.FromArgb(34, 139, 34);
+            btnCreateValidator.FlatAppearance.BorderSize = 0;
             btnCreateValidator.FlatStyle = FlatStyle.Flat;
-            btnCreateValidator.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+            btnCreateValidator.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
             btnCreateValidator.ForeColor = Color.White;
-            btnCreateValidator.Location = new Point(310, 12);
+            btnCreateValidator.Location = new Point(10, 10);
             btnCreateValidator.Name = "btnCreateValidator";
-            btnCreateValidator.Size = new Size(229, 40);
-            btnCreateValidator.TabIndex = 1;
-            btnCreateValidator.Text = "Create Validator Function";
-            btnCreateValidator.UseVisualStyleBackColor = true;
-            btnCreateValidator.Click += btnCreateValidator_Click;
-            btnCreateValidator.MouseEnter += btnCreateValidator_MouseEnter;
-            btnCreateValidator.MouseLeave += btnCreateValidator_MouseLeave;
+            btnCreateValidator.Size = new Size(150, 40);
+            btnCreateValidator.TabIndex = 0;
+            btnCreateValidator.Text = "Create Validator";
+            btnCreateValidator.UseVisualStyleBackColor = false;
+            btnCreateValidator.Click += BtnCreateValidator_Click;
             // 
-            // panelBottom
+            // btnClose
             // 
-            panelBottom.Anchor = AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-            panelBottom.BackColor = Color.FromArgb(224, 224, 224);
-            panelBottom.Controls.Add(ButtonClose);
-            panelBottom.Controls.Add(btnCreateValidator);
-            panelBottom.Location = new Point(8, 419);
-            panelBottom.Name = "panelBottom";
-            panelBottom.Size = new Size(955, 64);
-            panelBottom.TabIndex = 2;
-            // 
-            // ButtonClose
-            // 
-            ButtonClose.Anchor = AnchorStyles.None;
-            ButtonClose.BackColor = Color.FromArgb(180, 70, 70); // Reddish to indicate destructive action
-            ButtonClose.FlatAppearance.BorderColor = Color.FromArgb(192, 0, 0);
-            ButtonClose.FlatStyle = FlatStyle.Flat;
-            ButtonClose.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-            ButtonClose.ForeColor = Color.White;
-            ButtonClose.Location = new Point(545, 12);
-            ButtonClose.Name = "ButtonClose";
-            ButtonClose.Size = new Size(260, 40);
-            ButtonClose.TabIndex = 2;
-            ButtonClose.Text = "⚠ Reset Form (Clear All Rules)";
-            ButtonClose.UseVisualStyleBackColor = false;
-            ButtonClose.Click += ButtonClose_Click;
-
-            var toolTip = new ToolTip();
-            toolTip.SetToolTip(ButtonClose, "Resets this form to empty state. Current validator in MainForm remains active.");
+            btnClose.BackColor = Color.FromArgb(220, 220, 220);
+            btnClose.FlatStyle = FlatStyle.Flat;
+            btnClose.Font = new Font("Segoe UI", 10F);
+            btnClose.Location = new Point(170, 10);
+            btnClose.Name = "btnClose";
+            btnClose.Size = new Size(100, 40);
+            btnClose.TabIndex = 1;
+            btnClose.Text = "Close";
+            btnClose.UseVisualStyleBackColor = false;
+            btnClose.Click += BtnClose_Click;
             // 
             // CustomValidator
             // 
             AutoScaleDimensions = new SizeF(96F, 96F);
             AutoScaleMode = AutoScaleMode.Dpi;
-            BackColor = Color.FromArgb(245, 245, 245);
-            ClientSize = new Size(971, 491);
-            Controls.Add(panelBottom);
-            Controls.Add(dgvRules);
+            ClientSize = new Size(1200, 700);
+            Controls.Add(mainPanel);
             DoubleBuffered = true;
-            MinimumSize = new Size(800, 400);
+            MinimumSize = new Size(450, 600);
             Name = "CustomValidator";
-            Padding = new Padding(8);
             StartPosition = FormStartPosition.CenterScreen;
-            Text = "Custom Validator Manager";
+            Text = "Custom Validator - Group-Based Configuration";
             FormClosing += CustomValidator_FormClosing;
-            Load += CustomValidator_Load;
-            ((System.ComponentModel.ISupportInitialize)dgvRules).EndInit();
-            panelBottom.ResumeLayout(false);
+            mainPanel.ResumeLayout(false);
+            headerPanel.ResumeLayout(false);
+            headerPanel.PerformLayout();
+            bottomPanel.ResumeLayout(false);
             ResumeLayout(false);
         }
 
         #endregion
 
-        private DataGridView dgvRules;
+        private TableLayoutPanel mainPanel;
+        private Panel headerPanel;
+        private Label lblTitle;
+        private Button btnAddGroup;
+        private Button btnHelp;
+        private Panel groupsContainer;
+        private Panel bottomPanel;
         private Button btnCreateValidator;
-        private Panel panelBottom;
-        private Button ButtonClose;
+        private Button btnClose;
+
+        private void BtnClose_Click(object sender, EventArgs e)
+        {
+            this.Close();
+        }
+
+        private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                this.Hide();
+                this.Owner?.BringToFront();
+            }
+        }
     }
 }
