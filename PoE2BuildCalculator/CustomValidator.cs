@@ -251,7 +251,7 @@ If calculated value is 150:
         {
             _groups.Remove(group);
             groupsContainer.Controls.Remove(control);
-            control.Dispose();
+            if (control != null && !control.IsDisposed) control.Dispose();
 
             ArrangeGroupsInGrid();
             RevalidateAllGroups();
@@ -312,9 +312,9 @@ If calculated value is 150:
                 {
                     if (group.IsMinEnabled && group.IsMaxEnabled &&
                         group.MinValue.HasValue && group.MaxValue.HasValue &&
-                        group.MinValue.Value >= group.MaxValue.Value)
+                        group.MinValue.Value > group.MaxValue.Value)
                     {
-                        MessageBox.Show($"{group.GroupName}: Min must be less than Max.",
+                        MessageBox.Show($"{group.GroupName}: Min must be less or equal to Max.",
                             "Validation Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         return;
                     }
@@ -379,11 +379,11 @@ If calculated value is 150:
         {
             if (stats.Count == 0) return 0;
 
-            double result = Convert.ToDouble(stats[0].PropInfo.GetValue(itemStats));
+            double result = Convert.ToDouble(stats[0].PropInfo.GetValue(itemStats) ?? "0.00");
 
             for (int i = 1; i < stats.Count; i++)
             {
-                double nextValue = Convert.ToDouble(stats[i].PropInfo.GetValue(itemStats));
+                double nextValue = Convert.ToDouble(stats[i].PropInfo.GetValue(itemStats) ?? "0.00");
                 string op = stats[i].Operator;
 
                 result = op switch

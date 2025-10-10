@@ -82,7 +82,7 @@ namespace Domain.UserControls
         private void RefreshStatsListBox()
         {
             statsListBox.Items.Clear();
-            statsListBox.Items.AddRange(_group.Stats.Select(s => s.PropertyName).ToArray());
+            statsListBox.Items.AddRange([.. _group.Stats.Select(s => s.PropertyName)]);
         }
 
         private void ValidateGroup()
@@ -316,7 +316,7 @@ namespace Domain.UserControls
                 {
                     var items = cmbStats.Items.Cast<string>().Append(propName).OrderBy(x => x).ToList();
                     cmbStats.Items.Clear();
-                    cmbStats.Items.AddRange(items.ToArray());
+                    cmbStats.Items.AddRange([.. items]);
                 }
 
                 ValidateGroup();
