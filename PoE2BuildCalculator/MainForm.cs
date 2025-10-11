@@ -1,4 +1,4 @@
-using Domain.Combinations;
+﻿using Domain.Combinations;
 using Domain.Helpers;
 using Domain.Main;
 using Domain.Static;
@@ -11,7 +11,7 @@ namespace PoE2BuildCalculator
         // Field for thread synchronization
         private readonly object _validatorLock = new();
         private readonly long _maxCombinationsToStore = 10000000;
-        private readonly long _safeBenchmarkSampleSize = 50000;
+        private readonly long _safeBenchmarkSampleSize = 500000;
 
         // Class references
         private Manager.FileParser _fileParser { get; set; }
@@ -21,6 +21,9 @@ namespace PoE2BuildCalculator
         private ImmutableList<Item> _parsedItems { get; set; } = [];
 
         private List<List<Item>> _combinations { get; set; } = [];
+        private List<List<Item>> _benchmarkSampledItems;
+        private List<Item> _benchmarkSampledRings;
+        private readonly object _benchmarkSampleLock = new();
 
         // Progress UI
         private ToolStripProgressBar _statusProgressBar;
@@ -103,6 +106,11 @@ namespace PoE2BuildCalculator
                 await _fileParser.ParseFileAsync(progress, _cts.Token).ConfigureAwait(true);
 
                 StatusBarLabel.Text = "Parsing completed.";
+                lock (_benchmarkSampleLock)
+                {
+                    _benchmarkSampledItems = null;
+                    _benchmarkSampledRings = null;
+                }
             }
             catch (OperationCanceledException)
             {
@@ -194,6 +202,7 @@ namespace PoE2BuildCalculator
                 {
                     Name = "ButtonCancelParse",
                     Text = "Cancel",
+                    BackColor = Color.DeepPink,
                     Enabled = false,
                     Visible = false
                 };
@@ -290,25 +299,9 @@ namespace PoE2BuildCalculator
             }
 
             // Disable button during processing
-            PanelButtons.Enabled = false;
             TextboxDisplay.Text = "Processing combinations...\r\n\r\n";
 
-            // Create cancellation token
-            _cts?.Dispose();
-            _cts = new CancellationTokenSource();
-
-            // Show progress bar
-            if (_statusProgressBar != null)
-            {
-                _statusProgressBar.Value = 0;
-                _statusProgressBar.Visible = true;
-            }
-
-            if (_cancelButton != null)
-            {
-                _cancelButton.Enabled = true;
-                _cancelButton.Visible = true;
-            }
+            PrepareUIForProgressReporting();
 
             // Progress reporter
             var progress = new Progress<CombinationProgress>(p =>
@@ -382,7 +375,6 @@ namespace PoE2BuildCalculator
             {
                 TextboxDisplay.Text = "Operation cancelled by user.";
                 StatusBarLabel.Text = "Cancelled.";
-                MessageBox.Show("Combination generation was cancelled.", "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
@@ -392,22 +384,7 @@ namespace PoE2BuildCalculator
             }
             finally
             {
-                if (_statusProgressBar != null)
-                {
-                    _statusProgressBar.Visible = false;
-                    _statusProgressBar.Value = 0;
-                }
-
-                if (_cancelButton != null)
-                {
-                    _cancelButton.Enabled = false;
-                    _cancelButton.Visible = false;
-                }
-
-                PanelButtons.Enabled = true;
-
-                _cts?.Dispose();
-                _cts = null;
+                ResetUIStateAfterCancelling();
             }
         }
 
@@ -489,36 +466,143 @@ namespace PoE2BuildCalculator
             TextboxDisplay.Text = "Benchmarking...\r\nPlease wait, sampling combinations to estimate execution time...";
             Application.DoEvents();
 
+            const int totalIterations = 25;
+            const int maxListSampleSize = 100;
             try
             {
-                PanelButtons.Enabled = false;
-                ExecutionEstimate estimate = null;
+                PrepareUIForProgressReporting();
 
-                for (int i = 0; i < 100; i++) // this is required because the benchmark gets more accurate with subsequent runs. Correlate with _safeBenchmarkSampleSize value.
+                StatusBarLabel.Text = "Preparing benchmark samples...";
+                TextboxDisplay.Text = "Preparing benchmark...\r\n";
+                Application.DoEvents();
+
+                // Check for cancellation before pre-sampling
+                _cts.Token.ThrowIfCancellationRequested();
+
+                // Pre-sample ONCE (lazy initialization pattern)
+                lock (_benchmarkSampleLock)
                 {
+                    if (_benchmarkSampledItems == null || _benchmarkSampledRings == null)
+                    {
+                        _benchmarkSampledItems = [.. itemsWithoutRingsInput.Select(static list => list.Take(maxListSampleSize).ToList())];
+                        _benchmarkSampledRings = rings?.Take(maxListSampleSize).ToList();
+
+                        TextboxDisplay.AppendText("✓ Samples created\r\n");
+                    }
+                    else
+                    {
+                        TextboxDisplay.AppendText("✓ Using cached samples\r\n");
+                    }
+                }
+
+                // Check for cancellation before warmup
+                _cts.Token.ThrowIfCancellationRequested();
+
+                StatusBarLabel.Text = "Warming up...";
+                TextboxDisplay.AppendText("Warming up and collecting garbage...\r\n");
+                Application.DoEvents();
+
+                // Do GC ONCE before all iterations
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+                GC.WaitForPendingFinalizers();
+                GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+
+                TextboxDisplay.AppendText($"✓ Ready\r\n\r\nRunning {totalIterations} benchmark iterations...\r\n");
+                Application.DoEvents();
+
+                ExecutionEstimate estimate = null;
+                for (int i = 0; i < totalIterations; i++)
+                {
+                    // Check for cancellation at start of each iteration
+                    _cts.Token.ThrowIfCancellationRequested();
+
                     estimate = CombinationGenerator.EstimateExecutionTime(
-                        itemsWithoutRingsInput,
-                        rings,
+                        _benchmarkSampledItems,
+                        _benchmarkSampledRings,
                         _itemValidatorFunction,
-                        safeSampleSize: _safeBenchmarkSampleSize);
+                        safeSampleSize: _safeBenchmarkSampleSize,
+                        skipGarbageCollection: true);  // Skip GC since we did it once
+
+                    // Report progress
+                    int percentComplete = ((i + 1) * 100) / totalIterations;
+                    if (_statusProgressBar != null)
+                    {
+                        _statusProgressBar.Value = percentComplete;
+                    }
+
+                    StatusBarLabel.Text = $"Benchmark: {i + 1}/{totalIterations} iterations ({percentComplete}%)";
+
+                    // Update display every 3 iterations to avoid UI lag
+                    if ((i + 1) % 5 == 0 || i == totalIterations - 1)
+                    {
+                        TextboxDisplay.AppendText($"  Iteration {i + 1}/{totalIterations} complete\r\n");
+                        Application.DoEvents();
+                    }
                 }
 
                 string summary = estimate.GetFormattedSummary();
+                MessageBox.Show(summary, "Benchmark Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
                 TextboxDisplay.Text = summary;
                 StatusBarLabel.Text = "Benchmark complete.";
-
-                MessageBox.Show(summary, "Benchmark Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
+            catch (OperationCanceledException)
+            {
+                TextboxDisplay.AppendText("Benchmark cancelled by user.\r\n");
+                StatusBarLabel.Text = "Benchmark cancelled.";
             }
             catch (Exception ex)
             {
-                string errorMsg = $"Error during benchmark:\n\n{ex.Message}";
+                string errorMsg = $"Error during benchmark: \n\n{ex.Message}";
                 TextboxDisplay.Text = errorMsg;
                 StatusBarLabel.Text = "Benchmark failed.";
                 MessageBox.Show(errorMsg, "Benchmark Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
-                PanelButtons.Enabled = true;
+                ResetUIStateAfterCancelling();
+            }
+        }
+
+        private void ResetUIStateAfterCancelling()
+        {
+            if (_statusProgressBar != null)
+            {
+                _statusProgressBar.Visible = false;
+                _statusProgressBar.Value = 0;
+            }
+
+            if (_cancelButton != null)
+            {
+                _cancelButton.Enabled = false;
+                _cancelButton.Visible = false;
+            }
+
+            PanelButtons.Enabled = true;
+
+            _cts?.Dispose();
+            _cts = null;
+        }
+
+        private void PrepareUIForProgressReporting()
+        {
+            PanelButtons.Enabled = false;
+
+            // Create cancellation token
+            _cts?.Dispose();
+            _cts = new CancellationTokenSource();
+
+            // Show progress bar
+            if (_statusProgressBar != null)
+            {
+                _statusProgressBar.Value = 0;
+                _statusProgressBar.Visible = true;
+            }
+
+            if (_cancelButton != null)
+            {
+                _cancelButton.Enabled = true;
+                _cancelButton.Visible = true;
             }
         }
     }
