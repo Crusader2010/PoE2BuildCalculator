@@ -26,11 +26,11 @@ namespace PoE2BuildCalculator
         private readonly object _benchmarkSampleLock = new();
 
         // Progress UI
-        private ToolStripProgressBar _statusProgressBar;
+        private ToolStripProgressBar _statusProgressBar = null;
 
         // Cancellation support
-        private CancellationTokenSource _cts;
-        private ToolStripButton _cancelButton;
+        private CancellationTokenSource _cts = null;
+        private ToolStripButton _cancelButton = null;
 
         public MainForm()
         {
@@ -202,7 +202,7 @@ namespace PoE2BuildCalculator
                 {
                     Name = "ButtonCancelParse",
                     Text = "Cancel",
-                    BackColor = Color.DeepPink,
+                    BackColor = Color.LightPink,
                     Enabled = false,
                     Visible = false
                 };
@@ -566,6 +566,8 @@ namespace PoE2BuildCalculator
 
         private void ResetUIStateAfterCancelling()
         {
+            StatusBar.SuspendLayout();
+
             if (_statusProgressBar != null)
             {
                 _statusProgressBar.Visible = false;
@@ -577,6 +579,8 @@ namespace PoE2BuildCalculator
                 _cancelButton.Enabled = false;
                 _cancelButton.Visible = false;
             }
+
+            StatusBar.ResumeLayout();
 
             PanelButtons.Enabled = true;
 
@@ -592,6 +596,8 @@ namespace PoE2BuildCalculator
             _cts?.Dispose();
             _cts = new CancellationTokenSource();
 
+            StatusBar.SuspendLayout();
+
             // Show progress bar
             if (_statusProgressBar != null)
             {
@@ -604,6 +610,8 @@ namespace PoE2BuildCalculator
                 _cancelButton.Enabled = true;
                 _cancelButton.Visible = true;
             }
+
+            StatusBar.ResumeLayout();
         }
     }
 }

@@ -66,7 +66,6 @@
             StatusBar.Name = "StatusBar";
             StatusBar.Size = new Size(837, 22);
             StatusBar.TabIndex = 1;
-            StatusBar.Text = "statusStrip1";
             // 
             // StatusBarLabel
             // 
@@ -95,7 +94,7 @@
             // 
             // ShowItemsDataButton
             // 
-            ShowItemsDataButton.Location = new Point(12, 12);
+            ShowItemsDataButton.Location = new Point(26, 12);
             ShowItemsDataButton.Name = "ShowItemsDataButton";
             ShowItemsDataButton.Size = new Size(126, 58);
             ShowItemsDataButton.TabIndex = 4;
