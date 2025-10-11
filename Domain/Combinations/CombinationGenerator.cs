@@ -359,7 +359,8 @@ namespace Domain.Combinations
             List<List<T>> listOfItemClassesWithoutRings,
             List<T> listOfRings,
             Func<List<T>, bool> validator,
-            long safeSampleSize)
+            long safeSampleSize,
+            bool skipGarbageCollection = false)
         {
             var filteredLists = listOfItemClassesWithoutRings
                 .Where(list => list != null && list.Count > 0)
@@ -475,10 +476,14 @@ namespace Domain.Combinations
                 }
             }
 
-            // Force GC before measurement for clean state
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-            GC.Collect();
+
+            if (!skipGarbageCollection)
+            {
+                // Force GC before measurement for clean state
+                GC.Collect();
+                GC.WaitForPendingFinalizers();
+                GC.Collect();
+            }
 
             // MEASUREMENT: Multi-threaded (this is what we care about)
             long multiThreadProcessed = 0;
@@ -583,7 +588,7 @@ namespace Domain.Combinations
                 : TimeSpan.FromSeconds(estimatedSeconds);
 
             // Calculate efficiency (approximate based on typical parallel overhead)
-            double theoreticalMaxSpeed = multiThreadSpeed * 1.15; // Account for 15% overhead
+            double theoreticalMaxSpeed = multiThreadSpeed * 1.25; // Account for 15% overhead
             double parallelEfficiency = multiThreadSpeed / (theoreticalMaxSpeed * Environment.ProcessorCount);
 
             return new ExecutionEstimate
