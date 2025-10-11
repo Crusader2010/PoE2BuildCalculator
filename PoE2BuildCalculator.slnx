@@ -11,9 +11,8 @@
   <Project Path="Domain/Domain.csproj">
     <BuildType Solution="DefaultBuild|*" Project="Release" />
   </Project>
-  <Project Path="InstallerSetup/InstallerSetup.aiproj" Type="840c416c-b8f3-42bc-b0dd-f6bb14c9f8cb" Id="fc297aba-c316-4015-afbf-cca8be5f25eb">
-    <BuildType Project="DefaultBuild" />
-    <Platform Project="?" />
+  <Project Path="Installer/Installer.vdproj" Type="Installer">
+    <BuildType Solution="DefaultBuild|*" Project="Release" />
   </Project>
   <Project Path="Manager/Manager.csproj">
     <BuildType Solution="DefaultBuild|*" Project="Release" />
