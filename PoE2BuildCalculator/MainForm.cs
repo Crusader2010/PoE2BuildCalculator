@@ -62,6 +62,7 @@ namespace PoE2BuildCalculator
 
             this.FormClosing += MainForm_FormClosing;
         }
+
         private void ButtonOpenItemListFile_Click(object sender, EventArgs e)
         {
             var dialogResult = OpenPoE2ItemList.ShowDialog(this);
@@ -252,14 +253,15 @@ namespace PoE2BuildCalculator
 
             try
             {
+                // ✅ CORRECTED: CancellationToken is LAST parameter
                 var result = await Task.Run(() =>
                     CombinationGenerator.GenerateCombinationsParallel(
                         prepared.ItemsWithoutRings,
                         prepared.Rings,
                         _itemValidatorFunction,
-                        progress,
                         maxValidToStore: _maxCombinationsToStore,
-                        _progressHelper.Token),
+                        progress: progress,
+                        cancellationToken: _progressHelper.Token), // ✅ LAST
                     _progressHelper.Token);
 
                 DisplayCombinationResults(result);
@@ -344,7 +346,6 @@ namespace PoE2BuildCalculator
             {
                 _progressHelper.Start();
 
-                // Pre-sample ONCE (lazy initialization)
                 List<List<Item>> sampledItems;
                 List<Item> sampledRings;
 
@@ -365,14 +366,12 @@ namespace PoE2BuildCalculator
                         TextboxDisplay.AppendText("✓ Using cached samples\r\n");
                     }
 
-                    // Create local copies to avoid locking during async operation
                     sampledItems = _benchmarkSampledItems;
                     sampledRings = _benchmarkSampledRings;
                 }
 
                 _progressHelper.Token.ThrowIfCancellationRequested();
 
-                // Warmup and GC (quick, can stay on UI thread)
                 StatusBarLabel.Text = "Warming up...";
                 TextboxDisplay.AppendText("Warming up and collecting garbage...\r\n");
 
@@ -380,26 +379,22 @@ namespace PoE2BuildCalculator
 
                 TextboxDisplay.AppendText($"✓ Ready\r\n\r\nRunning {totalIterations} benchmark iterations...\r\n");
 
-                // Progress callback for UI updates
                 var progress = new Progress<BenchmarkProgress>(p =>
                 {
                     _progressHelper.UpdateProgress(p.PercentComplete, p.StatusMessage);
 
-                    // Update display every 5 iterations to reduce UI churn
                     if (p.CurrentIteration % 5 == 0 || p.CurrentIteration == totalIterations)
                     {
                         TextboxDisplay.AppendText($"  Iteration {p.CurrentIteration}/{totalIterations} complete\r\n");
                     }
                 });
 
-                // Run benchmark on background thread
-                ExecutionEstimate estimate = await Task.Run(() =>
-                    RunBenchmarkIterations(
-                        totalIterations,
-                        sampledItems,
-                        sampledRings,
-                        progress),
-                    _progressHelper.Token);
+                ExecutionEstimate estimate = await RunBenchmarkIterationsAsync(
+                    totalIterations,
+                    sampledItems,
+                    sampledRings,
+                    progress,
+                    _progressHelper.Token); // ✅ CancellationToken LAST
 
                 DisplayBenchmarkResults(estimate);
             }
@@ -421,6 +416,45 @@ namespace PoE2BuildCalculator
             }
         }
 
+        private async Task<ExecutionEstimate> RunBenchmarkIterationsAsync(
+            int totalIterations,
+            List<List<Item>> sampledItems,
+            List<Item> sampledRings,
+            IProgress<BenchmarkProgress> progress,
+            CancellationToken cancellationToken)
+        {
+            ExecutionEstimate estimate = null;
+
+            for (int i = 0; i < totalIterations; i++)
+            {
+                int currentIteration = i + 1;
+
+                // Create sub-progress that reports to main progress with iteration context
+                var iterationProgress = new Progress<BenchmarkProgress>(p =>
+                {
+                    progress?.Report(new BenchmarkProgress
+                    {
+                        CurrentIteration = currentIteration,
+                        TotalIterations = totalIterations,
+                        PercentComplete = ((currentIteration - 1) * 100 + p.PercentComplete) / totalIterations,
+                        StatusMessage = $"Iteration {currentIteration}/{totalIterations}: {p.StatusMessage}"
+                    });
+                });
+
+                // ✅ CORRECTED: Parameter order matches method signature
+                estimate = await CombinationGenerator.EstimateExecutionTimeAsync(
+                    sampledItems,
+                    sampledRings,
+                    _itemValidatorFunction,
+                    safeSampleSize: _safeBenchmarkSampleSize,
+                    skipGarbageCollection: true,
+                    progress: iterationProgress,
+                    cancellationToken: cancellationToken); // ✅ LAST
+            }
+
+            return estimate;
+        }
+
         protected override void Dispose(bool disposing)
         {
             if (disposing)
@@ -429,36 +463,6 @@ namespace PoE2BuildCalculator
                 components?.Dispose();
             }
             base.Dispose(disposing);
-        }
-
-        private ExecutionEstimate RunBenchmarkIterations(int totalIterations, List<List<Item>> sampledItems, List<Item> sampledRings, IProgress<BenchmarkProgress> progress)
-        {
-            ExecutionEstimate estimate = null;
-
-            for (int i = 0; i < totalIterations; i++)
-            {
-                _progressHelper.Token.ThrowIfCancellationRequested();
-
-                estimate = CombinationGenerator.EstimateExecutionTime(
-                    sampledItems,
-                    sampledRings,
-                    _itemValidatorFunction,
-                    safeSampleSize: _safeBenchmarkSampleSize,
-                    skipGarbageCollection: true);
-
-                int currentIteration = i + 1;
-                int percentComplete = currentIteration * 100 / totalIterations;
-
-                progress?.Report(new BenchmarkProgress
-                {
-                    CurrentIteration = currentIteration,
-                    TotalIterations = totalIterations,
-                    PercentComplete = percentComplete,
-                    StatusMessage = $"Benchmark: {currentIteration}/{totalIterations} iterations ({percentComplete}%)"
-                });
-            }
-
-            return estimate;
         }
 
         private static void PerformWarmupGarbageCollection()

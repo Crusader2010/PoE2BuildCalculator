@@ -1,9 +1,9 @@
-﻿using Domain.Main;
+﻿using System.ComponentModel;
+
+using Domain.Main;
 using Domain.Static;
 using Domain.UserControls;
 using Domain.Validation;
-
-using System.ComponentModel;
 
 namespace PoE2BuildCalculator
 {
@@ -360,11 +360,11 @@ namespace PoE2BuildCalculator
         {
             if (stats.Count == 0) return 0;
 
-            double result = Convert.ToDouble(stats[0].PropInfo.GetValue(itemStats));
+            double result = stats[0].GetCachedGetter()(itemStats); // ✅ Already correct
 
             for (int i = 1; i < stats.Count; i++)
             {
-                double nextValue = Convert.ToDouble(stats[i].PropInfo.GetValue(itemStats));
+                double nextValue = stats[i].GetCachedGetter()(itemStats); // ✅ Already correct
 
                 result = stats[i].Operator switch
                 {
