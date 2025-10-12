@@ -5,6 +5,7 @@
     <BuildType Name="Release" />
   </Configurations>
   <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
     <File Path="PoE2.ico" />
   </Folder>
   <Project Path="Domain/Domain.csproj">

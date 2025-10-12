@@ -1,8 +1,10 @@
-﻿using Domain.Combinations;
+﻿using System.Collections.Immutable;
+
+using Domain.Combinations;
 using Domain.Helpers;
 using Domain.Main;
+
 using Manager;
-using System.Collections.Immutable;
 
 namespace PoE2BuildCalculator
 {
@@ -65,7 +67,7 @@ namespace PoE2BuildCalculator
             var dialogResult = OpenPoE2ItemList.ShowDialog(this);
             if (dialogResult == DialogResult.OK && !string.IsNullOrWhiteSpace(OpenPoE2ItemList.FileName) && File.Exists(OpenPoE2ItemList.FileName))
             {
-                _fileParser = new Manager.FileParser(OpenPoE2ItemList.FileName);
+                _fileParser = new FileParser(OpenPoE2ItemList.FileName);
                 StatusBarLabel.Text = $"Loaded file: {OpenPoE2ItemList.FileName}";
             }
             else
@@ -445,7 +447,7 @@ namespace PoE2BuildCalculator
                     skipGarbageCollection: true);
 
                 int currentIteration = i + 1;
-                int percentComplete = (currentIteration * 100) / totalIterations;
+                int percentComplete = currentIteration * 100 / totalIterations;
 
                 progress?.Report(new BenchmarkProgress
                 {
