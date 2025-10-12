@@ -7,19 +7,6 @@
         /// </summary>
         private System.ComponentModel.IContainer components = null;
 
-        /// <summary>
-        ///  Clean up any resources being used.
-        /// </summary>
-        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
         #region Windows Form Designer generated code
 
         /// <summary>
@@ -66,7 +53,6 @@
             StatusBar.Name = "StatusBar";
             StatusBar.Size = new Size(837, 22);
             StatusBar.TabIndex = 1;
-            StatusBar.Text = "statusStrip1";
             // 
             // StatusBarLabel
             // 
@@ -95,7 +81,7 @@
             // 
             // ShowItemsDataButton
             // 
-            ShowItemsDataButton.Location = new Point(12, 12);
+            ShowItemsDataButton.Location = new Point(26, 12);
             ShowItemsDataButton.Name = "ShowItemsDataButton";
             ShowItemsDataButton.Size = new Size(126, 58);
             ShowItemsDataButton.TabIndex = 4;

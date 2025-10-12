@@ -2,6 +2,7 @@
 using Domain.Static;
 using Domain.UserControls;
 using Domain.Validation;
+
 using System.ComponentModel;
 
 namespace PoE2BuildCalculator
@@ -293,7 +294,7 @@ namespace PoE2BuildCalculator
 
                 _masterValidator = validatorFunction;
                 _ownerForm._itemValidatorFunction = _masterValidator;
-                MessageBox.Show($"Validator created with {_groups.Where(x => x.IsActive).Count()} ACTIVE group(s)!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show($"Validator created with {_groups.Count(x => x.IsActive)} ACTIVE group(s)!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {

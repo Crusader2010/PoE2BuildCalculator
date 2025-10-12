@@ -7,6 +7,7 @@
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path="PoE2.ico" />
+    <File Path="README.md" />
   </Folder>
   <Project Path="Domain/Domain.csproj">
     <BuildType Solution="DefaultBuild|*" Project="Release" />
