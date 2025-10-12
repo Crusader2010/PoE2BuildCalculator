@@ -179,27 +179,27 @@ namespace PoE2BuildCalculator
 
         private void TableTiers_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
-            if (e.RowIndex < 0 || e.ColumnIndex <= 1) return; // ignore tier id, name
+            if (e.RowIndex < 0 || e.RowIndex >= _bindingTiers.Count || e.ColumnIndex <= 1) return;
 
             var grid = (DataGridView)sender;
             string statName = grid.Columns[e.ColumnIndex].DataPropertyName;
 
-            if (grid.Rows[e.RowIndex].DataBoundItem is Tier tier)
+            var tier = _bindingTiers[e.RowIndex];
+
+            if (string.Equals(statName, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase))
             {
-                if (string.Equals(statName, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase))
-                {
-                    e.Value = tier.TierWeight.ToString(_defaultDoubleCellStyle.Format);
-                }
-                else if (tier.StatWeights.TryGetValue(statName, out double value))
-                {
-                    e.Value = value.ToString(_defaultDoubleCellStyle.Format);
-                    e.FormattingApplied = true;
-                }
-                else
-                {
-                    e.Value = 0.0d.ToString(_defaultDoubleCellStyle.Format);
-                    e.FormattingApplied = true;
-                }
+                e.Value = tier.TierWeight.ToString(_defaultDoubleCellStyle.Format);
+                e.FormattingApplied = true;
+            }
+            else if (tier.StatWeights.TryGetValue(statName, out double value))
+            {
+                e.Value = value.ToString(_defaultDoubleCellStyle.Format);
+                e.FormattingApplied = true;
+            }
+            else
+            {
+                e.Value = 0.0d.ToString(_defaultDoubleCellStyle.Format);
+                e.FormattingApplied = true;
             }
         }
 
@@ -819,12 +819,14 @@ namespace PoE2BuildCalculator
 
         private void TableStatsWeightSum_CellFormatting(object sender, DataGridViewCellFormattingEventArgs e)
         {
+            if (e.RowIndex < 0 || e.RowIndex >= _bindingTiers.Count) return;
+
             var grid = (DataGridView)sender;
             string statName = grid.Columns[e.ColumnIndex].DataPropertyName;
 
-            if (e.RowIndex >= 0
-                && grid.Rows[e.RowIndex].DataBoundItem is Tier tier
-                && string.Equals(statName, nameof(Tier.TotalStatWeight), StringComparison.OrdinalIgnoreCase))
+            var tier = _bindingTiers[e.RowIndex];
+
+            if (string.Equals(statName, nameof(Tier.TotalStatWeight), StringComparison.OrdinalIgnoreCase))
             {
                 e.Value = tier.TotalStatWeight.ToString(_defaultDoubleCellStyle.Format);
                 e.FormattingApplied = true;

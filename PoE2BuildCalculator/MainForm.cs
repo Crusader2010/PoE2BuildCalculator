@@ -301,7 +301,20 @@ namespace PoE2BuildCalculator
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            _progressHelper?.Dispose();
+            try
+            {
+                _progressHelper?.Cancel(); // ✅ Cancel BEFORE disposing
+                Thread.Sleep(50); // ✅ Brief delay to let cancellation propagate
+                _progressHelper?.Dispose();
+            }
+            catch (OperationCanceledException)
+            {
+                // ✅ Expected when cancelling operations
+            }
+            catch
+            {
+                // Ignore other disposal errors during shutdown
+            }
 
             lock (_validatorLock)
             {

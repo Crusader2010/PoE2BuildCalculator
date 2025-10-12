@@ -23,6 +23,8 @@ Make sure that each method has its own code snippet. By exception, newly created
 - Expression-bodied properties/accessors
 - CRLF line endings, UTF-8 BOM
 - Using directives outside namespace
+- Always apply "Name can be simplified" suggestions
+- Always apply IDE0040 suggestion
 
 ### C# Language Version (12+/Preview)
 - Collection expressions: `[]` not `new List<T>()`
