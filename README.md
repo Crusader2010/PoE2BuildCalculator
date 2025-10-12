@@ -22,13 +22,17 @@
 
 **Sample PoE 2 items file:** [poe 2 items v2.txt](https://github.com/user-attachments/files/22846810/poe.2.items.v2.txt)
 
-(**Other critical WIP**): 
-1. Even better validation logic, allowing to set more types of validations, other than SUM() between X and Y. Since a combination is a list of item lists (if provided, 2 rings and 1 item of each other class), we can have:
-   E.g.: **At least X/X% of items in all combinations** satisfy the final evaluation expression         **At most Y/Y% of items in all combinations** satisfy the final evaluation expression
-         **Exactly P/P% of items in all combinations** satisfy the final evaluation expression
-         **At least/most/exactly N/N% of items in at least/most/exactly K/K% of combinations** satisfy the final evaluation expression
+(**Other WIP**): 
+1. Even better validation logic, allowing to set more types of validations, other than SUM() between X and Y. Since a combination is a list of items (if initially provided, 2 rings and 1 item of each other class), we can have any of:
+   E.g.: **At least/most/exactly N/N% of items in at least/most/exactly K/K% of combinations** satisfy the final evaluation expression         
+
 2. Differentiate item classes per character item slots (i.e. you can only have one weapon and one shield, or two weapons of the same class if dual wielding, etc).
     - Implement the restrictions from https://www.poe2wiki.net/wiki/Dual_wielding and/or give the user a choice of what to use in the main hand and off hand. Then compute combinations based on this.
-    - Extend previous point to give users a rag doll with configurable item types for each, if they so choose, otherwise fall back to the wiki restrictions.
-3. UI redesign.
-4. Extensive testing.
+    - Extend previous point to give users a rag doll with configurable item types for each, if they so choose, otherwise fall back to the wiki restrictions where applicable (and considering all items otherwise).
+3. Implement a "Settings" form where users can change (and save in a config file) various parameters, such as:
+   - Max number of combinations to store in memory
+   - Toggle to save configured tiers
+   - Toggle to save rag doll configuration for item types
+4. Editing the initial item list within the program itself (add/remove items, adding custom flags, etc).
+5. UI redesign.
+6. Extensive testing.
