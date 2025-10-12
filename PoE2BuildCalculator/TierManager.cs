@@ -270,10 +270,8 @@ namespace PoE2BuildCalculator
             if (!cell.IsInEditMode && e.FormattedValue != null)
             {
                 var brushColor = isTierWeightColumn ? _tierWeightTextColor : _selectionTextColor;
-                using (var foreBrush = new SolidBrush(brushColor))
-                {
-                    e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, _cellPaintingStringFormat);
-                }
+                using var foreBrush = new SolidBrush(brushColor);
+                e.Graphics.DrawString(e.FormattedValue.ToString(), e.CellStyle.Font, foreBrush, e.CellBounds, _cellPaintingStringFormat);
             }
 
             // Draw borders on top
