@@ -109,45 +109,5 @@ namespace Domain.Helpers
                 .ThenBy(d => d.Property.MetadataToken)
                 .ThenBy(d => d.PropertyName, StringComparer.OrdinalIgnoreCase)];
         }
-
-
-        #region ItemStats Cloning Facility
-
-        private static readonly Func<ItemStats, ItemStats> _itemStatsCloner = CreateItemStatsCloner();
-
-        public static List<List<Item>> DeepCloneItemLists(List<List<Item>> original)
-        {
-            // ConvertAll is optimized internally - no manual loops needed
-            return original.ConvertAll(list => list.ConvertAll(CloneItem));
-        }
-
-        public static List<Item> DeepCloneItemList(List<Item> original)
-        {
-            return original?.ConvertAll(CloneItem);
-        }
-
-        private static Func<ItemStats, ItemStats> CreateItemStatsCloner()
-        {
-            // Create a compiled delegate that calls MemberwiseClone (much faster than reflection)
-            var cloneMethod = typeof(object).GetMethod("MemberwiseClone", BindingFlags.Instance | BindingFlags.NonPublic);
-            var param = Expression.Parameter(typeof(ItemStats), "stats");
-            var call = Expression.Call(param, cloneMethod);
-            var convert = Expression.Convert(call, typeof(ItemStats));
-            return Expression.Lambda<Func<ItemStats, ItemStats>>(convert, param).Compile();
-        }
-
-        private static Item CloneItem(Item item)
-        {
-            return new Item
-            {
-                Id = item.Id,
-                Name = item.Name,
-                Class = item.Class,
-                IsMine = item.IsMine,
-                ItemStats = item.ItemStats != null ? _itemStatsCloner(item.ItemStats) : null
-            };
-        }
-
-        #endregion
     }
 }

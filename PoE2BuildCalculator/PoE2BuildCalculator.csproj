@@ -6,6 +6,9 @@
 		<Nullable>disable</Nullable>
 		<UseWindowsForms>true</UseWindowsForms>
 		<ImplicitUsings>enable</ImplicitUsings>
+		<LangVersion>preview</LangVersion>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
 
 		<ApplicationVisualStyles>true</ApplicationVisualStyles>
 		<ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
@@ -13,6 +16,7 @@
 		<ApplicationDefaultFont>Microsoft Sans Serif, 9pt</ApplicationDefaultFont>
 		<BaseOutputPath>$(SolutionDir)bin</BaseOutputPath>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<StartupObject>PoE2BuildCalculator.Program</StartupObject>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
