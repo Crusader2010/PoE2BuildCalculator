@@ -6,6 +6,9 @@
 		<UseWindowsForms>true</UseWindowsForms>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<BaseOutputPath>$(SolutionDir)bin</BaseOutputPath>
+		<LangVersion>preview</LangVersion>
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<SatelliteResourceLanguages>en-US</SatelliteResourceLanguages>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
@@ -13,8 +16,12 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="System.CodeDom" Version="9.0.9" />
-	  <PackageReference Include="System.Management" Version="9.0.9" />
+		<Compile Include="..\PoE2BuildCalculator\AssemblyInfo.cs" Link="AssemblyInfo.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="System.CodeDom" Version="9.0.9" />
+		<PackageReference Include="System.Management" Version="9.0.9" />
 	</ItemGroup>
 
 </Project>

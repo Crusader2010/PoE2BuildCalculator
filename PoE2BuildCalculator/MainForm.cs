@@ -1,8 +1,10 @@
+﻿using System.Collections.Immutable;
+
 using Domain.Combinations;
 using Domain.Helpers;
 using Domain.Main;
-using Domain.Static;
-using System.Collections.Immutable;
+
+using Manager;
 
 namespace PoE2BuildCalculator
 {
@@ -11,23 +13,23 @@ namespace PoE2BuildCalculator
         // Field for thread synchronization
         private readonly object _validatorLock = new();
         private readonly long _maxCombinationsToStore = 10000000;
-        private readonly long _safeBenchmarkSampleSize = 50000;
+        private readonly long _safeBenchmarkSampleSize = 500000;
 
         // Class references
-        private Manager.FileParser _fileParser { get; set; }
+        private FileParser _fileParser { get; set; }
         private TierManager _formTierManager { get; set; }
         private CustomValidator _customValidator { get; set; }
         internal Func<List<Item>, bool> _itemValidatorFunction { get; set; } = x => true;
         private ImmutableList<Item> _parsedItems { get; set; } = [];
 
+        private ProgressReportingHelper _progressHelper;
+
         private List<List<Item>> _combinations { get; set; } = [];
-
-        // Progress UI
+        private List<List<Item>> _benchmarkSampledItems;
+        private List<Item> _benchmarkSampledRings;
         private ToolStripProgressBar _statusProgressBar;
-
-        // Cancellation support
-        private CancellationTokenSource _cts;
         private ToolStripButton _cancelButton;
+        private readonly object _benchmarkSampleLock = new();
 
         public MainForm()
         {
@@ -37,19 +39,35 @@ namespace PoE2BuildCalculator
         private void MainForm_Load(object sender, EventArgs e)
         {
             ConfigureOpenFileDialog();
-
             ConfigureParserControls();
 
-            // Wire up FormClosing for cleanup
+            // ✅ Validate controls were created
+            if (_statusProgressBar == null || _cancelButton == null)
+            {
+                MessageBox.Show(
+                    "Failed to initialize progress controls. Some features may not work correctly.",
+                    "Initialization Warning",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Warning);
+                // Continue anyway - operations will work, just without progress UI
+            }
+            else
+            {
+                _progressHelper = new ProgressReportingHelper(
+                    _statusProgressBar,
+                    _cancelButton,
+                    StatusBarLabel,
+                    PanelButtons);
+            }
+
             this.FormClosing += MainForm_FormClosing;
         }
-
         private void ButtonOpenItemListFile_Click(object sender, EventArgs e)
         {
             var dialogResult = OpenPoE2ItemList.ShowDialog(this);
             if (dialogResult == DialogResult.OK && !string.IsNullOrWhiteSpace(OpenPoE2ItemList.FileName) && File.Exists(OpenPoE2ItemList.FileName))
             {
-                _fileParser = new Manager.FileParser(OpenPoE2ItemList.FileName);
+                _fileParser = new FileParser(OpenPoE2ItemList.FileName);
                 StatusBarLabel.Text = $"Loaded file: {OpenPoE2ItemList.FileName}";
             }
             else
@@ -66,43 +84,25 @@ namespace PoE2BuildCalculator
                 return;
             }
 
-            // Prevent reentrancy from the same button.
-            var parseButton = sender as Control;
-            PanelButtons!.Enabled = false;
             TextboxDisplay.Text = string.Empty;
+            _progressHelper.Start();  // This disables PanelButtons
+            StatusBarLabel.Text = "Parsing... 0%";
 
-            // Create a new CancellationTokenSource for this parse.
-            _cts?.Dispose();
-            _cts = new CancellationTokenSource();
-
-            // Reset UI and start parsing.
-            if (_statusProgressBar != null)
-            {
-                _statusProgressBar.Value = 0;
-                _statusProgressBar.Visible = true;
-            }
-
-            if (_cancelButton != null)
-            {
-                _cancelButton.Enabled = true;
-                _cancelButton.Visible = true;
-            }
-
-            StatusBarLabel.Text = $"Parsing... 0%";
-
-            // Use Progress<int> to marshal updates to the UI thread (captured SynchronizationContext).
             var progress = new Progress<int>(p =>
             {
-                if (_statusProgressBar != null) _statusProgressBar.Value = p;
-                StatusBarLabel.Text = $"Parsing file... {p}%";
+                _progressHelper.UpdateProgress(p, $"Parsing file... {p}%");
             });
 
             try
             {
-                // Await the parser directly (no blocking GetResult). This keeps the UI responsive.
-                await _fileParser.ParseFileAsync(progress, _cts.Token).ConfigureAwait(true);
-
+                await _fileParser.ParseFileAsync(progress, _progressHelper.Token).ConfigureAwait(true);
                 StatusBarLabel.Text = "Parsing completed.";
+
+                lock (_benchmarkSampleLock)
+                {
+                    _benchmarkSampledItems = null;
+                    _benchmarkSampledRings = null;
+                }
             }
             catch (OperationCanceledException)
             {
@@ -110,55 +110,18 @@ namespace PoE2BuildCalculator
             }
             catch (Exception ex)
             {
-                StatusBarLabel.Text = $"Error: {ex}";
+                StatusBarLabel.Text = $"Error: {ex.Message}";
+                ErrorHelper.ShowError(ex, "Parsing Error");
             }
             finally
             {
-                // Restore UI state.
-                if (_statusProgressBar != null)
-                {
-                    _statusProgressBar.Visible = false;
-                    _statusProgressBar.Value = 0;
-                }
-
-                if (_cancelButton != null)
-                {
-                    _cancelButton.Enabled = false;
-                    _cancelButton.Visible = false;
-                }
-
-                parseButton.Enabled = true;
-                PanelButtons.Enabled = true;
-
-                // Dispose and clear the CTS used for this parse.
-                try
-                {
-                    _cts?.Dispose();
-                }
-                catch { }
-                _cts = null;
+                _progressHelper.Stop();  // ✅ This re-enables PanelButtons (which includes parse button)
             }
         }
 
         private void ButtonCancelParse_Click(object sender, EventArgs e)
         {
-            // If there's no active parse, nothing to do.
-            if (_cts == null)
-                return;
-
-            // Disable to prevent multiple clicks.
-            if (_cancelButton != null) _cancelButton.Enabled = false;
-
-            StatusBarLabel.Text = "Cancelling...";
-            try
-            {
-                // Request cancellation.
-                _cts.Cancel();
-            }
-            catch
-            {
-                // ignore exceptions from cancel attempt
-            }
+            _progressHelper.Cancel();
         }
 
         #region Prepare controls
@@ -174,33 +137,30 @@ namespace PoE2BuildCalculator
 
         private void ConfigureParserControls()
         {
-            // Create and add a ToolStripProgressBar to the StatusStrip (next to existing StatusBarLabel).
-            var parent = StatusBarLabel.GetCurrentParent();
-            if (parent != null)
+            var parent = StatusBarLabel?.GetCurrentParent() ?? throw new InvalidOperationException("StatusBar not properly initialized. Cannot create progress controls.");
+
+            _statusProgressBar = new ToolStripProgressBar
             {
-                _statusProgressBar = new ToolStripProgressBar
-                {
-                    Name = "StatusBarProgressBar",
-                    Minimum = 0,
-                    Maximum = 100,
-                    Value = 0,
-                    Visible = false,
-                    Size = new Size(150, 16)
-                };
-                parent.Items.Add(_statusProgressBar);
+                Name = "StatusBarProgressBar",
+                Minimum = 0,
+                Maximum = 100,
+                Value = 0,
+                Visible = false,
+                Size = new Size(150, 16)
+            };
+            parent.Items.Add(_statusProgressBar);
 
-                // Add a cancel button to the StatusStrip so the user can cancel parsing.
-                _cancelButton = new ToolStripButton
-                {
-                    Name = "ButtonCancelParse",
-                    Text = "Cancel",
-                    Enabled = false,
-                    Visible = false
-                };
-
-                _cancelButton.Click += ButtonCancelParse_Click;
-                parent.Items.Add(_cancelButton);
-            }
+            _cancelButton = new ToolStripButton
+            {
+                Name = "ButtonCancelParse",
+                Text = "Cancel",
+                BackColor = Color.LightPink,
+                Enabled = false,
+                Visible = false,
+                Alignment = ToolStripItemAlignment.Right
+            };
+            _cancelButton.Click += ButtonCancelParse_Click;
+            parent.Items.Add(_cancelButton);
         }
 
         #endregion
@@ -240,88 +200,49 @@ namespace PoE2BuildCalculator
             }
 
             _parsedItems = _fileParser.GetParsedItems();
-            if (_parsedItems.Count == 0)
+            var prepared = ItemPreparationHelper.PrepareItemsForCombinations(_parsedItems);
+
+            if (!prepared.HasItems && !prepared.HasRings)
             {
-                StatusBarLabel.Text = "There are no valid items in the chosen file. No combinations can be computed.";
+                MessageBox.Show("No items found in any category. Cannot generate combinations.",
+                    "No Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            var itemsForClasses = _parsedItems
-                .Where(x => Constants.ITEM_CLASSES.Contains(x.Class, StringComparer.OrdinalIgnoreCase))
-                .GroupBy(x => x.Class)
-                .ToDictionary(x => x.Key, x => x.ToList());
+            var totalCount = CombinationGenerator.ComputeTotalCombinations(
+                prepared.ItemsWithoutRings, prepared.Rings);
 
-            // Extract rings (may be null or empty)
-            itemsForClasses.TryGetValue(Constants.ITEM_CLASS_RING, out var rings);
-            itemsForClasses.Remove(Constants.ITEM_CLASS_RING);
-
-            // Get other item lists (filter out empties handled in generator)
-            var itemsWithoutRingsInput = itemsForClasses.Values.ToList();
-
-            // Check if we have any items at all
-            bool hasItems = itemsWithoutRingsInput.Any(list => list.Count > 0);
-            bool hasRings = rings != null && rings.Count > 0;
-
-            if (!hasItems && !hasRings)
-            {
-                MessageBox.Show("No items found in any category. Cannot generate combinations.", "No Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            // Quick count first
-            var totalCount = CombinationGenerator.ComputeTotalCombinations(itemsWithoutRingsInput, rings);
             if (totalCount == 0)
             {
-                MessageBox.Show("No combinations possible. All item class lists are empty.", "No Combinations", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                MessageBox.Show("No combinations possible. All item class lists are empty.",
+                    "No Combinations", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            // Show count and ask for confirmation if large
-            string countMessage = $"Total combinations to process: {totalCount}";
-            countMessage += $"\n\nThis is approximately {CommonHelper.GetBigIntegerApproximation(totalCount)} combinations.";
-            countMessage += "\n\nConsider using the Benchmark feature first to estimate how much time this will take.";
-            countMessage += "\n\nDo you want to proceed?";
+            // Confirm with user
+            string countMessage = $"Total combinations to process: {totalCount}\n\n" +
+                $"This is approximately {CommonHelper.GetBigIntegerApproximation(totalCount)} combinations.\n\n" +
+                "Consider using the Benchmark feature first to estimate how much time this will take.\n\n" +
+                "Do you want to proceed?";
 
-            var dialog = MessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
-            if (dialog != DialogResult.Yes)
+            if (MessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning) != DialogResult.Yes)
             {
                 StatusBarLabel.Text = "Operation cancelled by user.";
                 return;
             }
 
-            // Disable button during processing
-            PanelButtons.Enabled = false;
             TextboxDisplay.Text = "Processing combinations...\r\n\r\n";
+            _progressHelper.Start();
 
-            // Create cancellation token
-            _cts?.Dispose();
-            _cts = new CancellationTokenSource();
-
-            // Show progress bar
-            if (_statusProgressBar != null)
-            {
-                _statusProgressBar.Value = 0;
-                _statusProgressBar.Visible = true;
-            }
-
-            if (_cancelButton != null)
-            {
-                _cancelButton.Enabled = true;
-                _cancelButton.Visible = true;
-            }
-
-            // Progress reporter
             var progress = new Progress<CombinationProgress>(p =>
             {
-                if (_statusProgressBar != null && p?.PercentComplete <= 100)
-                {
-                    _statusProgressBar.Value = (int)p.PercentComplete;
-                }
+                string statusText = $"Processing: {p.PercentComplete:F2}% | " +
+                                  $"Processed: {p.ProcessedCombinations} | " +
+                                  $"Valid: {p.ValidCombinations} | " +
+                                  $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
 
-                StatusBarLabel.Text = $"Processing: {p.PercentComplete:F2}% | " +
-                                     $"Processed: {p.ProcessedCombinations} | " +
-                                     $"Valid: {p.ValidCombinations} | " +
-                                     $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
+                _progressHelper.UpdateProgress((int)p.PercentComplete, statusText);
 
                 TextboxDisplay.Text = $"Progress: {p.PercentComplete:F2}%\r\n" +
                                      $"Processed: {p.ProcessedCombinations}\r\n" +
@@ -332,82 +253,33 @@ namespace PoE2BuildCalculator
             try
             {
                 var result = await Task.Run(() =>
-                {
-                    try
-                    {
-                        var inner = CombinationGenerator.GenerateCombinationsParallel(
-                                        itemsWithoutRingsInput,
-                                        rings,
-                                        _itemValidatorFunction,
-                                        progress,
-                                        maxValidToStore: _maxCombinationsToStore,
-                                        _cts.Token);
+                    CombinationGenerator.GenerateCombinationsParallel(
+                        prepared.ItemsWithoutRings,
+                        prepared.Rings,
+                        _itemValidatorFunction,
+                        progress,
+                        maxValidToStore: _maxCombinationsToStore,
+                        _progressHelper.Token),
+                    _progressHelper.Token);
 
-                        return inner;
-                    }
-                    catch (Exception ex) when (ex is not OperationCanceledException)
-                    {
-                        throw;
-                    }
-                }, _cts.Token);
-
-                double speed = result.ElapsedTime.TotalSeconds > 0
-                    ? result.ProcessedCombinations / result.ElapsedTime.TotalSeconds
-                    : 0;
-
-                var summary = new System.Text.StringBuilder();
-                summary.AppendLine("=== COMBINATION GENERATION COMPLETE ===");
-                summary.AppendLine();
-                summary.AppendLine($"Total Combinations: {result.TotalCombinations}");
-                summary.AppendLine($"Processed: {result.ProcessedCombinations}");
-                summary.AppendLine($"Valid Combinations: {result.ValidCombinations}");
-                summary.AppendLine($"Rejection Rate: {(1 - (double)result.ValidCombinations / result.ProcessedCombinations) * 100:F2}%");
-                summary.AppendLine($"Elapsed Time: {result.ElapsedTime:hh\\:mm\\:ss\\.fff}");
-                summary.AppendLine($"Speed: {speed:F2} combinations/second");
-
-                if (result.ValidCombinations > 1000000)
-                {
-                    summary.AppendLine();
-                    summary.AppendLine($"NOTE: Only the first {_maxCombinationsToStore} valid combinations were stored.");
-                }
-
-                TextboxDisplay.Text = summary.ToString();
-                StatusBarLabel.Text = $"Complete! {result.ValidCombinations} valid combinations found.";
-
-                MessageBox.Show(summary.ToString(), "Generation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
-
+                DisplayCombinationResults(result);
                 _combinations = result.ValidCombinationsCollection;
             }
             catch (OperationCanceledException)
             {
                 TextboxDisplay.Text = "Operation cancelled by user.";
                 StatusBarLabel.Text = "Cancelled.";
-                MessageBox.Show("Combination generation was cancelled.", "Cancelled", MessageBoxButtons.OK, MessageBoxIcon.Information);
             }
             catch (Exception ex)
             {
                 TextboxDisplay.Text = $"Error: {ex.Message}";
-                StatusBarLabel.Text = $"Error during processing.";
-                MessageBox.Show($"An error occurred:\n\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                StatusBarLabel.Text = "Error during processing.";
+                MessageBox.Show($"An error occurred:\n\n{ex.Message}", "Error",
+                    MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
             finally
             {
-                if (_statusProgressBar != null)
-                {
-                    _statusProgressBar.Visible = false;
-                    _statusProgressBar.Value = 0;
-                }
-
-                if (_cancelButton != null)
-                {
-                    _cancelButton.Enabled = false;
-                    _cancelButton.Visible = false;
-                }
-
-                PanelButtons.Enabled = true;
-
-                _cts?.Dispose();
-                _cts = null;
+                _progressHelper.Stop();
             }
         }
 
@@ -427,16 +299,8 @@ namespace PoE2BuildCalculator
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            // Cancel any ongoing parsing
-            try
-            {
-                _cts?.Cancel();
-                _cts?.Dispose();
-                _cts = null;
-            }
-            catch { }
+            _progressHelper?.Dispose();
 
-            // Dispose custom validator if it exists
             lock (_validatorLock)
             {
                 try
@@ -451,63 +315,98 @@ namespace PoE2BuildCalculator
             }
         }
 
-        private void ButtonBenchmark_Click(object sender, EventArgs e)
+        private async void ButtonBenchmark_Click(object sender, EventArgs e)
         {
             if (_fileParser == null)
             {
-                MessageBox.Show("No parsed data available. Please load and parse a file first.", "No Data", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("No parsed data available. Please load and parse a file first.",
+                    "No Data", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
             _parsedItems = _fileParser.GetParsedItems();
-            if (_parsedItems.Count == 0)
+            var prepared = ItemPreparationHelper.PrepareItemsForCombinations(_parsedItems);
+
+            if (!prepared.HasItems && !prepared.HasRings)
             {
-                MessageBox.Show("There are no valid items in the chosen file.", "No Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                MessageBox.Show("No items found in any category. Cannot benchmark.",
+                    "No Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            var itemsForClasses = _parsedItems
-                .Where(x => Constants.ITEM_CLASSES.Contains(x.Class, StringComparer.OrdinalIgnoreCase))
-                .GroupBy(x => x.Class)
-                .ToDictionary(x => x.Key, x => x.ToList());
+            const int totalIterations = 25;
+            const int maxListSampleSize = 100;
 
-            itemsForClasses.TryGetValue(Constants.ITEM_CLASS_RING, out var rings);
-            itemsForClasses.Remove(Constants.ITEM_CLASS_RING);
-
-            var itemsWithoutRingsInput = itemsForClasses.Values.ToList();
-
-            bool hasItems = itemsWithoutRingsInput.Any(list => list.Count > 0);
-            bool hasRings = rings != null && rings.Count > 0;
-
-            if (!hasItems && !hasRings)
-            {
-                MessageBox.Show("No items found in any category. Cannot benchmark.", "No Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            StatusBarLabel.Text = "Running benchmark...";
-            TextboxDisplay.Text = "Benchmarking...\r\nPlease wait, sampling combinations to estimate execution time...";
-            Application.DoEvents();
+            StatusBarLabel.Text = "Preparing benchmark...";
+            TextboxDisplay.Text = "Preparing benchmark...\r\n";
 
             try
             {
-                PanelButtons.Enabled = false;
-                ExecutionEstimate estimate = null;
+                _progressHelper.Start();
 
-                for (int i = 0; i < 100; i++) // this is required because the benchmark gets more accurate with subsequent runs. Correlate with _safeBenchmarkSampleSize value.
+                // Pre-sample ONCE (lazy initialization)
+                List<List<Item>> sampledItems;
+                List<Item> sampledRings;
+
+                lock (_benchmarkSampleLock)
                 {
-                    estimate = CombinationGenerator.EstimateExecutionTime(
-                        itemsWithoutRingsInput,
-                        rings,
-                        _itemValidatorFunction,
-                        safeSampleSize: _safeBenchmarkSampleSize);
+                    if (_benchmarkSampledItems == null || _benchmarkSampledRings == null)
+                    {
+                        (_benchmarkSampledItems, _benchmarkSampledRings) =
+                            ItemPreparationHelper.CreateSamples(
+                                prepared.ItemsWithoutRings,
+                                prepared.Rings,
+                                maxListSampleSize);
+
+                        TextboxDisplay.AppendText("✓ Samples created\r\n");
+                    }
+                    else
+                    {
+                        TextboxDisplay.AppendText("✓ Using cached samples\r\n");
+                    }
+
+                    // Create local copies to avoid locking during async operation
+                    sampledItems = _benchmarkSampledItems;
+                    sampledRings = _benchmarkSampledRings;
                 }
 
-                string summary = estimate.GetFormattedSummary();
-                TextboxDisplay.Text = summary;
-                StatusBarLabel.Text = "Benchmark complete.";
+                _progressHelper.Token.ThrowIfCancellationRequested();
 
-                MessageBox.Show(summary, "Benchmark Results", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                // Warmup and GC (quick, can stay on UI thread)
+                StatusBarLabel.Text = "Warming up...";
+                TextboxDisplay.AppendText("Warming up and collecting garbage...\r\n");
+
+                PerformWarmupGarbageCollection();
+
+                TextboxDisplay.AppendText($"✓ Ready\r\n\r\nRunning {totalIterations} benchmark iterations...\r\n");
+
+                // Progress callback for UI updates
+                var progress = new Progress<BenchmarkProgress>(p =>
+                {
+                    _progressHelper.UpdateProgress(p.PercentComplete, p.StatusMessage);
+
+                    // Update display every 5 iterations to reduce UI churn
+                    if (p.CurrentIteration % 5 == 0 || p.CurrentIteration == totalIterations)
+                    {
+                        TextboxDisplay.AppendText($"  Iteration {p.CurrentIteration}/{totalIterations} complete\r\n");
+                    }
+                });
+
+                // Run benchmark on background thread
+                ExecutionEstimate estimate = await Task.Run(() =>
+                    RunBenchmarkIterations(
+                        totalIterations,
+                        sampledItems,
+                        sampledRings,
+                        progress),
+                    _progressHelper.Token);
+
+                DisplayBenchmarkResults(estimate);
+            }
+            catch (OperationCanceledException)
+            {
+                TextboxDisplay.AppendText("\r\nBenchmark cancelled by user.\r\n");
+                StatusBarLabel.Text = "Benchmark cancelled.";
             }
             catch (Exception ex)
             {
@@ -518,8 +417,97 @@ namespace PoE2BuildCalculator
             }
             finally
             {
-                PanelButtons.Enabled = true;
+                _progressHelper.Stop();
             }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _progressHelper?.Dispose();
+                components?.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+        private ExecutionEstimate RunBenchmarkIterations(int totalIterations, List<List<Item>> sampledItems, List<Item> sampledRings, IProgress<BenchmarkProgress> progress)
+        {
+            ExecutionEstimate estimate = null;
+
+            for (int i = 0; i < totalIterations; i++)
+            {
+                _progressHelper.Token.ThrowIfCancellationRequested();
+
+                estimate = CombinationGenerator.EstimateExecutionTime(
+                    sampledItems,
+                    sampledRings,
+                    _itemValidatorFunction,
+                    safeSampleSize: _safeBenchmarkSampleSize,
+                    skipGarbageCollection: true);
+
+                int currentIteration = i + 1;
+                int percentComplete = currentIteration * 100 / totalIterations;
+
+                progress?.Report(new BenchmarkProgress
+                {
+                    CurrentIteration = currentIteration,
+                    TotalIterations = totalIterations,
+                    PercentComplete = percentComplete,
+                    StatusMessage = $"Benchmark: {currentIteration}/{totalIterations} iterations ({percentComplete}%)"
+                });
+            }
+
+            return estimate;
+        }
+
+        private static void PerformWarmupGarbageCollection()
+        {
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+            GC.WaitForPendingFinalizers();
+            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
+        }
+
+        private void DisplayBenchmarkResults(ExecutionEstimate estimate)
+        {
+            string summary = estimate.GetFormattedSummary();
+
+            // ✅ RESTORE THESE
+            TextboxDisplay.Text = summary;
+            StatusBarLabel.Text = "Benchmark complete.";
+
+            MessageBox.Show(summary, "Benchmark Results",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void DisplayCombinationResults(CombinationResult<Item> result)
+        {
+            double speed = result.ElapsedTime.TotalSeconds > 0
+                ? result.ProcessedCombinations / result.ElapsedTime.TotalSeconds
+                : 0;
+
+            var summary = new System.Text.StringBuilder();
+            summary.AppendLine("=== COMBINATION GENERATION COMPLETE ===");
+            summary.AppendLine();
+            summary.AppendLine($"Total Combinations: {result.TotalCombinations}");
+            summary.AppendLine($"Processed: {result.ProcessedCombinations}");
+            summary.AppendLine($"Valid Combinations: {result.ValidCombinations}");
+            summary.AppendLine($"Rejection Rate: {(1 - (double)result.ValidCombinations / result.ProcessedCombinations) * 100:F2}%");
+            summary.AppendLine($"Elapsed Time: {result.ElapsedTime:hh\\:mm\\:ss\\.fff}");
+            summary.AppendLine($"Speed: {speed:F2} combinations/second");
+
+            if (result.ValidCombinations > _maxCombinationsToStore)
+            {
+                summary.AppendLine();
+                summary.AppendLine($"NOTE: Only the first {_maxCombinationsToStore:N0} valid combinations were stored.");
+            }
+
+            // ✅ RESTORE THESE
+            TextboxDisplay.Text = summary.ToString();
+            StatusBarLabel.Text = $"Complete! {result.ValidCombinations} valid combinations found.";
+
+            MessageBox.Show(summary.ToString(), "Generation Complete",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
     }
 }
