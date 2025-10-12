@@ -28,25 +28,25 @@
         /// <summary>
         /// Updates progress and ensures progress bar is visible.
         /// </summary>
-        public void UpdateProgress(int percentComplete, string statusText)
+        public void UpdateProgress(double percentComplete, string statusText)
         {
             if (!_isActive) return;
 
             // Show progress bar on first update
-            //if (!_progressBar.Visible)
-            //{
+            if (!_progressBar.Visible)
+            {
 
-            //	_statusStrip?.SuspendLayout();
+                _statusStrip?.SuspendLayout();
 
-            //	_progressBar.Visible = true;
-            //	_progressBar.Value = Math.Clamp(percentComplete, 0, 100);
-            //	_statusLabel.Text = statusText;
+                _progressBar.Visible = true;
+                _progressBar.Value = (int)Math.Clamp(percentComplete, 0.0d, 100.0d);
+                _statusLabel.Text = statusText;
 
-            //	_statusStrip?.ResumeLayout(performLayout: false);
-            //	_statusStrip?.PerformLayout();
-            //}
+                _statusStrip?.ResumeLayout(performLayout: false);
+                _statusStrip?.PerformLayout();
+            }
 
-            _progressBar.Value = Math.Clamp(percentComplete, 0, 100);
+            _progressBar.Value = (int)Math.Clamp(percentComplete, 0.0d, 100.0d);
             _statusLabel.Text = statusText;
         }
 

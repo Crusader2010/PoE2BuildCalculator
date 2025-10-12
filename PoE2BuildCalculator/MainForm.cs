@@ -13,7 +13,7 @@ namespace PoE2BuildCalculator
         // Field for thread synchronization
         private readonly object _validatorLock = new();
         private readonly long _maxCombinationsToStore = 10000000;
-        private readonly long _safeBenchmarkSampleSize = 500000;
+        private readonly ulong _safeBenchmarkSampleSize = 500000;
 
         // Class references
         private FileParser _fileParser { get; set; }
@@ -430,7 +430,7 @@ namespace PoE2BuildCalculator
         }
 
         private async Task<ExecutionEstimate> RunBenchmarkIterationsAsync(
-            int totalIterations,
+            ulong totalIterations,
             List<List<Item>> sampledItems,
             List<Item> sampledRings,
             IProgress<BenchmarkProgress> progress,
@@ -438,9 +438,9 @@ namespace PoE2BuildCalculator
         {
             ExecutionEstimate estimate = null;
 
-            for (int i = 0; i < totalIterations; i++)
+            for (ulong i = 0; i < totalIterations; i++)
             {
-                int currentIteration = i + 1;
+                ulong currentIteration = i + 1;
 
                 // Create sub-progress that reports to main progress with iteration context
                 var iterationProgress = new Progress<BenchmarkProgress>(p =>
@@ -449,12 +449,11 @@ namespace PoE2BuildCalculator
                     {
                         CurrentIteration = currentIteration,
                         TotalIterations = totalIterations,
-                        PercentComplete = ((currentIteration - 1) * 100 + p.PercentComplete) / totalIterations,
+                        PercentComplete = ((currentIteration - 1) * 100.0d / totalIterations) + (p.PercentComplete / totalIterations),
                         StatusMessage = $"Iteration {currentIteration}/{totalIterations}: {p.StatusMessage}"
                     });
                 });
 
-                // ✅ CORRECTED: Parameter order matches method signature
                 estimate = await CombinationGenerator.EstimateExecutionTimeAsync(
                     sampledItems,
                     sampledRings,
@@ -462,7 +461,7 @@ namespace PoE2BuildCalculator
                     safeSampleSize: _safeBenchmarkSampleSize,
                     skipGarbageCollection: true,
                     progress: iterationProgress,
-                    cancellationToken: cancellationToken); // ✅ LAST
+                    cancellationToken: cancellationToken);
             }
 
             return estimate;

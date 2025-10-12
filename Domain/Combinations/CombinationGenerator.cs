@@ -358,7 +358,7 @@ namespace Domain.Combinations
             List<List<T>> listOfItemClassesWithoutRings,
             List<T> listOfRings,
             Func<List<T>, bool> validator,
-            long safeSampleSize,
+            ulong safeSampleSize,
             bool skipGarbageCollection = false,
             IProgress<BenchmarkProgress> progress = null,
             CancellationToken cancellationToken = default)
@@ -432,15 +432,6 @@ namespace Domain.Combinations
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                // REPORT WARMUP PROGRESS
-                progress?.Report(new BenchmarkProgress
-                {
-                    CurrentIteration = 0,
-                    TotalIterations = 1,
-                    PercentComplete = 0,
-                    StatusMessage = $"Warming up JIT compiler... Round {warmupRound + 1}/3"
-                });
-
                 long warmupCount = 0;
                 long warmupItems = Math.Min(itemsToSample / 2, 2);
 
@@ -510,15 +501,6 @@ namespace Domain.Combinations
 
             if (!skipGarbageCollection)
             {
-                // REPORT GC PROGRESS
-                progress?.Report(new BenchmarkProgress
-                {
-                    CurrentIteration = 0,
-                    TotalIterations = 1,
-                    PercentComplete = 0,
-                    StatusMessage = "Collecting garbage before measurement..."
-                });
-
                 await Task.Run(() =>
                 {
                     GC.Collect();
@@ -532,15 +514,15 @@ namespace Domain.Combinations
             {
                 CurrentIteration = 0,
                 TotalIterations = 1,
-                PercentComplete = 0,
+                PercentComplete = 0.0d,
                 StatusMessage = "Measuring performance..."
             });
 
             // MEASUREMENT: Multi-threaded with THREAD-SAFE progress updates
-            long multiThreadProcessed = 0;
+            ulong multiThreadProcessed = 0;
             var swMulti = Stopwatch.StartNew();
 
-            long lastProgressTicks = Environment.TickCount64;
+            ulong lastProgressTicks = (ulong)Environment.TickCount64;
             const int ProgressIntervalMs = 200;
 
             try
@@ -571,26 +553,26 @@ namespace Domain.Combinations
                                     try { validator?.Invoke(fullCombination); }
                                     catch { }
 
-                                    long current = Interlocked.Increment(ref multiThreadProcessed);
+                                    ulong current = Interlocked.Increment(ref multiThreadProcessed);
 
                                     // ✅ THREAD-SAFE PROGRESS REPORTING
                                     if (progress != null)
                                     {
-                                        long currentTicks = Environment.TickCount64;
-                                        long previousTicks = Interlocked.Read(ref lastProgressTicks);
+                                        ulong currentTicks = (ulong)Environment.TickCount64;
+                                        ulong previousTicks = Interlocked.Read(ref lastProgressTicks);
 
                                         if (currentTicks - previousTicks >= ProgressIntervalMs)
                                         {
                                             // Try to claim the right to report
                                             if (Interlocked.CompareExchange(ref lastProgressTicks, currentTicks, previousTicks) == previousTicks)
                                             {
-                                                int percent = (int)(current * 100 / safeSampleSize);
+                                                var percent = current * 100.0d / safeSampleSize;
                                                 progress.Report(new BenchmarkProgress
                                                 {
                                                     CurrentIteration = 0,
                                                     TotalIterations = 1,
                                                     PercentComplete = percent,
-                                                    StatusMessage = $"Measuring performance... {current:N0}/{safeSampleSize:N0} samples ({percent}%)"
+                                                    StatusMessage = $"Measuring performance... {current:N0}/{safeSampleSize:N0} samples ({percent:F2}%)"
                                                 });
                                             }
                                         }
@@ -620,25 +602,25 @@ namespace Domain.Combinations
                                     try { validator?.Invoke(singleList); }
                                     catch { }
 
-                                    long current = Interlocked.Increment(ref multiThreadProcessed);
+                                    ulong current = Interlocked.Increment(ref multiThreadProcessed);
 
                                     // ✅ THREAD-SAFE PROGRESS REPORTING
                                     if (progress != null)
                                     {
-                                        long currentTicks = Environment.TickCount64;
-                                        long previousTicks = Interlocked.Read(ref lastProgressTicks);
+                                        ulong currentTicks = (ulong)Environment.TickCount64;
+                                        ulong previousTicks = Interlocked.Read(ref lastProgressTicks);
 
                                         if (currentTicks - previousTicks >= ProgressIntervalMs)
                                         {
                                             if (Interlocked.CompareExchange(ref lastProgressTicks, currentTicks, previousTicks) == previousTicks)
                                             {
-                                                int percent = (int)(current * 100 / safeSampleSize);
+                                                var percent = current * 100.0d / safeSampleSize;
                                                 progress.Report(new BenchmarkProgress
                                                 {
                                                     CurrentIteration = 0,
                                                     TotalIterations = 1,
                                                     PercentComplete = percent,
-                                                    StatusMessage = $"Measuring performance... {current:N0}/{safeSampleSize:N0} samples ({percent}%)"
+                                                    StatusMessage = $"Measuring performance... {current:N0}/{safeSampleSize:N0} samples ({percent:F2}%)"
                                                 });
                                             }
                                         }
@@ -669,25 +651,25 @@ namespace Domain.Combinations
                                         try { validator?.Invoke(fullCombination); }
                                         catch { }
 
-                                        long current = Interlocked.Increment(ref multiThreadProcessed);
+                                        ulong current = Interlocked.Increment(ref multiThreadProcessed);
 
                                         // ✅ THREAD-SAFE PROGRESS REPORTING
                                         if (progress != null)
                                         {
-                                            long currentTicks = Environment.TickCount64;
-                                            long previousTicks = Interlocked.Read(ref lastProgressTicks);
+                                            ulong currentTicks = (ulong)Environment.TickCount64;
+                                            ulong previousTicks = Interlocked.Read(ref lastProgressTicks);
 
                                             if (currentTicks - previousTicks >= ProgressIntervalMs)
                                             {
                                                 if (Interlocked.CompareExchange(ref lastProgressTicks, currentTicks, previousTicks) == previousTicks)
                                                 {
-                                                    int percent = (int)(current * 100 / safeSampleSize);
+                                                    var percent = current * 100.0d / safeSampleSize;
                                                     progress.Report(new BenchmarkProgress
                                                     {
                                                         CurrentIteration = 0,
                                                         TotalIterations = 1,
                                                         PercentComplete = percent,
-                                                        StatusMessage = $"Measuring performance... {current:N0}/{safeSampleSize:N0} samples ({percent}%)"
+                                                        StatusMessage = $"Measuring performance... {current:N0}/{safeSampleSize:N0} samples ({percent:F2}%)"
                                                     });
                                                 }
                                             }
@@ -728,8 +710,8 @@ namespace Domain.Combinations
                 };
             }
 
-            double multiThreadSpeed = multiThreadProcessed / Math.Max(swMulti.Elapsed.TotalSeconds, 0.001);
-            double estimatedSeconds = GetBigNumberRatio(totalCombinations, new BigInteger((long)multiThreadSpeed));
+            double multiThreadSpeed = multiThreadProcessed / Math.Max(swMulti.Elapsed.TotalSeconds, 0.00005);
+            double estimatedSeconds = GetBigNumberRatio(totalCombinations, new BigInteger(multiThreadSpeed));
 
             TimeSpan estimatedDuration = estimatedSeconds > TimeSpan.MaxValue.TotalSeconds
                 ? TimeSpan.MaxValue
@@ -852,7 +834,7 @@ namespace Domain.Combinations
         public BigInteger TotalCombinations { get; set; }
         public TimeSpan EstimatedDuration { get; set; }
         public double CombinationsPerSecond { get; set; }
-        public long SampleSize { get; set; }
+        public ulong SampleSize { get; set; }
         public TimeSpan MeasurementDuration { get; set; }
         public int ProcessorCount { get; set; }
         public double ParallelEfficiency { get; set; }
