@@ -28,18 +28,21 @@
    - Currently, we evaluate the subexpression of each group (based on the chosen stat operators), then successively left-apply the group-level operators (AND,OR,XOR), and end up with some binary arithmetics that result in a true/false validation.
    - The group evaluation simply sums the inner stats' expression over the list of items. E.g.: suppose group_1 is {Chaos Resistance - Cold Resistance between 40 and 90} => the final validator function will sum (Chaos Resistance - Cold Resistance) over the list of
      items in each combination and check if it's between the two values; which combinations pass this test are marked as valid.
-   -> Here, we can add more choices for the group evaluation: at least/most/exactly N/N% of items in any combination pass the group validation (e.g. have (Chaos Resistance - Cold Resistance) betweem 40 and 90). Currently, there is no matching logic for these; it also depends how you interpret the "at least 100% of items" choice - either by taking all items as a whole (the SUM), or by considering each item individually. We'll consider the latter. Thus we also need to keep the existing SUM(all items) as a choice. The new choices need to be added at group level.
-   -> It might also seem necessary to add a "NOT" toggle for groups. When combined with the previous choices, this negation can be either applied to the "between X and Y" final group value condition, and/or to the "at least/at most N/N% items". Since the latter will be chosen at group level (thus allowing "at most 0% of items <=> None" between X and Y <=> if 1+ items have that value between X and Y we fail the check), there is really no need to add the negation toggle (i.e. NOT(SUM() <=> all items as a whole have a value between X and Y) is the same as "at most 0/0% of items <=> None" have the value between X and Y ). Likely we need just a good help dialog to inform users of these fancy conditions (Note: between means inclusive):
-     - Any between X and Y <=> At least one between X and Y
-     - All(each) between X and Y <=> At least 100% between X and Y
-     - SUM(all) between X and Y => default choice
-     - Any NOT between X and Y <=> At least one <= X-1 OR At least one >= Y+1
-     - All(each) NOT between X and Y <=> Each item <= X-1 OR >= Y+1
-     - SUM(all) NOT between X and Y <=> SUM(all) <= X-1 OR SUM(all) >= Y+1
-     - NOT Any NOT between X and Y <=> At least 100% between X and Y
-     - NOT All(each) NOT between X and Y <=> At least one between X and Y 
+     - Here, we can add more choices for the group evaluation: at least/most/exactly N/N% of items in any combination pass the group validation (e.g. have (Chaos Resistance - Cold Resistance) betweem 40 and 90). Currently, there is no matching logic for these; it also depends how you interpret the "at least 100% of items" choice - either by taking all items as a whole (the SUM), or by considering each item individually. We'll consider the latter. Thus we also need to keep the existing SUM(all items) as a choice. The new choices need to be added at group level.
+     - It might also seem necessary to add a "NOT" toggle for groups. When combined with the previous choices, this negation can be either applied to the "between X and Y" final group value condition, and/or to the "at least/at most N/N% items". Since the latter will be chosen at group level (thus allowing "at most 0% of items <=> None" between X and Y <=> if 1+ items have that value between X and Y we fail the check), there is really no need to add the negation toggle (i.e. NOT(SUM() <=> all items as a whole have a value between X and Y) is the same as "at most 0/0% of items <=> None" have the value between X and Y ).
+     - Likely we just need a good help dialog to inform users of these fancy conditions (Note: between implies inclusive):
+	     - Any between X and Y <=> At least one between X and Y
+	     - All(each) between X and Y <=> At least 100% between X and Y
+       	 - None between X and Y <=> At most 0/0% between X and Y
+	     - SUM(all) between X and Y => **default choice**
+	     - Any NOT between X and Y <=> At least one <= X-1 OR At least one >= Y+1
+	     - All(each) NOT between X and Y <=> Each item is either <= X-1 OR >= Y+1
+         - None NOT between X and Y <=> At least 100% between X and Y
+	     - SUM(all) NOT between X and Y <=> SUM(all) <= X-1 OR SUM(all) >= Y+1
+	     - NOT Any NOT between X and Y <=> At least 100% between X and Y
+	     - NOT All(each) NOT between X and Y <=> At least one between X and Y 
      
-   -> I'm also thinking of an UI redesign for this, to more easily apply group operators and "move" groups around: a left column with all created groups and group operators, and comboboxes to choose each group (such that you can easily swap around); the right side of the window would be kept for creating groups with distinct names, which can then be identified on the left side. This can further be expanded by allowing custom binary operations to be created and applied to the same group more than once (e.g. (((group1 AND !group2) OR group3) OR !group1) ).
+	- I'm also thinking of an UI redesign for this, to more easily apply group operators and "move" groups around: a left column with all created groups and group operators, and comboboxes to choose each group (such that you can easily swap around); the right side of the window would be kept for creating groups with distinct names, which can then be identified on the left side. This can further be expanded by allowing custom binary operations to be created and applied to the same group more than once (e.g. (((group1 AND !group2) OR group3) OR !group1) ).
 2. Parsing enchant mods (and other similar ones) when computing the item lists, for certain stats (i.e. also account for the "+18% chaos resistance" enchant for body armour and add it to any existing explicit mod).
 3. Improving the UX for some of the buttons on the validation groups.
 4. Add all of the missing item stats in the game and the related stuff. Also add the Quality modifier, likely as strictly informative.
