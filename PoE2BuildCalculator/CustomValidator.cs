@@ -1,9 +1,9 @@
-﻿using Domain.Main;
+﻿using System.ComponentModel;
+
+using Domain.Main;
 using Domain.Static;
 using Domain.UserControls;
 using Domain.Validation;
-
-using System.ComponentModel;
 
 namespace PoE2BuildCalculator
 {
@@ -307,7 +307,7 @@ namespace PoE2BuildCalculator
             if (groups == null || groups.Count == 0) return null;
 
             var activeGroups = groups.Where(g => g.IsActive).ToList();
-            if (groups.Count == activeGroups.Count) return null;
+            if (activeGroups.Count == 0) return null;
 
             return items =>
             {
@@ -334,23 +334,12 @@ namespace PoE2BuildCalculator
         private static bool EvaluateGroup(ValidationGroupModel group, List<Item> items)
         {
             if (group.Stats.Count == 0) return true;
-
-            /*
-             * TO DO:
-             * Evaluated expression = item stats within the same group, with applied value operators.
-             * Currently, this only allows for summing the evaluated expression across all items, then checking if it's between min and max group constraints.
-             * Need to add the following for SINGLE STAT groups only:
-             *      - Any of the items has the evaluated expression between min and max (OR logic)
-             *      - All items have the evaluated expression between min and max (AND logic)
-             *      - At least X items have the evaluated expression between min and max
-             *      - At most Y items have the evaluated expression between min and max
-             */
             double sum = items.Sum(item => EvaluateExpression(group.Stats, item.ItemStats));
 
-            if (group.IsMinEnabled && group.MinValue.HasValue && sum < group.MinValue.Value)
+            if (group.IsMinEnabled && group.MinValue.HasValue && sum <= group.MinValue.Value)
                 return false;
 
-            if (group.IsMaxEnabled && group.MaxValue.HasValue && sum > group.MaxValue.Value)
+            if (group.IsMaxEnabled && group.MaxValue.HasValue && sum >= group.MaxValue.Value)
                 return false;
 
             return true;

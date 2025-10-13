@@ -4,40 +4,35 @@ namespace Domain.Main
 {
 	public class Tier : INotifyPropertyChanged
 	{
-		private IDictionary<string, double> _statWeights = new Dictionary<string, double>();
-		private int _tierId;
-		private string _tierName;
-		private double _tierWeight;
-
 		public int TierId
 		{
-			get { return _tierId; }
+			get;
 			set
 			{
-				if (_tierId == value) return;
-				_tierId = value;
+				if (field == value) return;
+				field = value;
 				OnPropertyChanged(nameof(TierId));
 			}
 		}
 
 		public string TierName
 		{
-			get { return _tierName; }
+			get;
 			set
 			{
-				if (_tierName == value) return;
-				_tierName = value;
+				if (field == value) return;
+				field = value;
 				OnPropertyChanged(nameof(TierName));
 			}
 		}
 
 		public double TierWeight
 		{
-			get { return _tierWeight; }
+			get;
 			set
 			{
-				if (_tierWeight == value) return;
-				_tierWeight = value;
+				if (field == value) return;
+				field = value;
 				OnPropertyChanged(nameof(TierWeight));
 			}
 		}
@@ -48,14 +43,14 @@ namespace Domain.Main
 		/// </summary>
 		public IDictionary<string, double> StatWeights
 		{
-			get { return _statWeights; }
+			get;
 			set
 			{
-				_statWeights = value;
+				field = value;
 				OnPropertyChanged(nameof(StatWeights));
 				OnPropertyChanged(nameof(TotalStatWeight)); // Notify the DataGridView of the change
 			}
-		}
+		} = new Dictionary<string, double>();
 
 		/// <summary>
 		/// The sum of the weights for each stat of the tier.

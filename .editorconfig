@@ -19,6 +19,8 @@ dotnet_diagnostic.IDE0008.severity = none
 dotnet_diagnostic.IDE0003.severity = none
 dotnet_diagnostic.IDE0011.severity = none
 dotnet_diagnostic.IDE0046.severity = none
+dotnet_diagnostic.IDE0072.severity = none
+dotnet_diagnostic.IDE0022.severity = silent
 
 #### Core EditorConfig Options ####
 
@@ -110,7 +112,7 @@ csharp_style_expression_bodied_constructors = false
 csharp_style_expression_bodied_indexers = true
 csharp_style_expression_bodied_lambdas = true
 csharp_style_expression_bodied_local_functions = false
-csharp_style_expression_bodied_methods = false
+csharp_style_expression_bodied_methods = true
 csharp_style_expression_bodied_operators = false
 csharp_style_expression_bodied_properties = true
 

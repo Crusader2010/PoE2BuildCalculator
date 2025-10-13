@@ -8,7 +8,6 @@ namespace Domain.UserControls
 {
 	public partial class ItemStatGroupValidatorUserControl : UserControl
 	{
-		private ValidationGroupModel _group;
 		private static readonly Color HEADER_COLOR = Color.FromArgb(70, 130, 180);
 
 		// Cached data - static to share across all instances
@@ -29,10 +28,10 @@ namespace Domain.UserControls
 
 		public ValidationGroupModel Group
 		{
-			get => _group;
+			get;
 			set
 			{
-				_group = value;
+				field = value;
 				UpdateDisplay();
 			}
 		}
@@ -45,7 +44,7 @@ namespace Domain.UserControls
 
 		private void ItemStatGroupValidatorUserControl_Load(object sender, EventArgs e)
 		{
-			if (_group != null)
+			if (Group != null)
 			{
 				UpdateDisplay();
 			}
@@ -64,25 +63,25 @@ namespace Domain.UserControls
 
 		private void UpdateDisplay()
 		{
-			if (_group == null) return;
+			if (Group == null) return;
 
 			SuspendLayout();
 			try
 			{
-				lblGroupName.Text = _group.GroupName;
+				lblGroupName.Text = Group.GroupName;
 
-				chkMin.Checked = _group.IsMinEnabled;
-				numMin.Value = (decimal)(_group.MinValue ?? 0.00);
-				numMin.Enabled = _group.IsMinEnabled;
+				chkMin.Checked = Group.IsMinEnabled;
+				numMin.Value = (decimal)(Group.MinValue ?? 0.00);
+				numMin.Enabled = Group.IsMinEnabled;
 
-				chkMax.Checked = _group.IsMaxEnabled;
-				numMax.Value = (decimal)(_group.MaxValue ?? 0.00);
-				numMax.Enabled = _group.IsMaxEnabled;
+				chkMax.Checked = Group.IsMaxEnabled;
+				numMax.Value = (decimal)(Group.MaxValue ?? 0.00);
+				numMax.Enabled = Group.IsMaxEnabled;
 
 				UpdateStatsComboBox();
 				RefreshStatsListBox();
 
-				cmbOperator.SelectedItem = _group.GroupOperator ?? "AND";
+				cmbOperator.SelectedItem = Group.GroupOperator ?? "AND";
 				ValidateGroup();
 			}
 			finally
@@ -93,7 +92,7 @@ namespace Domain.UserControls
 
 		private void UpdateStatsComboBox()
 		{
-			var usedStats = new HashSet<string>(_group.Stats.Select(s => s.PropertyName), StringComparer.OrdinalIgnoreCase);
+			var usedStats = new HashSet<string>(Group.Stats.Select(s => s.PropertyName), StringComparer.OrdinalIgnoreCase);
 
 			cmbStats.BeginUpdate();
 			try
@@ -120,7 +119,7 @@ namespace Domain.UserControls
 			try
 			{
 				statsListBox.Items.Clear();
-				statsListBox.Items.AddRange([.. _group.Stats.Select(s => s.PropertyName)]);
+				statsListBox.Items.AddRange([.. Group.Stats.Select(s => s.PropertyName)]);
 			}
 			finally
 			{
@@ -133,14 +132,14 @@ namespace Domain.UserControls
 			bool isValid = true;
 			string errorMsg = "";
 
-			if (!_group.IsMinEnabled && !_group.IsMaxEnabled)
+			if (!Group.IsMinEnabled && !Group.IsMaxEnabled)
 			{
 				errorMsg = "Enable Min or Max";
 				isValid = false;
 			}
-			else if (_group.IsMinEnabled && _group.IsMaxEnabled &&
-					 _group.MinValue.HasValue && _group.MaxValue.HasValue &&
-					 _group.MinValue.Value > _group.MaxValue.Value)
+			else if (Group.IsMinEnabled && Group.IsMaxEnabled &&
+					 Group.MinValue.HasValue && Group.MaxValue.HasValue &&
+					 Group.MinValue.Value > Group.MaxValue.Value)
 			{
 				errorMsg = "Min must be < Max";
 				isValid = false;
@@ -182,7 +181,7 @@ namespace Domain.UserControls
 			string propName = cmbStats.SelectedItem.ToString();
 			var propInfo = _availableProperties.Value.First(p => p.Name == propName);
 
-			_group.Stats.Add(new GroupStatModel
+			Group.Stats.Add(new GroupStatModel
 			{
 				PropInfo = propInfo,
 				PropertyName = propName,
@@ -200,14 +199,14 @@ namespace Domain.UserControls
 
 		private void chkMin_CheckedChanged(object sender, EventArgs e)
 		{
-			_group.IsMinEnabled = chkMin.Checked;
+			Group.IsMinEnabled = chkMin.Checked;
 			numMin.Enabled = chkMin.Checked;
 			ValidateGroup();
 		}
 
 		private void numMin_ValueChanged(object sender, EventArgs e)
 		{
-			_group.MinValue = (double)numMin.Value;
+			Group.MinValue = (double)numMin.Value;
 			ValidateGroup();
 		}
 
@@ -218,10 +217,10 @@ namespace Domain.UserControls
 
 		private void chkMax_CheckedChanged(object sender, EventArgs e)
 		{
-			_group.IsMaxEnabled = chkMax.Checked;
+			Group.IsMaxEnabled = chkMax.Checked;
 			numMax.Enabled = chkMax.Checked;
-			if (chkMax.Checked && !_group.MaxValue.HasValue)
-				_group.MaxValue = (double)numMax.Value;
+			if (chkMax.Checked && !Group.MaxValue.HasValue)
+				Group.MaxValue = (double)numMax.Value;
 			ValidateGroup();
 		}
 
@@ -229,7 +228,7 @@ namespace Domain.UserControls
 		{
 			if (chkMax.Checked)
 			{
-				_group.MaxValue = (double)numMax.Value;
+				Group.MaxValue = (double)numMax.Value;
 				ValidateGroup();
 			}
 		}
@@ -241,15 +240,15 @@ namespace Domain.UserControls
 
 		private void cmbOperator_SelectedIndexChanged(object sender, EventArgs e)
 		{
-			_group.GroupOperator = cmbOperator.SelectedItem?.ToString();
+			Group.GroupOperator = cmbOperator.SelectedItem?.ToString();
 		}
 
 		private void statsListBox_DrawItem(object sender, DrawItemEventArgs e)
 		{
-			if (e.Index < 0 || e.Index >= _group.Stats.Count) return;
+			if (e.Index < 0 || e.Index >= Group.Stats.Count) return;
 
-			var stat = _group.Stats[e.Index];
-			bool isLastStat = e.Index == _group.Stats.Count - 1;
+			var stat = Group.Stats[e.Index];
+			bool isLastStat = e.Index == Group.Stats.Count - 1;
 			var bounds = e.Bounds;
 
 			e.DrawBackground();
@@ -308,10 +307,10 @@ namespace Domain.UserControls
 		private void statsListBox_MouseClick(object sender, MouseEventArgs e)
 		{
 			int index = statsListBox.IndexFromPoint(e.Location);
-			if (index < 0 || index >= _group.Stats.Count) return;
+			if (index < 0 || index >= Group.Stats.Count) return;
 
 			var bounds = statsListBox.GetItemRectangle(index);
-			bool isLastStat = index == _group.Stats.Count - 1;
+			bool isLastStat = index == Group.Stats.Count - 1;
 
 			// Check operator dropdown (skip for last stat)
 			// Operator box is at: bounds.Right - 95, width 50
@@ -320,7 +319,7 @@ namespace Domain.UserControls
 				var opRect = new Rectangle(bounds.Right - 95, bounds.Top + 5, 50, bounds.Height - 10);
 				if (opRect.Contains(e.Location))
 				{
-					ShowOperatorMenu(_group.Stats[index], e.Location);
+					ShowOperatorMenu(Group.Stats[index], e.Location);
 					return;
 				}
 			}
@@ -335,7 +334,7 @@ namespace Domain.UserControls
 
 			// Check down button
 			var downRect = new Rectangle(bounds.Right - 42, bounds.Top + 18, 18, 14);
-			if (downRect.Contains(e.Location) && index < _group.Stats.Count - 1)
+			if (downRect.Contains(e.Location) && index < Group.Stats.Count - 1)
 			{
 				SwapStats(index, index + 1);
 				return;
@@ -351,14 +350,14 @@ namespace Domain.UserControls
 
 		private void SwapStats(int index1, int index2)
 		{
-			(_group.Stats[index1], _group.Stats[index2]) = (_group.Stats[index2], _group.Stats[index1]);
+			(Group.Stats[index1], Group.Stats[index2]) = (Group.Stats[index2], Group.Stats[index1]);
 			RefreshStatsListBox();
 		}
 
 		private void RemoveStat(int index)
 		{
-			string propName = _group.Stats[index].PropertyName;
-			_group.Stats.RemoveAt(index);
+			string propName = Group.Stats[index].PropertyName;
+			Group.Stats.RemoveAt(index);
 
 			// Restore to combo box at original cached index
 			if (_comboBoxIndexCache.TryGetValue(propName, out int originalIndex))
