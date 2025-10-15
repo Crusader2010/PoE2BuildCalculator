@@ -54,6 +54,7 @@
 			ComboboxOperator.Name = "ComboboxOperator";
 			ComboboxOperator.Size = new Size(29, 23);
 			ComboboxOperator.TabIndex = 6;
+			ComboboxOperator.SelectedIndexChanged += ComboboxOperator_SelectedIndexChanged;
 			// 
 			// ButtonMoveUp
 			// 
@@ -65,6 +66,7 @@
 			ButtonMoveUp.TabIndex = 7;
 			ButtonMoveUp.Text = "▲";
 			ButtonMoveUp.UseVisualStyleBackColor = true;
+			ButtonMoveUp.Click += ButtonMoveUp_Click;
 			// 
 			// ButtonMoveDown
 			// 
@@ -76,6 +78,7 @@
 			ButtonMoveDown.TabIndex = 8;
 			ButtonMoveDown.Text = "▼";
 			ButtonMoveDown.UseVisualStyleBackColor = true;
+			ButtonMoveDown.Click += ButtonMoveDown_Click;
 			// 
 			// ButtonRemove
 			// 
@@ -90,6 +93,7 @@
 			ButtonRemove.TabIndex = 9;
 			ButtonRemove.Text = "X";
 			ButtonRemove.UseVisualStyleBackColor = true;
+			ButtonRemove.Click += ButtonRemove_Click;
 			// 
 			// panel1
 			// 
@@ -108,8 +112,10 @@
 			AutoScaleDimensions = new SizeF(7F, 15F);
 			AutoScaleMode = AutoScaleMode.Font;
 			Controls.Add(panel1);
+			DoubleBuffered = true;
 			Name = "ItemStatRow";
 			Size = new Size(313, 25);
+			Load += ItemStatRow_Load;
 			panel1.ResumeLayout(false);
 			panel1.PerformLayout();
 			ResumeLayout(false);

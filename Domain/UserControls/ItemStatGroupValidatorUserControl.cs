@@ -1,4 +1,5 @@
-﻿using System.Reflection;
+﻿using System.ComponentModel;
+using System.Reflection;
 
 using Domain.Main;
 using Domain.Static;
@@ -6,420 +7,199 @@ using Domain.Validation;
 
 namespace Domain.UserControls
 {
-    public partial class ItemStatGroupValidatorUserControl : UserControl
-    {
-        private static readonly Color HEADER_COLOR = Color.FromArgb(70, 130, 180);
-
-        // Cached data - static to share across all instances
-        private static readonly Lazy<IReadOnlyList<PropertyInfo>> _availableProperties = new(() =>
-        {
-            return [.. typeof(ItemStats).GetProperties()
-                .Where(p => p.PropertyType == typeof(int) ||
-                            p.PropertyType == typeof(double) ||
-                            p.PropertyType == typeof(long))
-                .OrderBy(p => p.Name)];
-        });
-
-        // Cache for combo box state restoration
-        private readonly Dictionary<string, int> _comboBoxIndexCache = [];
-
-        public event EventHandler DeleteRequested;
-        public event EventHandler ValidationChanged;
-
-        public ValidationGroupModel Group
-        {
-            get;
-            set
-            {
-                field = value;
-                UpdateDisplay();
-            }
-        }
-
-        public ItemStatGroupValidatorUserControl()
-        {
-            InitializeComponent();
-            InitializeComboBoxCache();
-        }
-
-        private void ItemStatGroupValidatorUserControl_Load(object sender, EventArgs e)
-        {
-            if (Group != null)
-            {
-                UpdateDisplay();
-            }
-
-            numMin.Leave += NumericInput_Leave;
-            numMax.Leave += NumericInput_Leave;
-        }
-
-        private void InitializeComboBoxCache()
-        {
-            for (int i = 0; i < _availableProperties.Value.Count; i++)
-            {
-                _comboBoxIndexCache[_availableProperties.Value[i].Name] = i;
-            }
-        }
-
-        private void UpdateDisplay()
-        {
-            if (Group == null) return;
-
-            SuspendLayout();
-            try
-            {
-                lblGroupName.Text = Group.GroupName;
-
-                chkMin.Checked = Group.IsMinEnabled;
-                numMin.Value = (decimal)(Group.MinValue ?? 0.00);
-                numMin.Enabled = Group.IsMinEnabled;
-
-                chkMax.Checked = Group.IsMaxEnabled;
-                numMax.Value = (decimal)(Group.MaxValue ?? 0.00);
-                numMax.Enabled = Group.IsMaxEnabled;
-
-                UpdateStatsComboBox();
-                RefreshStatsListBox();
-
-                cmbOperator.SelectedItem = Group.GroupOperator ?? "AND";
-                ValidateGroup();
-            }
-            finally
-            {
-                ResumeLayout(true);
-            }
-        }
-
-        private void UpdateStatsComboBox()
-        {
-            var usedStats = new HashSet<string>(Group.Stats.Select(s => s.PropertyName), StringComparer.OrdinalIgnoreCase);
-
-            cmbStats.BeginUpdate();
-            try
-            {
-                cmbStats.Items.Clear();
-
-                // Use LINQ for efficient filtering and ordering
-                var availableItems = _availableProperties.Value
-                    .Where(p => !usedStats.Contains(p.Name))
-                    .Select(p => p.Name)
-                    .ToArray();
-
-                cmbStats.Items.AddRange(availableItems);
-            }
-            finally
-            {
-                cmbStats.EndUpdate();
-            }
-        }
-
-        private void RefreshStatsListBox()
-        {
-            statsListBox.BeginUpdate();
-            try
-            {
-                statsListBox.Items.Clear();
-                statsListBox.Items.AddRange([.. Group.Stats.Select(s => s.PropertyName)]);
-            }
-            finally
-            {
-                statsListBox.EndUpdate();
-            }
-        }
-
-        private void ValidateGroup()
-        {
-            bool isValid = true;
-            string errorMsg = "";
-
-            if (!Group.IsMinEnabled && !Group.IsMaxEnabled)
-            {
-                errorMsg = "Enable Min or Max";
-                isValid = false;
-            }
-            else if (Group.IsMinEnabled && Group.IsMaxEnabled &&
-                     Group.MinValue.HasValue && Group.MaxValue.HasValue &&
-                     Group.MinValue.Value > Group.MaxValue.Value)
-            {
-                errorMsg = "Min must be < Max";
-                isValid = false;
-            }
-
-            lblValidation.Text = errorMsg;
-            lblValidation.ForeColor = isValid ? Color.Green : Color.Red;
-
-            ValidationChanged?.Invoke(this, EventArgs.Empty);
-        }
-
-        public void UpdateOperatorVisibility(bool visible)
-        {
-            pnlOperatorContainer.Visible = visible;
-            cmbOperator.Enabled = visible;
-        }
-
-        private static void NumericInput_Leave(object sender, EventArgs e)
-        {
-            if (sender is NumericUpDown nud && nud.Parent is ItemStatGroupValidatorUserControl uc)
-            {
-                uc.ValidateGroup();
-            }
-        }
-
-        private void btnDelete_Click(object sender, EventArgs e)
-        {
-            DeleteRequested?.Invoke(this, EventArgs.Empty);
-        }
-
-        private void btnAddStat_Click(object sender, EventArgs e)
-        {
-            if (cmbStats.SelectedItem is null)
-            {
-                MessageBox.Show("Please select a stat.", "Validation", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            string propName = cmbStats.SelectedItem.ToString();
-            var propInfo = _availableProperties.Value.First(p => p.Name == propName);
-
-            Group.Stats.Add(new GroupStatModel
-            {
-                PropInfo = propInfo,
-                PropertyName = propName,
-                Operator = "+"
-            });
-
-            // Remove from combo using cached index for efficiency
-            int selectedIndex = cmbStats.SelectedIndex;
-            cmbStats.Items.RemoveAt(selectedIndex);
-            cmbStats.SelectedIndex = -1;
-
-            RefreshStatsListBox();
-            ValidateGroup();
-        }
-
-        private void chkMin_CheckedChanged(object sender, EventArgs e)
-        {
-            Group.IsMinEnabled = chkMin.Checked;
-            numMin.Enabled = chkMin.Checked;
-            ValidateGroup();
-        }
-
-        private void numMin_ValueChanged(object sender, EventArgs e)
-        {
-            Group.MinValue = (double)numMin.Value;
-            ValidateGroup();
-        }
-
-        private void numMin_Leave(object sender, EventArgs e)
-        {
-            ValidateGroup();
-        }
-
-        private void chkMax_CheckedChanged(object sender, EventArgs e)
-        {
-            Group.IsMaxEnabled = chkMax.Checked;
-            numMax.Enabled = chkMax.Checked;
-            if (chkMax.Checked && !Group.MaxValue.HasValue)
-                Group.MaxValue = (double)numMax.Value;
-            ValidateGroup();
-        }
-
-        private void numMax_ValueChanged(object sender, EventArgs e)
-        {
-            if (chkMax.Checked)
-            {
-                Group.MaxValue = (double)numMax.Value;
-                ValidateGroup();
-            }
-        }
-
-        private void numMax_Leave(object sender, EventArgs e)
-        {
-            ValidateGroup();
-        }
-
-        private void cmbOperator_SelectedIndexChanged(object sender, EventArgs e)
-        {
-            Group.GroupOperator = cmbOperator.SelectedItem?.ToString();
-        }
-
-        private void statsListBox_DrawItem(object sender, DrawItemEventArgs e)
-        {
-            if (e.Index < 0 || e.Index >= Group.Stats.Count) return;
-
-            var stat = Group.Stats[e.Index];
-            bool isLastStat = e.Index == Group.Stats.Count - 1;
-            var bounds = e.Bounds;
-
-            e.DrawBackground();
-
-            // Draw stat name
-            using var brush = new SolidBrush(e.ForeColor);
-            var textRect = new Rectangle(bounds.Left + 4, bounds.Top + 9, bounds.Width - 100, bounds.Height);
-            e.Graphics.DrawString(stat.PropertyName, e.Font, brush, textRect);
-
-            // Operator dropdown (skip for last stat)
-            if (!isLastStat)
-            {
-                var opRect = new Rectangle(bounds.Right - 95, bounds.Top + 5, 50, bounds.Height - 10);
-                DrawOperatorBox(e.Graphics, opRect, stat.Operator);
-            }
-
-            // Control buttons
-            DrawControlButtons(e.Graphics, bounds);
-            e.DrawFocusRectangle();
-        }
-
-        private static void DrawOperatorBox(Graphics g, Rectangle rect, string op)
-        {
-            using var bgBrush = new SolidBrush(Color.LightGoldenrodYellow);
-            g.FillRectangle(bgBrush, rect);
-            g.DrawRectangle(Pens.Black, rect);
-
-            using var textBrush = new SolidBrush(Color.DarkRed);
-            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            var font = new Font("Arial", 11, FontStyle.Bold, GraphicsUnit.Pixel);
-            g.DrawString(op, font, textBrush, rect, sf);
-        }
-
-        private static void DrawControlButtons(Graphics g, Rectangle bounds)
-        {
-            var upRect = new Rectangle(bounds.Right - 42, bounds.Top + 3, 18, 14);
-            DrawButton(g, upRect, "▲", Color.FromArgb(100, 150, 200));
-
-            var downRect = new Rectangle(bounds.Right - 42, bounds.Top + 18, 18, 14);
-            DrawButton(g, downRect, "▼", Color.FromArgb(100, 150, 200));
-
-            var removeRect = new Rectangle(bounds.Right - 22, bounds.Top + 3, 18, 29);
-            DrawButton(g, removeRect, "×", Color.FromArgb(200, 50, 50), new Font("Segoe UI", 10, FontStyle.Bold));
-        }
-
-        private static void DrawButton(Graphics g, Rectangle rect, string text, Color bgColor, Font font = null)
-        {
-            using var bgBrush = new SolidBrush(bgColor);
-            g.FillRectangle(bgBrush, rect);
-            g.DrawRectangle(font != null ? Pens.DarkRed : Pens.DarkBlue, rect);
-
-            using var textBrush = new SolidBrush(Color.White);
-            var sf = new StringFormat { Alignment = StringAlignment.Center, LineAlignment = StringAlignment.Center };
-            g.DrawString(text, font ?? new Font("Arial", 7), textBrush, rect, sf);
-        }
-
-        private void statsListBox_MouseClick(object sender, MouseEventArgs e)
-        {
-            int index = statsListBox.IndexFromPoint(e.Location);
-            if (index < 0 || index >= Group.Stats.Count) return;
-
-            var bounds = statsListBox.GetItemRectangle(index);
-            bool isLastStat = index == Group.Stats.Count - 1;
-
-            // Check operator dropdown (skip for last stat)
-            // Operator box is at: bounds.Right - 95, width 50
-            if (!isLastStat)
-            {
-                var opRect = new Rectangle(bounds.Right - 95, bounds.Top + 5, 50, bounds.Height - 10);
-                if (opRect.Contains(e.Location))
-                {
-                    ShowOperatorMenu(Group.Stats[index], e.Location);
-                    return;
-                }
-            }
-
-            // Check up button
-            var upRect = new Rectangle(bounds.Right - 42, bounds.Top + 3, 18, 14);
-            if (upRect.Contains(e.Location) && index > 0)
-            {
-                SwapStats(index, index - 1);
-                return;
-            }
-
-            // Check down button
-            var downRect = new Rectangle(bounds.Right - 42, bounds.Top + 18, 18, 14);
-            if (downRect.Contains(e.Location) && index < Group.Stats.Count - 1)
-            {
-                SwapStats(index, index + 1);
-                return;
-            }
-
-            // Check remove button
-            var removeRect = new Rectangle(bounds.Right - 22, bounds.Top + 3, 18, 29);
-            if (removeRect.Contains(e.Location))
-            {
-                RemoveStat(index);
-            }
-        }
-
-        private void SwapStats(int index1, int index2)
-        {
-            (Group.Stats[index1], Group.Stats[index2]) = (Group.Stats[index2], Group.Stats[index1]);
-            RefreshStatsListBox();
-        }
-
-        private void RemoveStat(int index)
-        {
-            string propName = Group.Stats[index].PropertyName;
-            Group.Stats.RemoveAt(index);
-
-            // Restore to combo box at original cached index
-            if (_comboBoxIndexCache.TryGetValue(propName, out int originalIndex))
-            {
-                cmbStats.BeginUpdate();
-                try
-                {
-                    // Find correct insertion position based on sorted order
-                    int insertPos = 0;
-                    for (int i = 0; i < cmbStats.Items.Count; i++)
-                    {
-                        if (_comboBoxIndexCache.TryGetValue(cmbStats.Items[i].ToString(), out int cachedIdx) && cachedIdx < originalIndex)
-                        {
-                            insertPos = i + 1;
-                        }
-                    }
-                    cmbStats.Items.Insert(insertPos, propName);
-                }
-                finally
-                {
-                    cmbStats.EndUpdate();
-                }
-            }
-            else
-            {
-                // Fallback: re-sort entire list
-                UpdateStatsComboBox();
-            }
-
-            RefreshStatsListBox();
-            ValidateGroup();
-        }
-
-        private void ShowOperatorMenu(GroupStatModel stat, Point location)
-        {
-            var menu = new ContextMenuStrip();
-
-            foreach (var op in Constants.MATH_OPERATORS)
-            {
-                var item = new ToolStripMenuItem(op) { Checked = stat.Operator == op };
-                item.Click += (s, e) =>
-                {
-                    stat.Operator = op;
-                    statsListBox.Invalidate();
-                    menu.Close();
-                };
-                menu.Items.Add(item);
-            }
-
-            menu.Show(statsListBox, location);
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                numMin.Leave -= NumericInput_Leave;
-                numMax.Leave -= NumericInput_Leave;
-                components?.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-    }
+	public partial class ItemStatGroupValidatorUserControl : UserControl
+	{
+		private static readonly Color HEADER_COLOR = Color.FromArgb(70, 130, 180);
+
+		// Cached data - static to share across all instances
+		private static readonly Lazy<IReadOnlyList<PropertyInfo>> _availableProperties = new(() =>
+		{
+			return [.. typeof(ItemStats).GetProperties()
+				.Where(p => p.PropertyType == typeof(int) ||
+							p.PropertyType == typeof(double) ||
+							p.PropertyType == typeof(long))
+				.OrderBy(p => p.Name)];
+		});
+
+		// Cache for combo box state restoration
+		private readonly Dictionary<string, int> _comboBoxIndexCache = [];
+
+		private readonly BindingSource _statRowsBindingSource = [];
+		private readonly BindingList<ItemStatRow> _statRows = [];
+
+		public event EventHandler DeleteRequested;
+		public event EventHandler ValidationChanged;
+
+		public ValidationGroupModel Group
+		{
+			get;
+			set
+			{
+				field = value;
+				UpdateStatsComboBox();
+			}
+		}
+
+		public ItemStatGroupValidatorUserControl()
+		{
+			InitializeComponent();
+			InitializeComboBoxCache();
+		}
+
+		private void ItemStatGroupValidatorUserControl_Load(object sender, EventArgs e)
+		{
+			if (Group != null)
+			{
+				UpdateStatsComboBox();
+			}
+
+			_statRowsBindingSource.DataSource = _statRows;
+			statsListBox.DataSource = _statRowsBindingSource;
+		}
+
+		private void InitializeComboBoxCache()
+		{
+			for (int i = 0; i < _availableProperties.Value.Count; i++)
+			{
+				_comboBoxIndexCache[_availableProperties.Value[i].Name] = i;
+			}
+		}
+
+		private void UpdateStatsComboBox()
+		{
+			var usedStats = new HashSet<string>(Group.Stats.Select(s => s.PropertyName), StringComparer.OrdinalIgnoreCase);
+
+			cmbStats.BeginUpdate();
+			try
+			{
+				cmbStats.Items.Clear();
+
+				// Use LINQ for efficient filtering and ordering
+				var availableItems = _availableProperties.Value
+					.Where(p => !usedStats.Contains(p.Name))
+					.Select(p => p.Name)
+					.ToArray();
+
+				cmbStats.Items.AddRange(availableItems);
+			}
+			finally
+			{
+				cmbStats.EndUpdate();
+			}
+		}
+
+		private void SwapStatsListBoxItems(int index1, int index2)
+		{
+			if (index1 < 0 || index1 >= _statRows.Count ||
+				index2 < 0 || index2 >= _statRows.Count ||
+				index1 == index2)
+			{
+				return;
+			}
+
+			statsListBox.BeginUpdate();
+			try
+			{
+				// Swap in the data source
+				(_statRows[index1], _statRows[index2]) = (_statRows[index2], _statRows[index1]);
+				_statRowsBindingSource.ResetBindings(false);
+			}
+			finally
+			{
+				statsListBox.EndUpdate();
+			}
+		}
+
+		private void btnDelete_Click(object sender, EventArgs e)
+		{
+			DeleteRequested?.Invoke(this, EventArgs.Empty);
+		}
+
+		private void btnAddStat_Click(object sender, EventArgs e)
+		{
+			if (cmbStats.SelectedItem is null)
+			{
+				MessageBox.Show("Please select a stat.", "Missing item stat", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				return;
+			}
+
+			string propName = cmbStats.SelectedItem.ToString();
+			var propInfo = _availableProperties.Value.First(p => p.Name == propName);
+
+			Group.Stats.Add(new GroupStatModel
+			{
+				PropInfo = propInfo,
+				PropertyName = propName,
+				Operator = "+"
+			});
+
+			// Remove from combo using cached index for efficiency
+			int selectedIndex = cmbStats.SelectedIndex;
+			cmbStats.Items.RemoveAt(selectedIndex);
+			cmbStats.SelectedIndex = -1;
+
+			AddNewStatRow(propName, statsListBox.Items.Count);
+			UpdateStatsComboBox();
+		}
+
+		public void SwapStats(int index1, int index2)
+		{
+			(Group.Stats[index1], Group.Stats[index2]) = (Group.Stats[index2], Group.Stats[index1]);
+			SwapStatsListBoxItems(index1, index2);
+		}
+
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing)
+			{
+				components?.Dispose();
+			}
+			base.Dispose(disposing);
+		}
+
+		private void AddNewStatRow(string statName, int index)
+		{
+			if (string.IsNullOrWhiteSpace(statName)) return;
+
+			try
+			{
+				var itemStatRow = new ItemStatRow(index, statName, this);
+
+				foreach (var statRow in statsListBox.Items)
+				{
+					if (statRow is ItemStatRow row)
+					{
+						row.SetupStatOperatorSelection(true);
+					}
+				}
+
+				_statRows.Add(itemStatRow); // stat operator combo is disabled by default, so we add the new row after enabling existing ones
+				_statRowsBindingSource.ResetBindings(false);
+				statsListBox.Refresh();
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show(ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+		}
+
+		public void RemoveStatRow(ItemStatRow row)
+		{
+			if (row == null) return;
+
+			statsListBox.SuspendLayout();
+			_statRows.Remove(row);
+			_statRowsBindingSource.ResetBindings(false);
+			statsListBox.ResumeLayout();
+
+			for (int i = 0; i < statsListBox.Items.Count; i++)
+			{
+				if (statsListBox.Items[i] is ItemStatRow itemStatRow)
+				{
+					itemStatRow.ChangeCurrentRowIndex(i);
+					itemStatRow.SetupStatOperatorSelection(i != statsListBox.Items.Count - 1);
+				}
+			}
+		}
+	}
 }

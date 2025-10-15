@@ -13,7 +13,7 @@ namespace Domain.Static
 		public const string DEFAULT_DESCRIPTION = "NONE";
 		public const string TOTAL_TIERS_WEIGHT_SUFFIX = @" %";
 		public const string DOUBLE_NUMBER_FORMAT = "0.00";
-		public readonly static ImmutableList<string> ITEM_CLASSES =
+		public static readonly ImmutableList<string> ITEM_CLASSES =
 		[
 			"Claw",
 			"Dagger",

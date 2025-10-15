@@ -1,8 +1,8 @@
 ﻿namespace Domain.UserControls
 {
-    partial class ItemStatGroupValidatorUserControl
-    {
-        private System.ComponentModel.IContainer components = null;
+	partial class ItemStatGroupValidatorUserControl
+	{
+		private System.ComponentModel.IContainer components = null;
 
 		#region Component Designer generated code
 
@@ -11,13 +11,11 @@
 			headerPanel = new Panel();
 			lblGroupName = new Label();
 			btnDelete = new Button();
-			contentPanel = new Panel();
 			lblAddStat = new Label();
 			cmbStats = new ComboBox();
 			btnAddStat = new Button();
 			statsListBox = new ListBox();
 			headerPanel.SuspendLayout();
-			contentPanel.SuspendLayout();
 			SuspendLayout();
 			// 
 			// headerPanel
@@ -61,23 +59,10 @@
 			btnDelete.UseVisualStyleBackColor = false;
 			btnDelete.Click += btnDelete_Click;
 			// 
-			// contentPanel
-			// 
-			contentPanel.Controls.Add(lblAddStat);
-			contentPanel.Controls.Add(cmbStats);
-			contentPanel.Controls.Add(btnAddStat);
-			contentPanel.Controls.Add(statsListBox);
-			contentPanel.Dock = DockStyle.Fill;
-			contentPanel.Location = new Point(0, 32);
-			contentPanel.Name = "contentPanel";
-			contentPanel.Padding = new Padding(8);
-			contentPanel.Size = new Size(357, 217);
-			contentPanel.TabIndex = 1;
-			// 
 			// lblAddStat
 			// 
 			lblAddStat.Font = new Font("Segoe UI", 8.5F);
-			lblAddStat.Location = new Point(8, 8);
+			lblAddStat.Location = new Point(2, 38);
 			lblAddStat.Name = "lblAddStat";
 			lblAddStat.Size = new Size(60, 21);
 			lblAddStat.TabIndex = 0;
@@ -89,7 +74,7 @@
 			cmbStats.DropDownStyle = ComboBoxStyle.DropDownList;
 			cmbStats.Font = new Font("Segoe UI", 8.5F);
 			cmbStats.FormattingEnabled = true;
-			cmbStats.Location = new Point(73, 8);
+			cmbStats.Location = new Point(67, 38);
 			cmbStats.Name = "cmbStats";
 			cmbStats.Size = new Size(230, 21);
 			cmbStats.TabIndex = 1;
@@ -101,7 +86,7 @@
 			btnAddStat.FlatStyle = FlatStyle.Flat;
 			btnAddStat.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
 			btnAddStat.ForeColor = Color.White;
-			btnAddStat.Location = new Point(308, 8);
+			btnAddStat.Location = new Point(302, 38);
 			btnAddStat.Name = "btnAddStat";
 			btnAddStat.Size = new Size(44, 21);
 			btnAddStat.TabIndex = 2;
@@ -114,12 +99,10 @@
 			statsListBox.DrawMode = DrawMode.OwnerDrawFixed;
 			statsListBox.FormattingEnabled = true;
 			statsListBox.ItemHeight = 34;
-			statsListBox.Location = new Point(6, 38);
+			statsListBox.Location = new Point(3, 65);
 			statsListBox.Name = "statsListBox";
-			statsListBox.Size = new Size(346, 174);
+			statsListBox.Size = new Size(343, 174);
 			statsListBox.TabIndex = 3;
-			statsListBox.MouseClick += statsListBox_MouseClick;
-			statsListBox.DrawItem += statsListBox_DrawItem;
 			// 
 			// ItemStatGroupValidatorUserControl
 			// 
@@ -127,27 +110,28 @@
 			AutoScaleMode = AutoScaleMode.Dpi;
 			BackColor = Color.White;
 			BorderStyle = BorderStyle.FixedSingle;
-			Controls.Add(contentPanel);
+			Controls.Add(statsListBox);
+			Controls.Add(lblAddStat);
+			Controls.Add(cmbStats);
+			Controls.Add(btnAddStat);
 			Controls.Add(headerPanel);
 			DoubleBuffered = true;
 			Name = "ItemStatGroupValidatorUserControl";
-			Size = new Size(357, 249);
+			Size = new Size(357, 250);
 			Load += ItemStatGroupValidatorUserControl_Load;
 			headerPanel.ResumeLayout(false);
 			headerPanel.PerformLayout();
-			contentPanel.ResumeLayout(false);
 			ResumeLayout(false);
 		}
 
 		#endregion
 
 		private Panel headerPanel;
-        private Label lblGroupName;
-        private Button btnDelete;
-        private Panel contentPanel;
-        private Label lblAddStat;
-        private ComboBox cmbStats;
-        private Button btnAddStat;
-        private ListBox statsListBox;
-    }
+		private Label lblGroupName;
+		private Button btnDelete;
+		private Label lblAddStat;
+		private ComboBox cmbStats;
+		private Button btnAddStat;
+		private ListBox statsListBox;
+	}
 }
