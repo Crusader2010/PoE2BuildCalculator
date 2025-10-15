@@ -19,8 +19,10 @@ namespace PoE2BuildCalculator
 		// Cached layout calculations
 		private int _lastContainerWidth = -1;
 		private int _cachedColumnsPerRow = -1;
+		private (int widthStat, int heightStat, int heightGroupTop) _cachedSizes;
 
 		private const int GROUP_MARGIN = 10;
+		private const int GROUP_ITEMSTATSROWS_VISIBLE = 5;
 		private const int GROUP_CONTROL_WIDTH = 350;
 		private const int GROUP_CONTROL_HEIGHT = 350;
 
@@ -93,8 +95,8 @@ namespace PoE2BuildCalculator
 			try
 			{
 				CreateGroupControl(group);
-				ArrangeGroupsInGrid();
-				RevalidateAllGroups();
+				//ArrangeGroupsInGrid();
+				//RevalidateAllGroups();
 			}
 			finally
 			{
@@ -108,14 +110,14 @@ namespace PoE2BuildCalculator
 			{
 				var control = new ItemStatGroupValidatorUserControl(group.GroupId, group.GroupName)
 				{
-					Width = GROUP_CONTROL_WIDTH,
-					Height = GROUP_CONTROL_HEIGHT,
+					Width = _cachedSizes.widthStat + 25, // account for scrollbar
+					Height = _cachedSizes.heightGroupTop + (_cachedSizes.heightStat * GROUP_ITEMSTATSROWS_VISIBLE) + 2,
 					Tag = group,
 					AllowDrop = true
 				};
 
 				control.DeleteRequested += (s, e) => DeleteGroup(group, control);
-				control.ValidationChanged += (s, e) => RevalidateAllGroups();
+				//control.ValidationChanged += (s, e) => RevalidateAllGroups();
 				control.MouseDown += GroupControl_MouseDown;
 				control.MouseMove += GroupControl_MouseMove;
 				control.DragOver += (s, e) => e.Effect = DragDropEffects.Move;
@@ -389,6 +391,18 @@ namespace PoE2BuildCalculator
 			{
 				groupsContainer.ResumeLayout(true);
 			}
+		}
+
+		private static (int widthStat, int heightStat, int heightGroupTop) GetUserControlSizes()
+		{
+			using var tempGroup = new ItemStatGroupValidatorUserControl(int.MaxValue, string.Empty);
+			using var tempRow = new ItemStatRow(int.MaxValue, string.Empty, tempGroup);
+			return (tempRow.Width + 2, tempRow.Height, tempGroup.GetTopRowsHeight());
+		}
+
+		private void CustomValidator_Load(object sender, EventArgs e)
+		{
+			_cachedSizes = GetUserControlSizes();
 		}
 	}
 }

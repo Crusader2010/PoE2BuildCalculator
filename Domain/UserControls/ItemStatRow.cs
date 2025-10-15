@@ -35,7 +35,7 @@ namespace Domain.UserControls
             ComboboxOperator.Items.Clear();
 
             ComboboxOperator.BeginUpdate();
-            foreach (var item in Constants.LOGICAL_OPERATORS)
+            foreach (var item in Constants.MATH_OPERATORS)
             {
                 ComboboxOperator.Items.Add(item);
             }
@@ -45,7 +45,7 @@ namespace Domain.UserControls
             ComboboxOperator.DropDownWidth = ComboboxOperator.Width;
             ComboboxOperator.ResumeLayout();
 
-            _selectedOperator = ComboboxOperator.Items[0]?.ToString() ?? Constants.LOGICAL_OPERATORS.First();
+            _selectedOperator = ComboboxOperator.Items[0]?.ToString() ?? Constants.MATH_OPERATORS.First();
         }
 
         public void ChangeCurrentRowIndex(int newRowIndex)
@@ -66,21 +66,22 @@ namespace Domain.UserControls
 
         private void ButtonMoveUp_Click(object sender, EventArgs e)
         {
-            int destinationIndex = _currentRowIndex - 1 < 0 ? 0 : _currentRowIndex - 1;
-
-            _ownerGroupControl.SwapStats(_currentRowIndex, destinationIndex);
-            _currentRowIndex = destinationIndex;
+            _ownerGroupControl.SwapStats(_currentRowIndex, _currentRowIndex - 1);
         }
 
         private void ButtonMoveDown_Click(object sender, EventArgs e)
         {
             _ownerGroupControl.SwapStats(_currentRowIndex, _currentRowIndex + 1);
-            _currentRowIndex += 1;
         }
 
         private void ComboboxOperator_SelectedIndexChanged(object sender, EventArgs e)
         {
-            _selectedOperator = ComboboxOperator.SelectedItem?.ToString() ?? Constants.LOGICAL_OPERATORS.First();
+            _selectedOperator = ComboboxOperator.SelectedItem?.ToString() ?? Constants.MATH_OPERATORS.First();
+        }
+
+        private void TextboxItemStat_TextChanged(object sender, EventArgs e)
+        {
+
         }
     }
 }

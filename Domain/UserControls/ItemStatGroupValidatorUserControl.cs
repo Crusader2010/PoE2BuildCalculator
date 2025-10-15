@@ -5,9 +5,10 @@ using Domain.Main;
 
 namespace Domain.UserControls
 {
-    public partial class ItemStatGroupValidatorUserControl(int groupId, string groupName) : UserControl
+    public partial class ItemStatGroupValidatorUserControl : UserControl
     {
         private static readonly Color HEADER_COLOR = Color.FromArgb(70, 130, 180);
+        public event EventHandler DeleteRequested;
 
         // Cached data - static to share across all instances
         private static readonly Lazy<IReadOnlyList<PropertyInfo>> _availableProperties = new(() =>
@@ -22,22 +23,29 @@ namespace Domain.UserControls
         // Cache for combo box state restoration
         private readonly Dictionary<string, int> _comboBoxIndexCache = [];
         private readonly BindingList<ItemStatRow> _statRows = [];
-        private readonly int _groupId = groupId;
-        private readonly string _groupName = groupName;
-
         private readonly HashSet<string> _usedStats = new(StringComparer.OrdinalIgnoreCase);
 
-        public event EventHandler DeleteRequested;
-        public event EventHandler ValidationChanged;
+        private readonly int _groupId;
+        private readonly string _groupName;
 
-        private void ItemStatGroupValidatorUserControl_Load(object sender, EventArgs e)
+        public ItemStatGroupValidatorUserControl(int groupId, string groupName)
         {
-            InitializeComponent();
+            _groupId = groupId;
+            _groupName = groupName;
+
+            InitializeComponent();  // MUST be called here!
             InitializeComboBoxCache();
             UpdateStatsComboBox();
 
+            // Set the group name in the label
+            lblGroupName.Text = groupName;
+
             // Subscribe to data changes
             _statRows.ListChanged += Stats_ListChanged;
+        }
+
+        private void ItemStatGroupValidatorUserControl_Load(object sender, EventArgs e)
+        {
         }
 
         private void InitializeComboBoxCache()
@@ -89,7 +97,7 @@ namespace Domain.UserControls
             {
                 if (string.IsNullOrWhiteSpace(statName)) return;
 
-                var itemStatRow = new ItemStatRow(_statRows.Count + 1, statName, this);
+                var itemStatRow = new ItemStatRow(_statRows.Count, statName, this);
                 foreach (var statRow in FlowPanelStats.Controls.OfType<ItemStatRow>())
                 {
                     statRow.SetupStatOperatorSelection(true);
@@ -157,21 +165,22 @@ namespace Domain.UserControls
             }
         }
 
-        public void SwapStats(int index1, int index2)
+        public void SwapStats(int indexSource, int indexDestination)
         {
-            if (index1 < 0 || index1 >= _statRows.Count ||
-                index2 < 0 || index2 >= _statRows.Count ||
-                index1 == index2) return;
+            if (indexSource < 0 || indexSource >= _statRows.Count ||
+                indexDestination < 0 || indexDestination >= _statRows.Count ||
+                indexSource == indexDestination) return;
 
             try
             {
+                int lowerIndex = Math.Min(indexSource, indexDestination);
+                int higherIndex = Math.Max(indexSource, indexDestination);
+
                 // Swap in the data source
-                (_statRows[index1], _statRows[index2]) = (_statRows[index2], _statRows[index1]);
+                (_statRows[indexSource], _statRows[indexDestination]) = (_statRows[indexDestination], _statRows[indexSource]);
 
                 // Swap in UI - need TWO SetChildIndex calls for proper swap
                 FlowPanelStats.SuspendLayout();
-                int lowerIndex = Math.Min(index1, index2);
-                int higherIndex = Math.Max(index1, index2);
 
                 var lowerControl = FlowPanelStats.Controls[lowerIndex] as ItemStatRow;
                 var higherControl = FlowPanelStats.Controls[higherIndex] as ItemStatRow;
@@ -181,7 +190,15 @@ namespace Domain.UserControls
 
                 // Move lower control to higher position
                 FlowPanelStats.Controls.SetChildIndex(lowerControl, higherIndex);
+
+                // Update their internal indices and operator states
+                higherControl?.ChangeCurrentRowIndex(lowerIndex);
+                lowerControl?.ChangeCurrentRowIndex(higherIndex);
+                higherControl?.SetupStatOperatorSelection(lowerIndex != _statRows.Count - 1);
+                lowerControl?.SetupStatOperatorSelection(higherIndex != _statRows.Count - 1);
+
                 FlowPanelStats.ResumeLayout(true);
+
             }
             catch (Exception ex)
             {
@@ -226,6 +243,11 @@ namespace Domain.UserControls
             FlowPanelStats.Controls.Clear();
             FlowPanelStats.Controls.AddRange([.. _statRows]);
             FlowPanelStats.ResumeLayout(true);
+        }
+
+        public int GetTopRowsHeight()
+        {
+            return this.Height - panel3.Height - 2;
         }
     }
 }
