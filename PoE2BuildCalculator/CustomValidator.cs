@@ -104,23 +104,29 @@ namespace PoE2BuildCalculator
 
 		private void CreateGroupControl(ValidationGroupModel group)
 		{
-			var control = new ItemStatGroupValidatorUserControl
+			try
 			{
-				Group = group,
-				Width = GROUP_CONTROL_WIDTH,
-				Height = GROUP_CONTROL_HEIGHT,
-				Tag = group,
-				AllowDrop = true
-			};
+				var control = new ItemStatGroupValidatorUserControl(group.GroupId, group.GroupName)
+				{
+					Width = GROUP_CONTROL_WIDTH,
+					Height = GROUP_CONTROL_HEIGHT,
+					Tag = group,
+					AllowDrop = true
+				};
 
-			control.DeleteRequested += (s, e) => DeleteGroup(group, control);
-			control.ValidationChanged += (s, e) => RevalidateAllGroups();
-			control.MouseDown += GroupControl_MouseDown;
-			control.MouseMove += GroupControl_MouseMove;
-			control.DragOver += (s, e) => e.Effect = DragDropEffects.Move;
-			control.DragDrop += GroupControl_DragDrop;
+				control.DeleteRequested += (s, e) => DeleteGroup(group, control);
+				control.ValidationChanged += (s, e) => RevalidateAllGroups();
+				control.MouseDown += GroupControl_MouseDown;
+				control.MouseMove += GroupControl_MouseMove;
+				control.DragOver += (s, e) => e.Effect = DragDropEffects.Move;
+				control.DragDrop += GroupControl_DragDrop;
 
-			groupsContainer.Controls.Add(control);
+				groupsContainer.Controls.Add(control);
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show($"Error creating group control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
 		}
 
 		private void RevalidateAllGroups()
