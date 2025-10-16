@@ -39,6 +39,12 @@ namespace PoE2BuildCalculator
 				return;
 			}
 
+			// Enable double buffering for smoother rendering
+			SetStyle(ControlStyles.OptimizedDoubleBuffer |
+					 ControlStyles.AllPaintingInWmPaint |
+					 ControlStyles.UserPaint, true);
+			UpdateStyles();
+
 			ImportDataToDisplay_Click(sender, e);
 		}
 

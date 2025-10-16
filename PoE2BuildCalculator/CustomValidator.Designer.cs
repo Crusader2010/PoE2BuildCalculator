@@ -1,17 +1,17 @@
 ﻿namespace PoE2BuildCalculator
 {
-    partial class CustomValidator
-    {
-        private System.ComponentModel.IContainer components = null;
+	partial class CustomValidator
+	{
+		private System.ComponentModel.IContainer components = null;
 
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing && (components != null))
-            {
-                components.Dispose();
-            }
-            base.Dispose(disposing);
-        }
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing && (components != null))
+			{
+				components.Dispose();
+			}
+			base.Dispose(disposing);
+		}
 
 		#region Windows Form Designer generated code
 
@@ -19,16 +19,20 @@
 		{
 			mainPanel = new TableLayoutPanel();
 			headerPanel = new Panel();
+			btnAddOperation = new Button();
 			lblTitle = new Label();
 			btnAddGroup = new Button();
 			btnHelp = new Button();
-			groupsContainer = new Panel();
 			bottomPanel = new Panel();
 			btnCreateValidator = new Button();
 			btnClose = new Button();
+			panel1 = new Panel();
+			FlowPanelGroups = new FlowLayoutPanel();
+			FlowPanelOperations = new FlowLayoutPanel();
 			mainPanel.SuspendLayout();
 			headerPanel.SuspendLayout();
 			bottomPanel.SuspendLayout();
+			panel1.SuspendLayout();
 			SuspendLayout();
 			// 
 			// mainPanel
@@ -36,8 +40,8 @@
 			mainPanel.ColumnCount = 1;
 			mainPanel.ColumnStyles.Add(new ColumnStyle(SizeType.Percent, 100F));
 			mainPanel.Controls.Add(headerPanel, 0, 0);
-			mainPanel.Controls.Add(groupsContainer, 0, 1);
 			mainPanel.Controls.Add(bottomPanel, 0, 2);
+			mainPanel.Controls.Add(panel1, 0, 1);
 			mainPanel.Dock = DockStyle.Fill;
 			mainPanel.Location = new Point(0, 0);
 			mainPanel.Name = "mainPanel";
@@ -51,6 +55,7 @@
 			// 
 			// headerPanel
 			// 
+			headerPanel.Controls.Add(btnAddOperation);
 			headerPanel.Controls.Add(lblTitle);
 			headerPanel.Controls.Add(btnAddGroup);
 			headerPanel.Controls.Add(btnHelp);
@@ -60,15 +65,30 @@
 			headerPanel.Size = new Size(1174, 44);
 			headerPanel.TabIndex = 0;
 			// 
+			// btnAddOperation
+			// 
+			btnAddOperation.BackColor = Color.FromArgb(70, 130, 180);
+			btnAddOperation.FlatAppearance.BorderSize = 0;
+			btnAddOperation.FlatStyle = FlatStyle.Flat;
+			btnAddOperation.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+			btnAddOperation.ForeColor = Color.White;
+			btnAddOperation.Location = new Point(372, 3);
+			btnAddOperation.Name = "btnAddOperation";
+			btnAddOperation.Size = new Size(162, 38);
+			btnAddOperation.TabIndex = 3;
+			btnAddOperation.Text = "+ Add Operation";
+			btnAddOperation.UseVisualStyleBackColor = false;
+			btnAddOperation.Click += btnAddOperation_Click;
+			// 
 			// lblTitle
 			// 
-			lblTitle.AutoSize = true;
 			lblTitle.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
-			lblTitle.Location = new Point(5, 10);
+			lblTitle.Location = new Point(3, 3);
 			lblTitle.Name = "lblTitle";
-			lblTitle.Size = new Size(173, 25);
+			lblTitle.Size = new Size(173, 38);
 			lblTitle.TabIndex = 0;
 			lblTitle.Text = "Validation Groups";
+			lblTitle.TextAlign = ContentAlignment.MiddleCenter;
 			// 
 			// btnAddGroup
 			// 
@@ -77,9 +97,9 @@
 			btnAddGroup.FlatStyle = FlatStyle.Flat;
 			btnAddGroup.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
 			btnAddGroup.ForeColor = Color.White;
-			btnAddGroup.Location = new Point(200, 8);
+			btnAddGroup.Location = new Point(193, 3);
 			btnAddGroup.Name = "btnAddGroup";
-			btnAddGroup.Size = new Size(120, 35);
+			btnAddGroup.Size = new Size(162, 38);
 			btnAddGroup.TabIndex = 1;
 			btnAddGroup.Text = "+ Add Group";
 			btnAddGroup.UseVisualStyleBackColor = false;
@@ -93,24 +113,13 @@
 			btnHelp.FlatStyle = FlatStyle.Flat;
 			btnHelp.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
 			btnHelp.ForeColor = Color.White;
-			btnHelp.Location = new Point(330, 8);
+			btnHelp.Location = new Point(550, 3);
 			btnHelp.Name = "btnHelp";
-			btnHelp.Size = new Size(35, 35);
+			btnHelp.Size = new Size(43, 38);
 			btnHelp.TabIndex = 2;
 			btnHelp.Text = "?";
 			btnHelp.UseVisualStyleBackColor = false;
 			btnHelp.Click += BtnHelp_Click;
-			// 
-			// groupsContainer
-			// 
-			groupsContainer.AutoScroll = true;
-			groupsContainer.BackColor = Color.FromArgb(240, 240, 240);
-			groupsContainer.Dock = DockStyle.Fill;
-			groupsContainer.Location = new Point(13, 63);
-			groupsContainer.Name = "groupsContainer";
-			groupsContainer.Size = new Size(1174, 564);
-			groupsContainer.TabIndex = 1;
-			groupsContainer.Resize += GroupsContainer_Resize;
 			// 
 			// bottomPanel
 			// 
@@ -150,6 +159,35 @@
 			btnClose.UseVisualStyleBackColor = false;
 			btnClose.Click += BtnClose_Click;
 			// 
+			// panel1
+			// 
+			panel1.Controls.Add(FlowPanelGroups);
+			panel1.Controls.Add(FlowPanelOperations);
+			panel1.Dock = DockStyle.Fill;
+			panel1.Location = new Point(13, 63);
+			panel1.Name = "panel1";
+			panel1.Size = new Size(1174, 564);
+			panel1.TabIndex = 3;
+			// 
+			// FlowPanelGroups
+			// 
+			FlowPanelGroups.BackColor = SystemColors.ControlLight;
+			FlowPanelGroups.Dock = DockStyle.Fill;
+			FlowPanelGroups.Location = new Point(270, 0);
+			FlowPanelGroups.Margin = new Padding(0);
+			FlowPanelGroups.Name = "FlowPanelGroups";
+			FlowPanelGroups.Size = new Size(904, 564);
+			FlowPanelGroups.TabIndex = 1;
+			// 
+			// FlowPanelOperations
+			// 
+			FlowPanelOperations.BackColor = Color.WhiteSmoke;
+			FlowPanelOperations.Dock = DockStyle.Left;
+			FlowPanelOperations.Location = new Point(0, 0);
+			FlowPanelOperations.Name = "FlowPanelOperations";
+			FlowPanelOperations.Size = new Size(270, 564);
+			FlowPanelOperations.TabIndex = 0;
+			// 
 			// CustomValidator
 			// 
 			AutoScaleDimensions = new SizeF(96F, 96F);
@@ -165,36 +203,39 @@
 			Load += CustomValidator_Load;
 			mainPanel.ResumeLayout(false);
 			headerPanel.ResumeLayout(false);
-			headerPanel.PerformLayout();
 			bottomPanel.ResumeLayout(false);
+			panel1.ResumeLayout(false);
 			ResumeLayout(false);
 		}
 
 		#endregion
 
 		private TableLayoutPanel mainPanel;
-        private Panel headerPanel;
-        private Label lblTitle;
-        private Button btnAddGroup;
-        private Button btnHelp;
-        private Panel groupsContainer;
-        private Panel bottomPanel;
-        private Button btnCreateValidator;
-        private Button btnClose;
+		private Panel headerPanel;
+		private Label lblTitle;
+		private Button btnAddGroup;
+		private Button btnHelp;
+		private Panel bottomPanel;
+		private Button btnCreateValidator;
+		private Button btnClose;
 
-        private void BtnClose_Click(object sender, EventArgs e)
-        {
-            this.Close();
-        }
+		private void BtnClose_Click(object sender, EventArgs e)
+		{
+			this.Close();
+		}
 
-        private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            if (e.CloseReason == CloseReason.UserClosing)
-            {
-                e.Cancel = true;
-                this.Hide();
-                this.Owner?.BringToFront();
-            }
-        }
-    }
+		private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
+		{
+			if (e.CloseReason == CloseReason.UserClosing)
+			{
+				e.Cancel = true;
+				this.Hide();
+				this.Owner?.BringToFront();
+			}
+		}
+		private Button btnAddOperation;
+		private Panel panel1;
+		private FlowLayoutPanel FlowPanelGroups;
+		private FlowLayoutPanel FlowPanelOperations;
+	}
 }

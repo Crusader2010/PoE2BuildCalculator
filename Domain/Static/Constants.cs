@@ -48,6 +48,8 @@ namespace Domain.Static
 
 		public static readonly ImmutableArray<string> MATH_OPERATORS = ["+", "-", "*", "/"];
 		public static readonly ImmutableArray<string> LOGICAL_OPERATORS = ["AND", "OR", "XOR"];
+		public static readonly ImmutableArray<string> GROUP_VALUES_OPERATORS = [">=", ">", "=", "<", "<="];
+		public static readonly ImmutableArray<string> GROUP_MIN_MAX_LOGICAL_OPERATORS = ["AND", "OR"];
 
 		public const string VALIDATOR_HELP_TEXT = @"=== ORDER OF OPERATIONS ===
 

@@ -2,6 +2,7 @@
 using System.Reflection;
 
 using Domain.Main;
+using Domain.Validation;
 
 namespace Domain.UserControls
 {
@@ -25,13 +26,16 @@ namespace Domain.UserControls
         private readonly BindingList<ItemStatRow> _statRows = [];
         private readonly HashSet<string> _usedStats = new(StringComparer.OrdinalIgnoreCase);
 
-        private readonly int _groupId;
-        private readonly string _groupName;
+        public Group _group { get; private set; }
 
         public ItemStatGroupValidatorUserControl(int groupId, string groupName)
         {
-            _groupId = groupId;
-            _groupName = groupName;
+            _group = new Group()
+            {
+                GroupId = groupId,
+                GroupName = groupName,
+                Stats = []
+            };
 
             InitializeComponent();  // MUST be called here!
             InitializeComboBoxCache();
@@ -48,6 +52,12 @@ namespace Domain.UserControls
         {
             this.Padding = new Padding(0);
             this.Margin = new Padding(0);
+
+            // Enable double buffering for smoother rendering
+            SetStyle(ControlStyles.OptimizedDoubleBuffer |
+                     ControlStyles.AllPaintingInWmPaint |
+                     ControlStyles.UserPaint, true);
+            UpdateStyles();
         }
 
         private void InitializeComboBoxCache()
@@ -165,6 +175,8 @@ namespace Domain.UserControls
                 default:
                     break;
             }
+
+            ReCompileStatsForGroup();
         }
 
         public void SwapStats(int indexSource, int indexDestination)
@@ -200,7 +212,7 @@ namespace Domain.UserControls
                 lowerControl?.SetupStatOperatorSelection(higherIndex != _statRows.Count - 1);
 
                 FlowPanelStats.ResumeLayout(true);
-
+                ReCompileStatsForGroup();
             }
             catch (Exception ex)
             {
@@ -245,6 +257,26 @@ namespace Domain.UserControls
             FlowPanelStats.Controls.Clear();
             FlowPanelStats.Controls.AddRange([.. _statRows]);
             FlowPanelStats.ResumeLayout(true);
+        }
+
+        private void ReCompileStatsForGroup()
+        {
+            if (_group == null)
+            {
+                MessageBox.Show("Group is not initialized.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            _group.Stats ??= [];
+            _group.Stats.Clear();
+            foreach (var statRow in _statRows)
+            {
+                _group.Stats.Add(new GroupStatModel
+                {
+                    PropertyName = statRow._selectedStatName,
+                    Operator = statRow._selectedOperator
+                });
+            }
         }
 
         public int GetTopRowsHeight()

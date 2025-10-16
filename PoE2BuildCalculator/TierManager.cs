@@ -65,6 +65,7 @@ namespace PoE2BuildCalculator
 		{
 			return [.. _bindingTiers.OrderBy(t => t.TierId)];
 		}
+
 		private void TierManager_Load(object sender, EventArgs e)
 		{
 			this.AutoSize = false; // Turn off AutoSize so the form can be sized by code.
@@ -81,7 +82,14 @@ namespace PoE2BuildCalculator
 			this.TextboxTotalTierWeights.ForeColor = this.TextboxTotalTierWeights.ForeColor;
 
 			SetTotalTierWeights();
+
+			// Enable double buffering for smoother rendering
+			SetStyle(ControlStyles.OptimizedDoubleBuffer |
+					 ControlStyles.AllPaintingInWmPaint |
+					 ControlStyles.UserPaint, true);
+			UpdateStyles();
 		}
+
 		private void AddTierButton_Click(object sender, EventArgs e)
 		{
 			var newTier = new Tier
@@ -201,7 +209,7 @@ namespace PoE2BuildCalculator
 
 		private void TableTiers_KeyDown(object sender, KeyEventArgs e)
 		{
-			if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Return)
+			if (e.KeyCode is Keys.Enter or Keys.Return)
 			{
 				// This is the key change: we use BeginInvoke to ensure the edit starts after the KeyDown event has been fully processed.
 				// This is a more robust way to trigger edit mode manually.
@@ -358,7 +366,7 @@ namespace PoE2BuildCalculator
 				return (false, "Please enter a valid floating point number.");
 			}
 
-			if (value < 0.00d || value > 100.00d)
+			if (value is < 0.00d or > 100.00d)
 			{
 				return (false, "The value of the weight needs to be between 0.00 and 100.00");
 			}
@@ -645,10 +653,7 @@ namespace PoE2BuildCalculator
 				RemoveSelectedGridRows();
 			};
 
-			addItem.Click += (s, e) =>
-			{
-				AddTierButton_Click(s, e);
-			};
+			addItem.Click += AddTierButton_Click;
 
 			contextMenu.Items.AddRange([addItem, deleteItem]);
 			TableTiers.ContextMenuStrip = contextMenu;

@@ -1,0 +1,390 @@
+﻿namespace Domain.UserControls
+{
+    partial class GroupOperationsUserControl
+    {
+        /// <summary> 
+        /// Required designer variable.
+        /// </summary>
+        private System.ComponentModel.IContainer components = null;
+
+        /// <summary> 
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
+
+		#region Component Designer generated code
+
+		/// <summary> 
+		/// Required method for Designer support - do not modify 
+		/// the contents of this method with the code editor.
+		/// </summary>
+		private void InitializeComponent()
+		{
+			PanelGroupValidatorList = new Panel();
+			ButtonHelp = new Button();
+			PanelNextGroupOperator = new Panel();
+			label2 = new Label();
+			ComboBoxGroupLevelOperator = new ComboBox();
+			PanelMinMax = new Panel();
+			ComboBoxMinMaxOperator = new ComboBox();
+			CheckboxMin = new CheckBox();
+			InputBoxMax = new NumericUpDown();
+			ComboBoxOperatorMin = new ComboBox();
+			InputBoxMin = new NumericUpDown();
+			ComboBoxOperatorMax = new ComboBox();
+			CheckboxMax = new CheckBox();
+			PanelItemCount = new Panel();
+			InputBoxItemsCount = new NumericUpDown();
+			lblItems = new Label();
+			CheckboxPercentage = new CheckBox();
+			GroupBoxOptions = new GroupBox();
+			ComboBoxGroup = new ComboBox();
+			OptionEachItem = new RadioButton();
+			OptionSumAll = new RadioButton();
+			OptionAtMost = new RadioButton();
+			OptionAtLeast = new RadioButton();
+			PanelGroupValidatorList.SuspendLayout();
+			PanelNextGroupOperator.SuspendLayout();
+			PanelMinMax.SuspendLayout();
+			((System.ComponentModel.ISupportInitialize)InputBoxMax).BeginInit();
+			((System.ComponentModel.ISupportInitialize)InputBoxMin).BeginInit();
+			PanelItemCount.SuspendLayout();
+			((System.ComponentModel.ISupportInitialize)InputBoxItemsCount).BeginInit();
+			GroupBoxOptions.SuspendLayout();
+			SuspendLayout();
+			// 
+			// PanelGroupValidatorList
+			// 
+			PanelGroupValidatorList.Controls.Add(ButtonHelp);
+			PanelGroupValidatorList.Controls.Add(PanelNextGroupOperator);
+			PanelGroupValidatorList.Controls.Add(PanelMinMax);
+			PanelGroupValidatorList.Controls.Add(PanelItemCount);
+			PanelGroupValidatorList.Controls.Add(GroupBoxOptions);
+			PanelGroupValidatorList.Location = new Point(-1, -1);
+			PanelGroupValidatorList.Name = "PanelGroupValidatorList";
+			PanelGroupValidatorList.Size = new Size(780, 78);
+			PanelGroupValidatorList.TabIndex = 0;
+			// 
+			// ButtonHelp
+			// 
+			ButtonHelp.BackColor = Color.FromArgb(100, 149, 237);
+			ButtonHelp.Cursor = Cursors.Help;
+			ButtonHelp.FlatAppearance.BorderSize = 0;
+			ButtonHelp.FlatStyle = FlatStyle.Flat;
+			ButtonHelp.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+			ButtonHelp.ForeColor = Color.White;
+			ButtonHelp.Location = new Point(551, 7);
+			ButtonHelp.Name = "ButtonHelp";
+			ButtonHelp.Size = new Size(33, 31);
+			ButtonHelp.TabIndex = 11;
+			ButtonHelp.Text = "?";
+			ButtonHelp.UseVisualStyleBackColor = false;
+			ButtonHelp.Click += ButtonHelp_Click;
+			// 
+			// PanelNextGroupOperator
+			// 
+			PanelNextGroupOperator.BorderStyle = BorderStyle.FixedSingle;
+			PanelNextGroupOperator.Controls.Add(label2);
+			PanelNextGroupOperator.Controls.Add(ComboBoxGroupLevelOperator);
+			PanelNextGroupOperator.Location = new Point(589, 3);
+			PanelNextGroupOperator.Name = "PanelNextGroupOperator";
+			PanelNextGroupOperator.Size = new Size(185, 40);
+			PanelNextGroupOperator.TabIndex = 11;
+			// 
+			// label2
+			// 
+			label2.Font = new Font("Segoe UI", 8F);
+			label2.Location = new Point(3, 3);
+			label2.Name = "label2";
+			label2.Size = new Size(66, 31);
+			label2.TabIndex = 10;
+			label2.Text = "Next group operator";
+			label2.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// ComboBoxGroupLevelOperator
+			// 
+			ComboBoxGroupLevelOperator.BackColor = Color.PaleTurquoise;
+			ComboBoxGroupLevelOperator.DropDownStyle = ComboBoxStyle.DropDownList;
+			ComboBoxGroupLevelOperator.Enabled = false;
+			ComboBoxGroupLevelOperator.FormattingEnabled = true;
+			ComboBoxGroupLevelOperator.Location = new Point(76, 7);
+			ComboBoxGroupLevelOperator.Name = "ComboBoxGroupLevelOperator";
+			ComboBoxGroupLevelOperator.Size = new Size(104, 23);
+			ComboBoxGroupLevelOperator.TabIndex = 1;
+			// 
+			// PanelMinMax
+			// 
+			PanelMinMax.BackColor = Color.FromArgb(255, 224, 192);
+			PanelMinMax.Controls.Add(ComboBoxMinMaxOperator);
+			PanelMinMax.Controls.Add(CheckboxMin);
+			PanelMinMax.Controls.Add(InputBoxMax);
+			PanelMinMax.Controls.Add(ComboBoxOperatorMin);
+			PanelMinMax.Controls.Add(InputBoxMin);
+			PanelMinMax.Controls.Add(ComboBoxOperatorMax);
+			PanelMinMax.Controls.Add(CheckboxMax);
+			PanelMinMax.Location = new Point(248, 45);
+			PanelMinMax.Name = "PanelMinMax";
+			PanelMinMax.Size = new Size(526, 33);
+			PanelMinMax.TabIndex = 1;
+			// 
+			// ComboBoxMinMaxOperator
+			// 
+			ComboBoxMinMaxOperator.DropDownStyle = ComboBoxStyle.DropDownList;
+			ComboBoxMinMaxOperator.FormattingEnabled = true;
+			ComboBoxMinMaxOperator.Location = new Point(223, 4);
+			ComboBoxMinMaxOperator.MaxDropDownItems = 5;
+			ComboBoxMinMaxOperator.Name = "ComboBoxMinMaxOperator";
+			ComboBoxMinMaxOperator.Size = new Size(81, 23);
+			ComboBoxMinMaxOperator.TabIndex = 12;
+			ComboBoxMinMaxOperator.SelectedIndexChanged += ComboBoxEachItemOperator_SelectedIndexChanged;
+			// 
+			// CheckboxMin
+			// 
+			CheckboxMin.BackColor = Color.FromArgb(224, 224, 224);
+			CheckboxMin.Checked = true;
+			CheckboxMin.CheckState = CheckState.Checked;
+			CheckboxMin.Location = new Point(6, 4);
+			CheckboxMin.Name = "CheckboxMin";
+			CheckboxMin.Size = new Size(58, 23);
+			CheckboxMin.TabIndex = 10;
+			CheckboxMin.Text = "Min";
+			CheckboxMin.TextAlign = ContentAlignment.MiddleCenter;
+			CheckboxMin.UseVisualStyleBackColor = false;
+			// 
+			// InputBoxMax
+			// 
+			InputBoxMax.BorderStyle = BorderStyle.FixedSingle;
+			InputBoxMax.DecimalPlaces = 2;
+			InputBoxMax.Enabled = false;
+			InputBoxMax.Location = new Point(440, 4);
+			InputBoxMax.Maximum = new decimal(new int[] { 99999999, 0, 0, 0 });
+			InputBoxMax.Name = "InputBoxMax";
+			InputBoxMax.Size = new Size(82, 23);
+			InputBoxMax.TabIndex = 12;
+			InputBoxMax.TextAlign = HorizontalAlignment.Center;
+			// 
+			// ComboBoxOperatorMin
+			// 
+			ComboBoxOperatorMin.DropDownStyle = ComboBoxStyle.DropDownList;
+			ComboBoxOperatorMin.FormattingEnabled = true;
+			ComboBoxOperatorMin.Location = new Point(66, 4);
+			ComboBoxOperatorMin.Name = "ComboBoxOperatorMin";
+			ComboBoxOperatorMin.Size = new Size(59, 23);
+			ComboBoxOperatorMin.TabIndex = 3;
+			// 
+			// InputBoxMin
+			// 
+			InputBoxMin.BorderStyle = BorderStyle.FixedSingle;
+			InputBoxMin.DecimalPlaces = 2;
+			InputBoxMin.Location = new Point(127, 4);
+			InputBoxMin.Maximum = new decimal(new int[] { 99999999, 0, 0, 0 });
+			InputBoxMin.Name = "InputBoxMin";
+			InputBoxMin.Size = new Size(82, 23);
+			InputBoxMin.TabIndex = 9;
+			InputBoxMin.TextAlign = HorizontalAlignment.Center;
+			// 
+			// ComboBoxOperatorMax
+			// 
+			ComboBoxOperatorMax.DropDownStyle = ComboBoxStyle.DropDownList;
+			ComboBoxOperatorMax.Enabled = false;
+			ComboBoxOperatorMax.FormattingEnabled = true;
+			ComboBoxOperatorMax.Location = new Point(379, 4);
+			ComboBoxOperatorMax.Name = "ComboBoxOperatorMax";
+			ComboBoxOperatorMax.Size = new Size(59, 23);
+			ComboBoxOperatorMax.TabIndex = 8;
+			// 
+			// CheckboxMax
+			// 
+			CheckboxMax.BackColor = Color.FromArgb(224, 224, 224);
+			CheckboxMax.Location = new Point(319, 4);
+			CheckboxMax.Name = "CheckboxMax";
+			CheckboxMax.Size = new Size(58, 23);
+			CheckboxMax.TabIndex = 11;
+			CheckboxMax.Text = "Max";
+			CheckboxMax.TextAlign = ContentAlignment.MiddleCenter;
+			CheckboxMax.UseVisualStyleBackColor = false;
+			// 
+			// PanelItemCount
+			// 
+			PanelItemCount.BackColor = Color.FromArgb(255, 255, 192);
+			PanelItemCount.Controls.Add(InputBoxItemsCount);
+			PanelItemCount.Controls.Add(lblItems);
+			PanelItemCount.Controls.Add(CheckboxPercentage);
+			PanelItemCount.Location = new Point(4, 45);
+			PanelItemCount.Name = "PanelItemCount";
+			PanelItemCount.Size = new Size(244, 33);
+			PanelItemCount.TabIndex = 9;
+			PanelItemCount.Visible = false;
+			// 
+			// InputBoxItemsCount
+			// 
+			InputBoxItemsCount.BorderStyle = BorderStyle.FixedSingle;
+			InputBoxItemsCount.Location = new Point(3, 5);
+			InputBoxItemsCount.Maximum = new decimal(new int[] { 99999999, 0, 0, 0 });
+			InputBoxItemsCount.Name = "InputBoxItemsCount";
+			InputBoxItemsCount.Size = new Size(82, 23);
+			InputBoxItemsCount.TabIndex = 5;
+			InputBoxItemsCount.TextAlign = HorizontalAlignment.Center;
+			// 
+			// lblItems
+			// 
+			lblItems.BackColor = Color.Transparent;
+			lblItems.BorderStyle = BorderStyle.FixedSingle;
+			lblItems.Font = new Font("Segoe UI", 8F);
+			lblItems.Location = new Point(143, 3);
+			lblItems.Name = "lblItems";
+			lblItems.Size = new Size(97, 27);
+			lblItems.TabIndex = 8;
+			lblItems.Text = "Number of items";
+			lblItems.TextAlign = ContentAlignment.MiddleCenter;
+			// 
+			// CheckboxPercentage
+			// 
+			CheckboxPercentage.AutoSize = true;
+			CheckboxPercentage.BackColor = Color.Transparent;
+			CheckboxPercentage.BackgroundImageLayout = ImageLayout.Center;
+			CheckboxPercentage.FlatAppearance.BorderColor = Color.FromArgb(255, 128, 128);
+			CheckboxPercentage.ForeColor = Color.Black;
+			CheckboxPercentage.Location = new Point(88, 7);
+			CheckboxPercentage.Margin = new Padding(1);
+			CheckboxPercentage.Name = "CheckboxPercentage";
+			CheckboxPercentage.Size = new Size(50, 19);
+			CheckboxPercentage.TabIndex = 6;
+			CheckboxPercentage.Text = "as %";
+			CheckboxPercentage.UseVisualStyleBackColor = false;
+			// 
+			// GroupBoxOptions
+			// 
+			GroupBoxOptions.Controls.Add(ComboBoxGroup);
+			GroupBoxOptions.Controls.Add(OptionEachItem);
+			GroupBoxOptions.Controls.Add(OptionSumAll);
+			GroupBoxOptions.Controls.Add(OptionAtMost);
+			GroupBoxOptions.Controls.Add(OptionAtLeast);
+			GroupBoxOptions.Location = new Point(0, 2);
+			GroupBoxOptions.Name = "GroupBoxOptions";
+			GroupBoxOptions.Padding = new Padding(0);
+			GroupBoxOptions.Size = new Size(545, 41);
+			GroupBoxOptions.TabIndex = 2;
+			GroupBoxOptions.TabStop = false;
+			// 
+			// ComboBoxGroup
+			// 
+			ComboBoxGroup.DropDownStyle = ComboBoxStyle.DropDownList;
+			ComboBoxGroup.FormattingEnabled = true;
+			ComboBoxGroup.Location = new Point(366, 12);
+			ComboBoxGroup.Name = "ComboBoxGroup";
+			ComboBoxGroup.Size = new Size(176, 23);
+			ComboBoxGroup.TabIndex = 0;
+			// 
+			// OptionEachItem
+			// 
+			OptionEachItem.BackColor = Color.FromArgb(255, 224, 192);
+			OptionEachItem.FlatAppearance.BorderColor = Color.Lime;
+			OptionEachItem.Location = new Point(186, 12);
+			OptionEachItem.Name = "OptionEachItem";
+			OptionEachItem.Size = new Size(84, 24);
+			OptionEachItem.TabIndex = 3;
+			OptionEachItem.Text = "Each item";
+			OptionEachItem.TextAlign = ContentAlignment.MiddleCenter;
+			OptionEachItem.UseVisualStyleBackColor = false;
+			OptionEachItem.CheckedChanged += OptionEachItem_CheckedChanged;
+			// 
+			// OptionSumAll
+			// 
+			OptionSumAll.BackColor = Color.FromArgb(255, 224, 192);
+			OptionSumAll.Checked = true;
+			OptionSumAll.FlatAppearance.BorderColor = Color.Lime;
+			OptionSumAll.Location = new Point(277, 12);
+			OptionSumAll.Name = "OptionSumAll";
+			OptionSumAll.Size = new Size(84, 24);
+			OptionSumAll.TabIndex = 2;
+			OptionSumAll.TabStop = true;
+			OptionSumAll.Text = "SUM(all)";
+			OptionSumAll.TextAlign = ContentAlignment.MiddleCenter;
+			OptionSumAll.UseVisualStyleBackColor = false;
+			OptionSumAll.CheckedChanged += OptionSumAll_CheckedChanged;
+			// 
+			// OptionAtMost
+			// 
+			OptionAtMost.BackColor = Color.FromArgb(255, 255, 192);
+			OptionAtMost.FlatAppearance.BorderColor = Color.Lime;
+			OptionAtMost.Location = new Point(95, 12);
+			OptionAtMost.Name = "OptionAtMost";
+			OptionAtMost.Size = new Size(84, 24);
+			OptionAtMost.TabIndex = 1;
+			OptionAtMost.Text = "At most";
+			OptionAtMost.TextAlign = ContentAlignment.MiddleCenter;
+			OptionAtMost.UseVisualStyleBackColor = false;
+			OptionAtMost.CheckedChanged += OptionAtMost_CheckedChanged;
+			// 
+			// OptionAtLeast
+			// 
+			OptionAtLeast.BackColor = Color.FromArgb(255, 255, 192);
+			OptionAtLeast.FlatAppearance.BorderColor = Color.Lime;
+			OptionAtLeast.Location = new Point(4, 12);
+			OptionAtLeast.Name = "OptionAtLeast";
+			OptionAtLeast.Size = new Size(84, 24);
+			OptionAtLeast.TabIndex = 0;
+			OptionAtLeast.Text = "At least";
+			OptionAtLeast.TextAlign = ContentAlignment.MiddleCenter;
+			OptionAtLeast.UseVisualStyleBackColor = false;
+			OptionAtLeast.CheckedChanged += OptionAtLeast_CheckedChanged;
+			// 
+			// GroupOperationsUserControl
+			// 
+			AutoScaleDimensions = new SizeF(96F, 96F);
+			AutoScaleMode = AutoScaleMode.Dpi;
+			BackColor = Color.LightGray;
+			BorderStyle = BorderStyle.FixedSingle;
+			Controls.Add(PanelGroupValidatorList);
+			DoubleBuffered = true;
+			Name = "GroupOperationsUserControl";
+			Size = new Size(774, 76);
+			Load += GroupValidatorListUserControl_Load;
+			PanelGroupValidatorList.ResumeLayout(false);
+			PanelNextGroupOperator.ResumeLayout(false);
+			PanelMinMax.ResumeLayout(false);
+			((System.ComponentModel.ISupportInitialize)InputBoxMax).EndInit();
+			((System.ComponentModel.ISupportInitialize)InputBoxMin).EndInit();
+			PanelItemCount.ResumeLayout(false);
+			PanelItemCount.PerformLayout();
+			((System.ComponentModel.ISupportInitialize)InputBoxItemsCount).EndInit();
+			GroupBoxOptions.ResumeLayout(false);
+			ResumeLayout(false);
+		}
+
+		#endregion
+
+		private Panel PanelGroupValidatorList;
+        private ComboBox ComboBoxGroup;
+        private GroupBox GroupBoxOptions;
+        private RadioButton OptionEachItem;
+        private RadioButton OptionSumAll;
+        private RadioButton OptionAtMost;
+        private RadioButton OptionAtLeast;
+        private ComboBox ComboBoxGroupLevelOperator;
+        private NumericUpDown InputBoxItemsCount;
+        private CheckBox CheckboxPercentage;
+        private Label lblItems;
+        private CheckBox CheckboxMax;
+        private CheckBox CheckboxMin;
+        private ComboBox ComboBoxOperatorMax;
+        private ComboBox ComboBoxOperatorMin;
+        private ComboBox ComboBoxMinMaxOperator;
+        private NumericUpDown InputBoxMax;
+        private NumericUpDown InputBoxMin;
+        private Panel PanelMinMax;
+        private Panel PanelItemCount;
+        private Label label2;
+        private Panel PanelNextGroupOperator;
+        private Button ButtonHelp;
+    }
+}
