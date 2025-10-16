@@ -111,7 +111,7 @@ namespace PoE2BuildCalculator
 				var control = new ItemStatGroupValidatorUserControl(group.GroupId, group.GroupName)
 				{
 					Width = _cachedSizes.widthStat + 25, // account for scrollbar
-					Height = _cachedSizes.heightGroupTop + (_cachedSizes.heightStat * GROUP_ITEMSTATSROWS_VISIBLE) + 2,
+					Height = _cachedSizes.heightGroupTop + (_cachedSizes.heightStat * GROUP_ITEMSTATSROWS_VISIBLE) + 5,
 					Tag = group,
 					AllowDrop = true
 				};

@@ -27,6 +27,8 @@ namespace Domain.UserControls
         {
             TextboxItemStat.Text = _selectedStatName;
             ComboboxOperator.Enabled = false;
+            this.Padding = new Padding(0);
+            this.Margin = new Padding(0);
         }
 
         private void InitializeOperatorCombobox()
@@ -46,6 +48,8 @@ namespace Domain.UserControls
             ComboboxOperator.ResumeLayout();
 
             _selectedOperator = ComboboxOperator.Items[0]?.ToString() ?? Constants.MATH_OPERATORS.First();
+
+            ComboboxOperator.MouseWheel += ComboBox_MouseWheel;
         }
 
         public void ChangeCurrentRowIndex(int newRowIndex)
@@ -79,9 +83,12 @@ namespace Domain.UserControls
             _selectedOperator = ComboboxOperator.SelectedItem?.ToString() ?? Constants.MATH_OPERATORS.First();
         }
 
-        private void TextboxItemStat_TextChanged(object sender, EventArgs e)
+        private void ComboBox_MouseWheel(object sender, MouseEventArgs e)
         {
-
+            if (e is HandledMouseEventArgs handledE)
+            {
+                handledE.Handled = true;
+            }
         }
     }
 }

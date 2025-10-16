@@ -46,6 +46,8 @@ namespace Domain.UserControls
 
         private void ItemStatGroupValidatorUserControl_Load(object sender, EventArgs e)
         {
+            this.Padding = new Padding(0);
+            this.Margin = new Padding(0);
         }
 
         private void InitializeComboBoxCache()
