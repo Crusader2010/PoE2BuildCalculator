@@ -1,5 +1,7 @@
 ﻿using System.Collections.Immutable;
 
+using Domain.Enums;
+using Domain.Helpers;
 using Domain.Static;
 
 namespace Domain.UserControls
@@ -47,10 +49,10 @@ namespace Domain.UserControls
             ComboBoxOperatorMax.Items.Clear();
             ComboBoxOperatorMin.Items.Clear();
 
-            ComboBoxGroupLevelOperator.Items.AddRange([.. Constants.LOGICAL_OPERATORS]);
-            ComboBoxMinMaxOperator.Items.AddRange([.. Constants.GROUP_MIN_MAX_LOGICAL_OPERATORS]);
-            ComboBoxOperatorMax.Items.AddRange([.. Constants.GROUP_VALUES_OPERATORS]);
-            ComboBoxOperatorMin.Items.AddRange([.. Constants.GROUP_VALUES_OPERATORS]);
+            ComboBoxGroupLevelOperator.Items.AddRange(EnumDescriptionCache<GroupLevelOperatorsEnum>.DescriptionsArray);
+            ComboBoxMinMaxOperator.Items.AddRange(EnumDescriptionCache<MinMaxCombinedOperatorsEnum>.DescriptionsArray);
+            ComboBoxOperatorMax.Items.AddRange(EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionsArray);
+            ComboBoxOperatorMin.Items.AddRange(EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionsArray);
 
             ComboBoxGroupLevelOperator.SelectedIndex = 0;
             ComboBoxMinMaxOperator.SelectedIndex = 0;
@@ -66,6 +68,10 @@ namespace Domain.UserControls
             ComboBoxMinMaxOperator.Enabled = false;
 
             lblItems.Height = InputBoxItemsCount.Height;
+            OptionAtLeast.Text = ValidationTypeEnum.AtLeast.GetDescription();
+            OptionAtMost.Text = ValidationTypeEnum.AtMost.GetDescription();
+            OptionEachItem.Text = ValidationTypeEnum.EachItem.GetDescription();
+            OptionSumAll.Text = ValidationTypeEnum.SumALL.GetDescription();
 
             ComboBoxGroup.MouseWheel += ComboBox_MouseWheel;
             ComboBoxGroupLevelOperator.MouseWheel += ComboBox_MouseWheel;
@@ -77,12 +83,17 @@ namespace Domain.UserControls
         }
         #endregion
 
+        #region Public methods
 
         public void SetGroupComboBoxDictionary(ImmutableDictionary<int, string> groups)
         {
             _groups = groups;
             InitializeComboboxGroup();
         }
+
+
+
+        #endregion
 
         private void GroupValidatorListUserControl_Load(object sender, EventArgs e)
         {
@@ -126,6 +137,28 @@ namespace Domain.UserControls
         private void OptionSumAll_CheckedChanged(object sender, EventArgs e)
         {
             if (OptionSumAll.Checked) PanelItemCount.Visible = false;
+        }
+
+        private void CheckboxMax_CheckedChanged(object sender, EventArgs e)
+        {
+            ComboBoxOperatorMax.Enabled = CheckboxMax.Checked;
+            ComboBoxMinMaxOperator.Enabled = CheckboxMax.Checked && CheckboxMin.Checked;
+        }
+
+        private void CheckboxMin_CheckedChanged(object sender, EventArgs e)
+        {
+            ComboBoxOperatorMin.Enabled = CheckboxMin.Checked;
+            ComboBoxMinMaxOperator.Enabled = CheckboxMax.Checked && CheckboxMin.Checked;
+        }
+
+        private void ComboBoxGroup_SelectedIndexChanged(object sender, EventArgs e)
+        {
+
+        }
+
+        private void ButtonDeleteOperation_Click(object sender, EventArgs e)
+        {
+            this.Dispose();
         }
     }
 }

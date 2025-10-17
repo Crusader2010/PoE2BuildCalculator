@@ -54,6 +54,7 @@ namespace Domain.UserControls
         private void ItemStatGroupValidatorUserControl_Load(object sender, EventArgs e)
         {
             headerPanel.BackColor = HEADER_COLOR;
+            lblGroupName.DataBindings.Add("Text", _group, nameof(_group.GroupName));
 
             // Enable double buffering for smoother rendering
             SetStyle(ControlStyles.OptimizedDoubleBuffer |

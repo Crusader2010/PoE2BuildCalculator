@@ -1,4 +1,5 @@
-﻿using Domain.Static;
+﻿using Domain.Enums;
+using Domain.Static;
 
 namespace Domain.UserControls
 {
@@ -6,7 +7,7 @@ namespace Domain.UserControls
     {
         public int _currentRowIndex { get; private set; }
         public string _selectedStatName { get; private set; }
-        public string _selectedOperator { get; private set; }
+        public ArithmeticOperationsEnum _selectedOperator { get; private set; }
 
         private readonly ItemStatGroupValidatorUserControl _ownerGroupControl;
 
@@ -38,17 +39,14 @@ namespace Domain.UserControls
             ComboboxOperator.Items.Clear();
 
             ComboboxOperator.BeginUpdate();
-            foreach (var item in Constants.MATH_OPERATORS)
-            {
-                ComboboxOperator.Items.Add(item);
-            }
+            ComboboxOperator.Items.AddRange(EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionsArray);
             ComboboxOperator.EndUpdate();
 
-            ComboboxOperator.SelectedIndex = 0;
+            if (ComboboxOperator.Items.Count > 0) ComboboxOperator.SelectedIndex = 0;
             ComboboxOperator.DropDownWidth = ComboboxOperator.Width;
             ComboboxOperator.ResumeLayout();
 
-            _selectedOperator = ComboboxOperator.Items[0]?.ToString() ?? Constants.MATH_OPERATORS.First();
+            _selectedOperator = ComboboxOperator.SelectedValue == null ? ArithmeticOperationsEnum.Sum : (EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(ComboboxOperator.SelectedValue.ToString(), out var op) ? op : ArithmeticOperationsEnum.Sum);
 
             ComboboxOperator.MouseWheel += ComboBox_MouseWheel;
         }
@@ -81,7 +79,7 @@ namespace Domain.UserControls
 
         private void ComboboxOperator_SelectedIndexChanged(object sender, EventArgs e)
         {
-            _selectedOperator = ComboboxOperator.SelectedItem?.ToString() ?? Constants.MATH_OPERATORS.First();
+            _selectedOperator = ComboboxOperator.SelectedValue == null ? ArithmeticOperationsEnum.Sum : (EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(ComboboxOperator.SelectedValue.ToString(), out var op) ? op : ArithmeticOperationsEnum.Sum);
         }
 
         private void ComboBox_MouseWheel(object sender, MouseEventArgs e)

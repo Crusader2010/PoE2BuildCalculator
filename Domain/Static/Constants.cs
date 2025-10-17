@@ -13,6 +13,7 @@ namespace Domain.Static
 		public const string DEFAULT_DESCRIPTION = "NONE";
 		public const string TOTAL_TIERS_WEIGHT_SUFFIX = @" %";
 		public const string DOUBLE_NUMBER_FORMAT = "0.00";
+
 		public static readonly ImmutableList<string> ITEM_CLASSES =
 		[
 			"Claw",
@@ -46,10 +47,10 @@ namespace Domain.Static
 			"Ring"
 		];
 
-		public static readonly ImmutableArray<string> MATH_OPERATORS = ["+", "-", "*", "/"];
-		public static readonly ImmutableArray<string> LOGICAL_OPERATORS = ["AND", "OR", "XOR"];
-		public static readonly ImmutableArray<string> GROUP_VALUES_OPERATORS = [">=", ">", "=", "<", "<="];
-		public static readonly ImmutableArray<string> GROUP_MIN_MAX_LOGICAL_OPERATORS = ["AND", "OR"];
+		//public static readonly ImmutableArray<string> MATH_OPERATORS = ["+", "-", "*", "/"];
+		//public static readonly ImmutableArray<string> LOGICAL_OPERATORS = ["AND", "OR", "XOR"];
+		//public static readonly ImmutableArray<string> GROUP_VALUES_OPERATORS = [">=", ">", "=", "<", "<="];
+		//public static readonly ImmutableArray<string> GROUP_MIN_MAX_LOGICAL_OPERATORS = ["AND", "OR"];
 
 		public const string VALIDATOR_HELP_TEXT = @"=== ORDER OF OPERATIONS ===
 

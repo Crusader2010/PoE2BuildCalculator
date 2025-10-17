@@ -1,8 +1,10 @@
 ﻿using System.ComponentModel;
 
+using Domain.Enums;
+
 namespace Domain.Validation
 {
-	public class ValidationGroupModel : INotifyPropertyChanged
+	public class ValidationModel : INotifyPropertyChanged
 	{
 		public int GroupId
 		{
@@ -69,9 +71,9 @@ namespace Domain.Validation
 			}
 		}
 
-		public string GroupOperator
+		public GroupLevelOperatorsEnum? GroupOperator
 		{
-			get => field ?? "AND";
+			get => field ?? GroupLevelOperatorsEnum.AND;
 			set
 			{
 				if (field != value)
@@ -82,9 +84,9 @@ namespace Domain.Validation
 			}
 		}
 
-		public string MinOperator
+		public MinMaxOperatorsEnum? MinOperator
 		{
-			get => field;
+			get => field ?? MinMaxOperatorsEnum.GreaterEqual;
 			set
 			{
 				if (field != value)
@@ -95,9 +97,9 @@ namespace Domain.Validation
 			}
 		}
 
-		public string MaxOperator
+		public MinMaxOperatorsEnum? MaxOperator
 		{
-			get => field;
+			get => field ?? MinMaxOperatorsEnum.GreaterEqual;
 			set
 			{
 				if (field != value)
@@ -108,9 +110,9 @@ namespace Domain.Validation
 			}
 		}
 
-		public string MinMaxOperator
+		public MinMaxCombinedOperatorsEnum? MinMaxOperator
 		{
-			get => field;
+			get => field ?? MinMaxCombinedOperatorsEnum.AND;
 			set
 			{
 				if (field != value)

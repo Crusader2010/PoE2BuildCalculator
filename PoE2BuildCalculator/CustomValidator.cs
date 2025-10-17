@@ -11,8 +11,7 @@ namespace PoE2BuildCalculator
 	public partial class CustomValidator : Form
 	{
 		private Func<List<Item>, bool> _masterValidator = x => true;
-		private readonly BindingList<Group> _groups = [];
-		private readonly BindingList<GroupOperationsUserControl> _operationControls = [];
+
 		private readonly MainForm _ownerForm;
 		private int _nextGroupId = 1;
 
@@ -20,13 +19,30 @@ namespace PoE2BuildCalculator
 		private (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) _cachedSizes;
 		private const int GROUP_ITEMSTATSROWS_VISIBLE = 5;
 
-		private ImmutableDictionary<int, string> _immutableGroups => _groups.Count == 0 ? ImmutableDictionary<int, string>.Empty : _groups.ToImmutableDictionary(g => g.GroupId, g => g.GroupName);
+		private readonly BindingList<Group> _groups = [];
+		private readonly BindingList<GroupOperationsUserControl> _operationControls = [];
+
+		private ImmutableDictionary<int, string> _immutableGroups
+		{
+			get
+			{
+				field ??= _groups.Count == 0
+						? ImmutableDictionary<int, string>.Empty
+						: _groups.ToImmutableDictionary(g => g.GroupId, g => g.GroupName);
+
+				return field;
+			}
+
+			set;
+		}
 
 		public CustomValidator(MainForm ownerForm)
 		{
 			ArgumentNullException.ThrowIfNull(ownerForm);
 			InitializeComponent();
+
 			_ownerForm = ownerForm;
+			_groups.ListChanged += (s, e) => _immutableGroups = null;
 
 			// Enable double buffering for smoother rendering
 			SetStyle(ControlStyles.OptimizedDoubleBuffer |
@@ -86,6 +102,7 @@ namespace PoE2BuildCalculator
 				};
 
 				FlowPanelOperations.Controls.Add(operationControl);
+
 				_operationControls.Add(operationControl);
 			}
 			catch (Exception ex)
@@ -112,6 +129,7 @@ namespace PoE2BuildCalculator
 
 				control.DeleteRequested += (s, e) => DeleteGroup(control);
 				FlowPanelGroups.Controls.Add(control);
+
 				_groups.Add(control._group);
 			}
 			catch (Exception ex)
@@ -163,7 +181,7 @@ namespace PoE2BuildCalculator
 			}
 		}
 
-		private static Func<List<Item>, bool> BuildValidatorFunction(List<ValidationGroupModel> groupValidationModels)
+		private static Func<List<Item>, bool> BuildValidatorFunction(List<ValidationModel> groupValidationModels)
 		{
 			if (groupValidationModels == null || groupValidationModels.Count == 0) return null;
 
@@ -176,75 +194,19 @@ namespace PoE2BuildCalculator
 			};
 		}
 
-		private static List<ValidationGroupModel> BuildValidationModelWithOperations()
+		private static List<ValidationModel> BuildValidationModelWithOperations()
 		{
 			return [];
 		}
 
-		private static bool EvaluateValidationModels(List<ValidationGroupModel> groupsWithOperations, List<Item> items)
+		private static bool EvaluateValidationModels(List<ValidationModel> groupsWithOperations, List<Item> items)
 		{
 			if (groupsWithOperations == null || groupsWithOperations.Count == 0) return true;
 
 			return true;
 		}
 
-		/*
-		private static bool EvaluateGroup(ValidationGroupModel group, List<Item> items)
-		{
-			if (group.Stats.Count == 0) return true;
-			double sum = items.Sum(item => EvaluateExpression(group.Stats, item.ItemStats));
-
-			if (group.IsMinEnabled && group.MinValue.HasValue && sum <= group.MinValue.Value)
-				return false;
-
-			if (group.IsMaxEnabled && group.MaxValue.HasValue && sum >= group.MaxValue.Value)
-				return false;
-
-			return true;
-		}
-
-		private static double EvaluateExpression(List<GroupStatModel> stats, ItemStats itemStats)
-		{
-			if (stats.Count == 0) return 0;
-
-			double result = Convert.ToDouble(stats[0].PropInfo.GetValue(itemStats));
-
-			for (int i = 1; i < stats.Count; i++)
-			{
-				double nextValue = Convert.ToDouble(stats[i].PropInfo.GetValue(itemStats));
-
-				result = stats[i].Operator switch
-				{
-					"+" => result + nextValue,
-					"-" => result - nextValue,
-					"*" => result * nextValue,
-					"/" => nextValue != 0 ? result / nextValue : result,
-					_ => result + nextValue
-				};
-			}
-
-			return result;
-		}
-
-		private void GroupsContainer_Resize(object sender, EventArgs e)
-		{
-			// Invalidate cache on resize
-			_lastContainerWidth = -1;
-			_cachedColumnsPerRow = -1;
-
-			groupsContainer.SuspendLayout();
-			try
-			{
-				ArrangeGroupsInGrid();
-			}
-			finally
-			{
-				groupsContainer.ResumeLayout(true);
-			}
-		}
-		*/
-
-		private (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) GetUserControlSizes()
+		private static (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) GetUserControlSizes()
 		{
 			using var tempGroupOperation = new GroupOperationsUserControl(ImmutableDictionary<int, string>.Empty);
 			using var tempGroup = new ItemStatGroupValidatorUserControl(int.MaxValue, string.Empty);
@@ -259,6 +221,7 @@ namespace PoE2BuildCalculator
 		private void CustomValidator_Load(object sender, EventArgs e)
 		{
 			this.SuspendLayout();
+
 			_cachedSizes = GetUserControlSizes();
 			FlowPanelOperations.Padding = new Padding(0, 0, 1, 0);
 			FlowPanelOperations.Width = _cachedSizes.widthGroupOperation + 20;
