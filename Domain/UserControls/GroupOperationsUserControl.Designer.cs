@@ -29,7 +29,6 @@
 		private void InitializeComponent()
 		{
 			PanelGroupValidatorList = new Panel();
-			ButtonHelp = new Button();
 			PanelNextGroupOperator = new Panel();
 			label2 = new Label();
 			ComboBoxGroupLevelOperator = new ComboBox();
@@ -63,7 +62,6 @@
 			// 
 			// PanelGroupValidatorList
 			// 
-			PanelGroupValidatorList.Controls.Add(ButtonHelp);
 			PanelGroupValidatorList.Controls.Add(PanelNextGroupOperator);
 			PanelGroupValidatorList.Controls.Add(PanelMinMax);
 			PanelGroupValidatorList.Controls.Add(PanelItemCount);
@@ -72,22 +70,6 @@
 			PanelGroupValidatorList.Name = "PanelGroupValidatorList";
 			PanelGroupValidatorList.Size = new Size(780, 78);
 			PanelGroupValidatorList.TabIndex = 0;
-			// 
-			// ButtonHelp
-			// 
-			ButtonHelp.BackColor = Color.FromArgb(100, 149, 237);
-			ButtonHelp.Cursor = Cursors.Help;
-			ButtonHelp.FlatAppearance.BorderSize = 0;
-			ButtonHelp.FlatStyle = FlatStyle.Flat;
-			ButtonHelp.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
-			ButtonHelp.ForeColor = Color.White;
-			ButtonHelp.Location = new Point(551, 7);
-			ButtonHelp.Name = "ButtonHelp";
-			ButtonHelp.Size = new Size(33, 31);
-			ButtonHelp.TabIndex = 11;
-			ButtonHelp.Text = "?";
-			ButtonHelp.UseVisualStyleBackColor = false;
-			ButtonHelp.Click += ButtonHelp_Click;
 			// 
 			// PanelNextGroupOperator
 			// 
@@ -227,10 +209,10 @@
 			// InputBoxItemsCount
 			// 
 			InputBoxItemsCount.BorderStyle = BorderStyle.FixedSingle;
-			InputBoxItemsCount.Location = new Point(3, 5);
+			InputBoxItemsCount.Location = new Point(4, 5);
 			InputBoxItemsCount.Maximum = new decimal(new int[] { 99999999, 0, 0, 0 });
 			InputBoxItemsCount.Name = "InputBoxItemsCount";
-			InputBoxItemsCount.Size = new Size(82, 23);
+			InputBoxItemsCount.Size = new Size(81, 23);
 			InputBoxItemsCount.TabIndex = 5;
 			InputBoxItemsCount.TextAlign = HorizontalAlignment.Center;
 			// 
@@ -239,9 +221,9 @@
 			lblItems.BackColor = Color.Transparent;
 			lblItems.BorderStyle = BorderStyle.FixedSingle;
 			lblItems.Font = new Font("Segoe UI", 8F);
-			lblItems.Location = new Point(143, 3);
+			lblItems.Location = new Point(143, 5);
 			lblItems.Name = "lblItems";
-			lblItems.Size = new Size(97, 27);
+			lblItems.Size = new Size(97, 23);
 			lblItems.TabIndex = 8;
 			lblItems.Text = "Number of items";
 			lblItems.TextAlign = ContentAlignment.MiddleCenter;
@@ -268,10 +250,10 @@
 			GroupBoxOptions.Controls.Add(OptionSumAll);
 			GroupBoxOptions.Controls.Add(OptionAtMost);
 			GroupBoxOptions.Controls.Add(OptionAtLeast);
-			GroupBoxOptions.Location = new Point(0, 2);
+			GroupBoxOptions.Location = new Point(4, 2);
 			GroupBoxOptions.Name = "GroupBoxOptions";
 			GroupBoxOptions.Padding = new Padding(0);
-			GroupBoxOptions.Size = new Size(545, 41);
+			GroupBoxOptions.Size = new Size(570, 41);
 			GroupBoxOptions.TabIndex = 2;
 			GroupBoxOptions.TabStop = false;
 			// 
@@ -279,18 +261,18 @@
 			// 
 			ComboBoxGroup.DropDownStyle = ComboBoxStyle.DropDownList;
 			ComboBoxGroup.FormattingEnabled = true;
-			ComboBoxGroup.Location = new Point(366, 12);
+			ComboBoxGroup.Location = new Point(351, 12);
 			ComboBoxGroup.Name = "ComboBoxGroup";
-			ComboBoxGroup.Size = new Size(176, 23);
+			ComboBoxGroup.Size = new Size(217, 23);
 			ComboBoxGroup.TabIndex = 0;
 			// 
 			// OptionEachItem
 			// 
 			OptionEachItem.BackColor = Color.FromArgb(255, 224, 192);
 			OptionEachItem.FlatAppearance.BorderColor = Color.Lime;
-			OptionEachItem.Location = new Point(186, 12);
+			OptionEachItem.Location = new Point(178, 12);
 			OptionEachItem.Name = "OptionEachItem";
-			OptionEachItem.Size = new Size(84, 24);
+			OptionEachItem.Size = new Size(81, 24);
 			OptionEachItem.TabIndex = 3;
 			OptionEachItem.Text = "Each item";
 			OptionEachItem.TextAlign = ContentAlignment.MiddleCenter;
@@ -302,9 +284,9 @@
 			OptionSumAll.BackColor = Color.FromArgb(255, 224, 192);
 			OptionSumAll.Checked = true;
 			OptionSumAll.FlatAppearance.BorderColor = Color.Lime;
-			OptionSumAll.Location = new Point(277, 12);
+			OptionSumAll.Location = new Point(265, 12);
 			OptionSumAll.Name = "OptionSumAll";
-			OptionSumAll.Size = new Size(84, 24);
+			OptionSumAll.Size = new Size(81, 24);
 			OptionSumAll.TabIndex = 2;
 			OptionSumAll.TabStop = true;
 			OptionSumAll.Text = "SUM(all)";
@@ -316,9 +298,9 @@
 			// 
 			OptionAtMost.BackColor = Color.FromArgb(255, 255, 192);
 			OptionAtMost.FlatAppearance.BorderColor = Color.Lime;
-			OptionAtMost.Location = new Point(95, 12);
+			OptionAtMost.Location = new Point(91, 12);
 			OptionAtMost.Name = "OptionAtMost";
-			OptionAtMost.Size = new Size(84, 24);
+			OptionAtMost.Size = new Size(81, 24);
 			OptionAtMost.TabIndex = 1;
 			OptionAtMost.Text = "At most";
 			OptionAtMost.TextAlign = ContentAlignment.MiddleCenter;
@@ -331,7 +313,7 @@
 			OptionAtLeast.FlatAppearance.BorderColor = Color.Lime;
 			OptionAtLeast.Location = new Point(4, 12);
 			OptionAtLeast.Name = "OptionAtLeast";
-			OptionAtLeast.Size = new Size(84, 24);
+			OptionAtLeast.Size = new Size(81, 24);
 			OptionAtLeast.TabIndex = 0;
 			OptionAtLeast.Text = "At least";
 			OptionAtLeast.TextAlign = ContentAlignment.MiddleCenter;
@@ -346,6 +328,7 @@
 			BorderStyle = BorderStyle.FixedSingle;
 			Controls.Add(PanelGroupValidatorList);
 			DoubleBuffered = true;
+			Margin = new Padding(1, 1, 2, 2);
 			Name = "GroupOperationsUserControl";
 			Size = new Size(774, 76);
 			Load += GroupValidatorListUserControl_Load;
@@ -385,6 +368,5 @@
         private Panel PanelItemCount;
         private Label label2;
         private Panel PanelNextGroupOperator;
-        private Button ButtonHelp;
     }
 }

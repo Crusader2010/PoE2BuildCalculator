@@ -17,7 +17,7 @@ namespace PoE2BuildCalculator
 		private int _nextGroupId = 1;
 
 		// Cached layout calculations
-		private (int widthStat, int heightStat, int heightGroupTop, int groupOperationWidth) _cachedSizes;
+		private (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) _cachedSizes;
 		private const int GROUP_ITEMSTATSROWS_VISIBLE = 5;
 
 		private ImmutableDictionary<int, string> _immutableGroups => _groups.Count == 0 ? ImmutableDictionary<int, string>.Empty : _groups.ToImmutableDictionary(g => g.GroupId, g => g.GroupName);
@@ -80,7 +80,11 @@ namespace PoE2BuildCalculator
 			FlowPanelOperations.SuspendLayout();
 			try
 			{
-				var operationControl = new GroupOperationsUserControl(_immutableGroups);
+				var operationControl = new GroupOperationsUserControl(_immutableGroups)
+				{
+					BackColor = _operationControls.Count % 2 == 0 ? Color.LightGray : Color.LightSlateGray
+				};
+
 				FlowPanelOperations.Controls.Add(operationControl);
 				_operationControls.Add(operationControl);
 			}
@@ -240,18 +244,44 @@ namespace PoE2BuildCalculator
 		}
 		*/
 
-		private static (int widthStat, int heightStat, int heightGroupTop, int groupOperationWidth) GetUserControlSizes()
+		private (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) GetUserControlSizes()
 		{
+			using var tempGroupOperation = new GroupOperationsUserControl(ImmutableDictionary<int, string>.Empty);
 			using var tempGroup = new ItemStatGroupValidatorUserControl(int.MaxValue, string.Empty);
 			using var tempRow = new ItemStatRow(int.MaxValue, string.Empty, tempGroup);
-			using var tempGroupOperation = new GroupOperationsUserControl(ImmutableDictionary<int, string>.Empty);
-			return (tempRow.Width + 2, tempRow.Height, tempGroup.GetTopRowsHeight(), tempGroupOperation.Width);
+			{
+				tempGroup.Width = tempRow.Width + 25; // account for scrollbar
+			}
+
+			return (tempRow.Width + 2, tempRow.Height, tempGroup.GetTopRowsHeight(), tempGroup.Width + 2, tempGroupOperation.Width);
 		}
 
 		private void CustomValidator_Load(object sender, EventArgs e)
 		{
+			this.SuspendLayout();
 			_cachedSizes = GetUserControlSizes();
-			FlowPanelOperations.Width = _cachedSizes.groupOperationWidth + 25;
+			FlowPanelOperations.Padding = new Padding(0, 0, 1, 0);
+			FlowPanelOperations.Width = _cachedSizes.widthGroupOperation + 20;
+
+			Panel delimiter = new()
+			{
+				Width = 2,
+				Dock = DockStyle.Left,
+				BackColor = Color.YellowGreen
+			};
+			panel1.Controls.Add(delimiter);
+
+			FlowPanelOperations.BringToFront();
+			delimiter.BringToFront();
+			FlowPanelGroups.BringToFront();
+
+			this.AutoSize = false;
+			this.Width = FlowPanelOperations.Width + FlowPanelOperations.Padding.Left + FlowPanelOperations.Padding.Right
+							+ mainPanel.Padding.Left + mainPanel.Padding.Right + delimiter.Width
+							+ panel1.Padding.Left + panel1.Padding.Right + _cachedSizes.widthGroup * 2 + 45;
+			this.CenterToScreen();
+
+			this.ResumeLayout(true);
 		}
 	}
 }

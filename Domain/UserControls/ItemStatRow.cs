@@ -21,14 +21,15 @@ namespace Domain.UserControls
             // required in constructor
             InitializeComponent();
             InitializeOperatorCombobox();
+
+            this.Padding = new Padding(0);
+            this.Margin = new Padding(0);
         }
 
         private void ItemStatRow_Load(object sender, EventArgs e)
         {
             TextboxItemStat.Text = _selectedStatName;
             ComboboxOperator.Enabled = false;
-            this.Padding = new Padding(0);
-            this.Margin = new Padding(0);
         }
 
         private void InitializeOperatorCombobox()

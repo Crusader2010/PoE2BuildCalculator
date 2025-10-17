@@ -16,12 +16,12 @@
 			ButtonAddItemStat = new Button();
 			FlowPanelStats = new FlowLayoutPanel();
 			panel1 = new Panel();
-			panel2 = new Panel();
 			panel3 = new Panel();
+			panel2 = new Panel();
 			headerPanel.SuspendLayout();
 			panel1.SuspendLayout();
-			panel2.SuspendLayout();
 			panel3.SuspendLayout();
+			panel2.SuspendLayout();
 			SuspendLayout();
 			// 
 			// headerPanel
@@ -125,6 +125,15 @@
 			panel1.Size = new Size(367, 278);
 			panel1.TabIndex = 5;
 			// 
+			// panel3
+			// 
+			panel3.Controls.Add(FlowPanelStats);
+			panel3.Dock = DockStyle.Fill;
+			panel3.Location = new Point(0, 36);
+			panel3.Name = "panel3";
+			panel3.Size = new Size(367, 242);
+			panel3.TabIndex = 6;
+			// 
 			// panel2
 			// 
 			panel2.Controls.Add(ButtonAddItemStat);
@@ -138,15 +147,6 @@
 			panel2.Size = new Size(367, 36);
 			panel2.TabIndex = 5;
 			// 
-			// panel3
-			// 
-			panel3.Controls.Add(FlowPanelStats);
-			panel3.Dock = DockStyle.Fill;
-			panel3.Location = new Point(0, 36);
-			panel3.Name = "panel3";
-			panel3.Size = new Size(367, 242);
-			panel3.TabIndex = 6;
-			// 
 			// ItemStatGroupValidatorUserControl
 			// 
 			AutoScaleDimensions = new SizeF(96F, 96F);
@@ -157,14 +157,15 @@
 			Controls.Add(panel1);
 			Controls.Add(headerPanel);
 			DoubleBuffered = true;
+			Margin = new Padding(0, 0, 2, 2);
 			Name = "ItemStatGroupValidatorUserControl";
 			Size = new Size(367, 310);
 			Load += ItemStatGroupValidatorUserControl_Load;
 			headerPanel.ResumeLayout(false);
 			headerPanel.PerformLayout();
 			panel1.ResumeLayout(false);
-			panel2.ResumeLayout(false);
 			panel3.ResumeLayout(false);
+			panel2.ResumeLayout(false);
 			ResumeLayout(false);
 		}
 

@@ -16,6 +16,9 @@ namespace Domain.UserControls
         {
             _groups = groups;
             InitializeComponent();
+
+            this.Margin = new Padding(0, 0, 1, 3);
+            this.Padding = new Padding(0);
         }
 
         #region Helper methods
@@ -35,9 +38,10 @@ namespace Domain.UserControls
             ComboBoxGroup.ResumeLayout();
         }
 
-        private void InitializeFormControls()
+        private void InitializeFormControlsDefaultState()
         {
             this.SuspendLayout();
+
             ComboBoxGroupLevelOperator.Items.Clear();
             ComboBoxMinMaxOperator.Items.Clear();
             ComboBoxOperatorMax.Items.Clear();
@@ -59,8 +63,16 @@ namespace Domain.UserControls
 
             OptionSumAll.Checked = true;
             PanelItemCount.Visible = false;
+            ComboBoxMinMaxOperator.Enabled = false;
 
             lblItems.Height = InputBoxItemsCount.Height;
+
+            ComboBoxGroup.MouseWheel += ComboBox_MouseWheel;
+            ComboBoxGroupLevelOperator.MouseWheel += ComboBox_MouseWheel;
+            ComboBoxOperatorMin.MouseWheel += ComboBox_MouseWheel;
+            ComboBoxOperatorMax.MouseWheel += ComboBox_MouseWheel;
+            ComboBoxMinMaxOperator.MouseWheel += ComboBox_MouseWheel;
+
             this.ResumeLayout();
         }
         #endregion
@@ -74,7 +86,7 @@ namespace Domain.UserControls
 
         private void GroupValidatorListUserControl_Load(object sender, EventArgs e)
         {
-            InitializeFormControls();
+            InitializeFormControlsDefaultState();
             InitializeComboboxGroup();
         }
 
@@ -86,6 +98,14 @@ namespace Domain.UserControls
         private void ButtonHelp_Click(object sender, EventArgs e)
         {
 
+        }
+
+        private void ComboBox_MouseWheel(object sender, MouseEventArgs e)
+        {
+            if (e is HandledMouseEventArgs handledE)
+            {
+                handledE.Handled = true;
+            }
         }
 
         private void OptionEachItem_CheckedChanged(object sender, EventArgs e)

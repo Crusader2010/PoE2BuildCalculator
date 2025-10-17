@@ -8,7 +8,7 @@ namespace Domain.UserControls
 {
     public partial class ItemStatGroupValidatorUserControl : UserControl
     {
-        private static readonly Color HEADER_COLOR = Color.FromArgb(70, 130, 180);
+        private static readonly Color HEADER_COLOR = Color.FromArgb(100, 160, 210);
         public event EventHandler DeleteRequested;
 
         // Cached data - static to share across all instances
@@ -46,12 +46,14 @@ namespace Domain.UserControls
 
             // Subscribe to data changes
             _statRows.ListChanged += Stats_ListChanged;
+
+            this.Padding = new Padding(0);
+            this.Margin = new Padding(0, 0, 2, 2);
         }
 
         private void ItemStatGroupValidatorUserControl_Load(object sender, EventArgs e)
         {
-            this.Padding = new Padding(0);
-            this.Margin = new Padding(0);
+            headerPanel.BackColor = HEADER_COLOR;
 
             // Enable double buffering for smoother rendering
             SetStyle(ControlStyles.OptimizedDoubleBuffer |

@@ -44,6 +44,7 @@
 			mainPanel.Controls.Add(panel1, 0, 1);
 			mainPanel.Dock = DockStyle.Fill;
 			mainPanel.Location = new Point(0, 0);
+			mainPanel.Margin = new Padding(1);
 			mainPanel.Name = "mainPanel";
 			mainPanel.Padding = new Padding(10);
 			mainPanel.RowCount = 3;
@@ -60,9 +61,10 @@
 			headerPanel.Controls.Add(btnAddGroup);
 			headerPanel.Controls.Add(btnHelp);
 			headerPanel.Dock = DockStyle.Fill;
-			headerPanel.Location = new Point(13, 13);
+			headerPanel.Location = new Point(11, 11);
+			headerPanel.Margin = new Padding(1);
 			headerPanel.Name = "headerPanel";
-			headerPanel.Size = new Size(1174, 44);
+			headerPanel.Size = new Size(1178, 48);
 			headerPanel.TabIndex = 0;
 			// 
 			// btnAddOperation
@@ -72,11 +74,11 @@
 			btnAddOperation.FlatStyle = FlatStyle.Flat;
 			btnAddOperation.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
 			btnAddOperation.ForeColor = Color.White;
-			btnAddOperation.Location = new Point(372, 3);
+			btnAddOperation.Location = new Point(362, 3);
 			btnAddOperation.Name = "btnAddOperation";
-			btnAddOperation.Size = new Size(162, 38);
+			btnAddOperation.Size = new Size(182, 38);
 			btnAddOperation.TabIndex = 3;
-			btnAddOperation.Text = "+ Add Operation";
+			btnAddOperation.Text = "+ Add Group Operation";
 			btnAddOperation.UseVisualStyleBackColor = false;
 			btnAddOperation.Click += btnAddOperation_Click;
 			// 
@@ -164,28 +166,32 @@
 			panel1.Controls.Add(FlowPanelGroups);
 			panel1.Controls.Add(FlowPanelOperations);
 			panel1.Dock = DockStyle.Fill;
-			panel1.Location = new Point(13, 63);
+			panel1.Location = new Point(11, 61);
+			panel1.Margin = new Padding(1);
 			panel1.Name = "panel1";
-			panel1.Size = new Size(1174, 564);
+			panel1.Size = new Size(1178, 568);
 			panel1.TabIndex = 3;
 			// 
 			// FlowPanelGroups
 			// 
+			FlowPanelGroups.AutoScroll = true;
 			FlowPanelGroups.BackColor = SystemColors.ControlLight;
 			FlowPanelGroups.Dock = DockStyle.Fill;
 			FlowPanelGroups.Location = new Point(270, 0);
 			FlowPanelGroups.Margin = new Padding(0);
 			FlowPanelGroups.Name = "FlowPanelGroups";
-			FlowPanelGroups.Size = new Size(904, 564);
+			FlowPanelGroups.Size = new Size(908, 568);
 			FlowPanelGroups.TabIndex = 1;
 			// 
 			// FlowPanelOperations
 			// 
+			FlowPanelOperations.AutoScroll = true;
 			FlowPanelOperations.BackColor = Color.WhiteSmoke;
 			FlowPanelOperations.Dock = DockStyle.Left;
 			FlowPanelOperations.Location = new Point(0, 0);
+			FlowPanelOperations.Margin = new Padding(0, 0, 1, 0);
 			FlowPanelOperations.Name = "FlowPanelOperations";
-			FlowPanelOperations.Size = new Size(270, 564);
+			FlowPanelOperations.Size = new Size(270, 568);
 			FlowPanelOperations.TabIndex = 0;
 			// 
 			// CustomValidator
@@ -195,7 +201,6 @@
 			ClientSize = new Size(1200, 700);
 			Controls.Add(mainPanel);
 			DoubleBuffered = true;
-			MinimumSize = new Size(450, 600);
 			Name = "CustomValidator";
 			StartPosition = FormStartPosition.CenterScreen;
 			Text = "Custom Validator - Group-Based Configuration";
@@ -222,6 +227,7 @@
 		private void BtnClose_Click(object sender, EventArgs e)
 		{
 			this.Close();
+			this.Dispose();
 		}
 
 		private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
