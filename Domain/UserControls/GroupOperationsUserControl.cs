@@ -8,15 +8,19 @@ namespace Domain.UserControls
 {
     public partial class GroupOperationsUserControl : UserControl
     {
+        public event EventHandler GroupOperationDeleted;
+
         private ImmutableDictionary<int, string> _groups; // Key: Group ID, Value: Group Name
+        private readonly Form _ownerForm;
 
         /// <summary>
         /// Initializes a new instance of the GroupOperationsUserControl class.
         /// </summary>
         /// <param name="groups">Key: Group ID, Value: Group Name</param>
-        public GroupOperationsUserControl(ImmutableDictionary<int, string> groups)
+        public GroupOperationsUserControl(ImmutableDictionary<int, string> groups, Form ownerForm)
         {
             _groups = groups;
+            _ownerForm = ownerForm;
             InitializeComponent();
 
             this.Margin = new Padding(0, 0, 1, 3);
@@ -91,7 +95,10 @@ namespace Domain.UserControls
             InitializeComboboxGroup();
         }
 
-
+        public void SetComboBoxGroupLevelOperatorEnabled(bool isEnabled)
+        {
+            ComboBoxGroupLevelOperator.Enabled = isEnabled;
+        }
 
         #endregion
 
@@ -121,33 +128,35 @@ namespace Domain.UserControls
 
         private void OptionEachItem_CheckedChanged(object sender, EventArgs e)
         {
-            if (OptionEachItem.Checked) PanelItemCount.Visible = false;
+            if (OptionEachItem.Checked) { PanelItemCount.Visible = false; PanelItemCount.Enabled = false; }
         }
 
         private void OptionAtMost_CheckedChanged(object sender, EventArgs e)
         {
-            if (OptionAtMost.Checked) PanelItemCount.Visible = true;
+            if (OptionAtMost.Checked) { PanelItemCount.Visible = true; PanelItemCount.Enabled = true; }
         }
 
         private void OptionAtLeast_CheckedChanged(object sender, EventArgs e)
         {
-            if (OptionAtLeast.Checked) PanelItemCount.Visible = true;
+            if (OptionAtLeast.Checked) { PanelItemCount.Visible = true; PanelItemCount.Enabled = true; }
         }
 
         private void OptionSumAll_CheckedChanged(object sender, EventArgs e)
         {
-            if (OptionSumAll.Checked) PanelItemCount.Visible = false;
+            if (OptionSumAll.Checked) { PanelItemCount.Visible = false; PanelItemCount.Enabled = false; }
         }
 
         private void CheckboxMax_CheckedChanged(object sender, EventArgs e)
         {
             ComboBoxOperatorMax.Enabled = CheckboxMax.Checked;
+            InputBoxMax.Enabled = CheckboxMax.Checked;
             ComboBoxMinMaxOperator.Enabled = CheckboxMax.Checked && CheckboxMin.Checked;
         }
 
         private void CheckboxMin_CheckedChanged(object sender, EventArgs e)
         {
             ComboBoxOperatorMin.Enabled = CheckboxMin.Checked;
+            InputBoxMin.Enabled = CheckboxMin.Checked;
             ComboBoxMinMaxOperator.Enabled = CheckboxMax.Checked && CheckboxMin.Checked;
         }
 
@@ -158,7 +167,13 @@ namespace Domain.UserControls
 
         private void ButtonDeleteOperation_Click(object sender, EventArgs e)
         {
+            GroupOperationDeleted?.Invoke(this, new DeletingEventArgs { IsDeleting = true });
             this.Dispose();
         }
+    }
+
+    public class DeletingEventArgs : EventArgs
+    {
+        public bool IsDeleting { get; set; }
     }
 }

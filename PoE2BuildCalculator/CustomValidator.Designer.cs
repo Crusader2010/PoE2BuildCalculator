@@ -80,7 +80,7 @@
 			btnAddOperation.TabIndex = 3;
 			btnAddOperation.Text = "+ Add Group Operation";
 			btnAddOperation.UseVisualStyleBackColor = false;
-			btnAddOperation.Click += btnAddOperation_Click;
+			btnAddOperation.Click += BtnAddOperation_Click;
 			// 
 			// lblTitle
 			// 

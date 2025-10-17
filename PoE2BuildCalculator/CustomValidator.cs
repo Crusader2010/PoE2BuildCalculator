@@ -1,5 +1,7 @@
 ﻿using System.Collections.Immutable;
 using System.ComponentModel;
+using System.Reflection;
+using System.Windows.Forms;
 
 using Domain.Main;
 using Domain.Static;
@@ -16,7 +18,7 @@ namespace PoE2BuildCalculator
 		private int _nextGroupId = 1;
 
 		// Cached layout calculations
-		private (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) _cachedSizes;
+		private readonly (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) _cachedSizes;
 		private const int GROUP_ITEMSTATSROWS_VISIBLE = 5;
 
 		private readonly BindingList<Group> _groups = [];
@@ -43,6 +45,7 @@ namespace PoE2BuildCalculator
 
 			_ownerForm = ownerForm;
 			_groups.ListChanged += (s, e) => _immutableGroups = null;
+			_cachedSizes = GetUserControlSizes();
 
 			// Enable double buffering for smoother rendering
 			SetStyle(ControlStyles.OptimizedDoubleBuffer |
@@ -91,17 +94,21 @@ namespace PoE2BuildCalculator
 			helpForm.ShowDialog(this);
 		}
 
-		private void btnAddOperation_Click(object sender, EventArgs e)
+		private void BtnAddOperation_Click(object sender, EventArgs e)
 		{
 			FlowPanelOperations.SuspendLayout();
 			try
 			{
-				var operationControl = new GroupOperationsUserControl(_immutableGroups)
+				var operationControl = new GroupOperationsUserControl(_immutableGroups, this)
 				{
 					BackColor = _operationControls.Count % 2 == 0 ? Color.LightGray : Color.LightSlateGray
 				};
 
 				FlowPanelOperations.Controls.Add(operationControl);
+
+				if (_operationControls.Count > 0) _operationControls[^1].SetComboBoxGroupLevelOperatorEnabled(true);
+				operationControl.GroupOperationDeleted += OperationControl_GroupOperationDeleted;
+
 
 				_operationControls.Add(operationControl);
 			}
@@ -112,6 +119,29 @@ namespace PoE2BuildCalculator
 			finally
 			{
 				FlowPanelOperations.ResumeLayout();
+			}
+		}
+
+		private void OperationControl_GroupOperationDeleted(object sender, EventArgs e)
+		{
+			this.SuspendLayout();
+			FlowPanelOperations.SuspendLayout();
+			try
+			{
+				if (sender is not null and GroupOperationsUserControl operationControl)
+				{
+					_operationControls.Remove(operationControl);
+					RecheckGroupOperationsControlsCombobox();
+				}
+			}
+			catch (Exception ex)
+			{
+				MessageBox.Show($"Error when deleting a group operation control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+			finally
+			{
+				FlowPanelOperations.ResumeLayout();
+				this.ResumeLayout();
 			}
 		}
 
@@ -208,7 +238,7 @@ namespace PoE2BuildCalculator
 
 		private static (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) GetUserControlSizes()
 		{
-			using var tempGroupOperation = new GroupOperationsUserControl(ImmutableDictionary<int, string>.Empty);
+			using var tempGroupOperation = new GroupOperationsUserControl(ImmutableDictionary<int, string>.Empty, new Form());
 			using var tempGroup = new ItemStatGroupValidatorUserControl(int.MaxValue, string.Empty);
 			using var tempRow = new ItemStatRow(int.MaxValue, string.Empty, tempGroup);
 			{
@@ -222,7 +252,6 @@ namespace PoE2BuildCalculator
 		{
 			this.SuspendLayout();
 
-			_cachedSizes = GetUserControlSizes();
 			FlowPanelOperations.Padding = new Padding(0, 0, 1, 0);
 			FlowPanelOperations.Width = _cachedSizes.widthGroupOperation + 20;
 
@@ -238,6 +267,9 @@ namespace PoE2BuildCalculator
 			delimiter.BringToFront();
 			FlowPanelGroups.BringToFront();
 
+			typeof(Panel).InvokeMember("DoubleBuffered", BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic, null, FlowPanelGroups, [true]);
+			typeof(Panel).InvokeMember("DoubleBuffered", BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic, null, FlowPanelOperations, [true]);
+
 			this.AutoSize = false;
 			this.Width = FlowPanelOperations.Width + FlowPanelOperations.Padding.Left + FlowPanelOperations.Padding.Right
 							+ mainPanel.Padding.Left + mainPanel.Padding.Right + delimiter.Width
@@ -245,6 +277,15 @@ namespace PoE2BuildCalculator
 			this.CenterToScreen();
 
 			this.ResumeLayout(true);
+		}
+
+		private void RecheckGroupOperationsControlsCombobox()
+		{
+			for (int i = 0; i < _operationControls.Count; i++)
+			{
+				_operationControls[i].SetComboBoxGroupLevelOperatorEnabled(i != _operationControls.Count - 1);
+				_operationControls[i].BackColor = i % 2 == 0 ? Color.LightGray : Color.LightSlateGray;
+			}
 		}
 	}
 }
