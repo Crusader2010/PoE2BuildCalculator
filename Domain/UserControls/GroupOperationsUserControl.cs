@@ -1,179 +1,185 @@
 ﻿using System.Collections.Immutable;
 
 using Domain.Enums;
+using Domain.Events;
 using Domain.Helpers;
 using Domain.Static;
 
 namespace Domain.UserControls
 {
-    public partial class GroupOperationsUserControl : UserControl
-    {
-        public event EventHandler GroupOperationDeleted;
+	public partial class GroupOperationsUserControl : UserControl
+	{
+		public event EventHandler GroupOperationDeleted;
 
-        private ImmutableDictionary<int, string> _groups; // Key: Group ID, Value: Group Name
-        private readonly Form _ownerForm;
+		private ImmutableDictionary<int, string> _groups; // Key: Group ID, Value: Group Name
+		private readonly Form _ownerForm;
 
-        /// <summary>
-        /// Initializes a new instance of the GroupOperationsUserControl class.
-        /// </summary>
-        /// <param name="groups">Key: Group ID, Value: Group Name</param>
-        public GroupOperationsUserControl(ImmutableDictionary<int, string> groups, Form ownerForm)
-        {
-            _groups = groups;
-            _ownerForm = ownerForm;
-            InitializeComponent();
+		/// <summary>
+		/// Initializes a new instance of the GroupOperationsUserControl class.
+		/// </summary>
+		/// <param name="groups">Key: Group ID, Value: Group Name</param>
+		public GroupOperationsUserControl(ImmutableDictionary<int, string> groups, Form ownerForm)
+		{
+			_groups = groups;
+			_ownerForm = ownerForm;
+			InitializeComponent();
 
-            this.Margin = new Padding(0, 0, 1, 3);
-            this.Padding = new Padding(0);
-        }
+			this.Margin = new Padding(0, 0, 1, 3);
+			this.Padding = new Padding(0);
+		}
 
-        #region Helper methods
-        private void InitializeComboboxGroup()
-        {
-            ComboBoxGroup.SuspendLayout();
-            ComboBoxGroup.Items.Clear();
+		#region Helper methods
+		private void RefreshComboBoxGroup()
+		{
+			ComboBoxGroup.SuspendLayout();
+			if (_groups.Count > 0)
+			{
+				ComboBoxGroup.DataSource = _groups.OrderBy(x => x.Key).ToList();
+				ComboBoxGroup.DisplayMember = "Value";  // Show the group name
+				ComboBoxGroup.ValueMember = "Key";
+				ComboBoxGroup.SelectedIndex = -1; // No selection initially
+			}
+			else
+			{
+				ComboBoxGroup.DataSource = null;
+			}
+			ComboBoxGroup.ResumeLayout();
+		}
 
-            if (_groups.Count > 0)
-            {
-                ComboBoxGroup.DataSource = new BindingSource(_groups, null);
-                ComboBoxGroup.DisplayMember = "Value";  // Show the group name
-                ComboBoxGroup.ValueMember = "Key";
-            }
+		private void InitializeFormControlsDefaultState()
+		{
+			this.SuspendLayout();
 
-            ComboBoxGroup.SelectedIndex = -1; // No selection initially
-            ComboBoxGroup.ResumeLayout();
-        }
+			ComboBoxGroupLevelOperator.Items.Clear();
+			ComboBoxMinMaxOperator.Items.Clear();
+			ComboBoxOperatorMax.Items.Clear();
+			ComboBoxOperatorMin.Items.Clear();
 
-        private void InitializeFormControlsDefaultState()
-        {
-            this.SuspendLayout();
+			ComboBoxGroupLevelOperator.Items.AddRange(EnumDescriptionCache<GroupLevelOperatorsEnum>.DescriptionsArray);
+			ComboBoxMinMaxOperator.Items.AddRange(EnumDescriptionCache<MinMaxCombinedOperatorsEnum>.DescriptionsArray);
+			ComboBoxOperatorMax.Items.AddRange(EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionsArray);
+			ComboBoxOperatorMin.Items.AddRange(EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionsArray);
 
-            ComboBoxGroupLevelOperator.Items.Clear();
-            ComboBoxMinMaxOperator.Items.Clear();
-            ComboBoxOperatorMax.Items.Clear();
-            ComboBoxOperatorMin.Items.Clear();
+			ComboBoxGroupLevelOperator.SelectedIndex = 0;
+			ComboBoxMinMaxOperator.SelectedIndex = 0;
+			ComboBoxOperatorMin.SelectedIndex = 0;
+			ComboBoxOperatorMax.SelectedIndex = 0;
 
-            ComboBoxGroupLevelOperator.Items.AddRange(EnumDescriptionCache<GroupLevelOperatorsEnum>.DescriptionsArray);
-            ComboBoxMinMaxOperator.Items.AddRange(EnumDescriptionCache<MinMaxCombinedOperatorsEnum>.DescriptionsArray);
-            ComboBoxOperatorMax.Items.AddRange(EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionsArray);
-            ComboBoxOperatorMin.Items.AddRange(EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionsArray);
+			CheckboxMin.Checked = true;
+			CheckboxMax.Checked = false;
+			CheckboxPercentage.Checked = false;
 
-            ComboBoxGroupLevelOperator.SelectedIndex = 0;
-            ComboBoxMinMaxOperator.SelectedIndex = 0;
-            ComboBoxOperatorMin.SelectedIndex = 0;
-            ComboBoxOperatorMax.SelectedIndex = 0;
+			OptionSumAll.Checked = true;
+			PanelItemCount.Visible = false;
+			ComboBoxMinMaxOperator.Enabled = false;
 
-            CheckboxMin.Checked = true;
-            CheckboxMax.Checked = false;
-            CheckboxPercentage.Checked = false;
+			lblItems.Height = InputBoxItemsCount.Height;
+			OptionAtLeast.Text = ValidationTypeEnum.AtLeast.GetDescription();
+			OptionAtMost.Text = ValidationTypeEnum.AtMost.GetDescription();
+			OptionEachItem.Text = ValidationTypeEnum.EachItem.GetDescription();
+			OptionSumAll.Text = ValidationTypeEnum.SumALL.GetDescription();
 
-            OptionSumAll.Checked = true;
-            PanelItemCount.Visible = false;
-            ComboBoxMinMaxOperator.Enabled = false;
+			ComboBoxGroup.MouseWheel += ComboBox_MouseWheel;
+			ComboBoxGroupLevelOperator.MouseWheel += ComboBox_MouseWheel;
+			ComboBoxOperatorMin.MouseWheel += ComboBox_MouseWheel;
+			ComboBoxOperatorMax.MouseWheel += ComboBox_MouseWheel;
+			ComboBoxMinMaxOperator.MouseWheel += ComboBox_MouseWheel;
 
-            lblItems.Height = InputBoxItemsCount.Height;
-            OptionAtLeast.Text = ValidationTypeEnum.AtLeast.GetDescription();
-            OptionAtMost.Text = ValidationTypeEnum.AtMost.GetDescription();
-            OptionEachItem.Text = ValidationTypeEnum.EachItem.GetDescription();
-            OptionSumAll.Text = ValidationTypeEnum.SumALL.GetDescription();
+			this.ResumeLayout();
+		}
+		#endregion
 
-            ComboBoxGroup.MouseWheel += ComboBox_MouseWheel;
-            ComboBoxGroupLevelOperator.MouseWheel += ComboBox_MouseWheel;
-            ComboBoxOperatorMin.MouseWheel += ComboBox_MouseWheel;
-            ComboBoxOperatorMax.MouseWheel += ComboBox_MouseWheel;
-            ComboBoxMinMaxOperator.MouseWheel += ComboBox_MouseWheel;
+		#region Public methods
 
-            this.ResumeLayout();
-        }
-        #endregion
+		public void SetGroupComboBoxDictionary(ImmutableDictionary<int, string> groups)
+		{
+			_groups = groups;
+			RefreshComboBoxGroup();
+		}
 
-        #region Public methods
+		public void SetComboBoxGroupLevelOperatorEnabled(bool isEnabled)
+		{
+			ComboBoxGroupLevelOperator.Enabled = isEnabled;
+		}
 
-        public void SetGroupComboBoxDictionary(ImmutableDictionary<int, string> groups)
-        {
-            _groups = groups;
-            InitializeComboboxGroup();
-        }
+		#endregion
 
-        public void SetComboBoxGroupLevelOperatorEnabled(bool isEnabled)
-        {
-            ComboBoxGroupLevelOperator.Enabled = isEnabled;
-        }
+		private void GroupOperationsUserControl_Load(object sender, EventArgs e)
+		{
+			InitializeFormControlsDefaultState();
+			RefreshComboBoxGroup();
+		}
 
-        #endregion
+		private void ComboBoxEachItemOperator_SelectedIndexChanged(object sender, EventArgs e)
+		{
 
-        private void GroupValidatorListUserControl_Load(object sender, EventArgs e)
-        {
-            InitializeFormControlsDefaultState();
-            InitializeComboboxGroup();
-        }
+		}
 
-        private void ComboBoxEachItemOperator_SelectedIndexChanged(object sender, EventArgs e)
-        {
+		private void ButtonHelp_Click(object sender, EventArgs e)
+		{
 
-        }
+		}
 
-        private void ButtonHelp_Click(object sender, EventArgs e)
-        {
+		private void ComboBox_MouseWheel(object sender, MouseEventArgs e)
+		{
+			if (e is HandledMouseEventArgs handledE)
+			{
+				handledE.Handled = true;
+			}
+		}
 
-        }
+		private void OptionEachItem_CheckedChanged(object sender, EventArgs e)
+		{
+			if (OptionEachItem.Checked) { PanelItemCount.Visible = false; PanelItemCount.Enabled = false; }
+		}
 
-        private void ComboBox_MouseWheel(object sender, MouseEventArgs e)
-        {
-            if (e is HandledMouseEventArgs handledE)
-            {
-                handledE.Handled = true;
-            }
-        }
+		private void OptionAtMost_CheckedChanged(object sender, EventArgs e)
+		{
+			if (OptionAtMost.Checked) { PanelItemCount.Visible = true; PanelItemCount.Enabled = true; }
+		}
 
-        private void OptionEachItem_CheckedChanged(object sender, EventArgs e)
-        {
-            if (OptionEachItem.Checked) { PanelItemCount.Visible = false; PanelItemCount.Enabled = false; }
-        }
+		private void OptionAtLeast_CheckedChanged(object sender, EventArgs e)
+		{
+			if (OptionAtLeast.Checked) { PanelItemCount.Visible = true; PanelItemCount.Enabled = true; }
+		}
 
-        private void OptionAtMost_CheckedChanged(object sender, EventArgs e)
-        {
-            if (OptionAtMost.Checked) { PanelItemCount.Visible = true; PanelItemCount.Enabled = true; }
-        }
+		private void OptionSumAll_CheckedChanged(object sender, EventArgs e)
+		{
+			if (OptionSumAll.Checked) { PanelItemCount.Visible = false; PanelItemCount.Enabled = false; }
+		}
 
-        private void OptionAtLeast_CheckedChanged(object sender, EventArgs e)
-        {
-            if (OptionAtLeast.Checked) { PanelItemCount.Visible = true; PanelItemCount.Enabled = true; }
-        }
+		private void CheckboxMax_CheckedChanged(object sender, EventArgs e)
+		{
+			ComboBoxOperatorMax.Enabled = CheckboxMax.Checked;
+			InputBoxMax.Enabled = CheckboxMax.Checked;
+			ComboBoxMinMaxOperator.Enabled = CheckboxMax.Checked && CheckboxMin.Checked;
+		}
 
-        private void OptionSumAll_CheckedChanged(object sender, EventArgs e)
-        {
-            if (OptionSumAll.Checked) { PanelItemCount.Visible = false; PanelItemCount.Enabled = false; }
-        }
+		private void CheckboxMin_CheckedChanged(object sender, EventArgs e)
+		{
+			ComboBoxOperatorMin.Enabled = CheckboxMin.Checked;
+			InputBoxMin.Enabled = CheckboxMin.Checked;
+			ComboBoxMinMaxOperator.Enabled = CheckboxMax.Checked && CheckboxMin.Checked;
+		}
 
-        private void CheckboxMax_CheckedChanged(object sender, EventArgs e)
-        {
-            ComboBoxOperatorMax.Enabled = CheckboxMax.Checked;
-            InputBoxMax.Enabled = CheckboxMax.Checked;
-            ComboBoxMinMaxOperator.Enabled = CheckboxMax.Checked && CheckboxMin.Checked;
-        }
+		private void ButtonDeleteOperation_Click(object sender, EventArgs e)
+		{
+			GroupOperationDeleted?.Invoke(this, new ItemStatRowDeletingEventArgs { IsDeleting = true });
+			this.Dispose();
+		}
 
-        private void CheckboxMin_CheckedChanged(object sender, EventArgs e)
-        {
-            ComboBoxOperatorMin.Enabled = CheckboxMin.Checked;
-            InputBoxMin.Enabled = CheckboxMin.Checked;
-            ComboBoxMinMaxOperator.Enabled = CheckboxMax.Checked && CheckboxMin.Checked;
-        }
+		public void RefreshGroupOperationAfterDelete(int totalCount, int currentIndexInList)
+		{
+			this.SuspendLayout();
+			ComboBoxGroupLevelOperator.Enabled = totalCount != currentIndexInList;
+			this.BackColor = currentIndexInList % 2 == 0 ? Color.LightGray : Color.LightSlateGray;
+			this.ResumeLayout();
+		}
 
-        private void ComboBoxGroup_SelectedIndexChanged(object sender, EventArgs e)
-        {
-
-        }
-
-        private void ButtonDeleteOperation_Click(object sender, EventArgs e)
-        {
-            GroupOperationDeleted?.Invoke(this, new DeletingEventArgs { IsDeleting = true });
-            this.Dispose();
-        }
-    }
-
-    public class DeletingEventArgs : EventArgs
-    {
-        public bool IsDeleting { get; set; }
-    }
+		public void UpdateGroups(ImmutableDictionary<int, string> groups)
+		{
+			_groups = groups;
+			RefreshComboBoxGroup();
+		}
+	}
 }

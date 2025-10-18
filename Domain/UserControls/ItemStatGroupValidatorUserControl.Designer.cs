@@ -16,11 +16,11 @@
 			ButtonAddItemStat = new Button();
 			FlowPanelStats = new FlowLayoutPanel();
 			panel1 = new Panel();
-			panel3 = new Panel();
+			PanelMainArea = new Panel();
 			panel2 = new Panel();
 			headerPanel.SuspendLayout();
 			panel1.SuspendLayout();
-			panel3.SuspendLayout();
+			PanelMainArea.SuspendLayout();
 			panel2.SuspendLayout();
 			SuspendLayout();
 			// 
@@ -117,7 +117,7 @@
 			// 
 			// panel1
 			// 
-			panel1.Controls.Add(panel3);
+			panel1.Controls.Add(PanelMainArea);
 			panel1.Controls.Add(panel2);
 			panel1.Dock = DockStyle.Fill;
 			panel1.Location = new Point(0, 32);
@@ -125,14 +125,14 @@
 			panel1.Size = new Size(367, 278);
 			panel1.TabIndex = 5;
 			// 
-			// panel3
+			// PanelMainArea
 			// 
-			panel3.Controls.Add(FlowPanelStats);
-			panel3.Dock = DockStyle.Fill;
-			panel3.Location = new Point(0, 36);
-			panel3.Name = "panel3";
-			panel3.Size = new Size(367, 242);
-			panel3.TabIndex = 6;
+			PanelMainArea.Controls.Add(FlowPanelStats);
+			PanelMainArea.Dock = DockStyle.Fill;
+			PanelMainArea.Location = new Point(0, 36);
+			PanelMainArea.Name = "PanelMainArea";
+			PanelMainArea.Size = new Size(367, 242);
+			PanelMainArea.TabIndex = 6;
 			// 
 			// panel2
 			// 
@@ -164,7 +164,7 @@
 			headerPanel.ResumeLayout(false);
 			headerPanel.PerformLayout();
 			panel1.ResumeLayout(false);
-			panel3.ResumeLayout(false);
+			PanelMainArea.ResumeLayout(false);
 			panel2.ResumeLayout(false);
 			ResumeLayout(false);
 		}
@@ -180,6 +180,6 @@
         private FlowLayoutPanel FlowPanelStats;
         private Panel panel1;
         private Panel panel2;
-		private Panel panel3;
+		private Panel PanelMainArea;
 	}
 }

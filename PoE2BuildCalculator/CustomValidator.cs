@@ -1,7 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Reflection;
-using System.Windows.Forms;
 
 using Domain.Main;
 using Domain.Static;
@@ -109,7 +108,6 @@ namespace PoE2BuildCalculator
 				if (_operationControls.Count > 0) _operationControls[^1].SetComboBoxGroupLevelOperatorEnabled(true);
 				operationControl.GroupOperationDeleted += OperationControl_GroupOperationDeleted;
 
-
 				_operationControls.Add(operationControl);
 			}
 			catch (Exception ex)
@@ -131,7 +129,7 @@ namespace PoE2BuildCalculator
 				if (sender is not null and GroupOperationsUserControl operationControl)
 				{
 					_operationControls.Remove(operationControl);
-					RecheckGroupOperationsControlsCombobox();
+					RefreshGroupOperationsAfterDelete();
 				}
 			}
 			catch (Exception ex)
@@ -157,10 +155,11 @@ namespace PoE2BuildCalculator
 					AllowDrop = false
 				};
 
-				control.DeleteRequested += (s, e) => DeleteGroup(control);
+				control.GroupDeleted += (s, e) => DeleteGroup(control);
 				FlowPanelGroups.Controls.Add(control);
 
 				_groups.Add(control._group);
+				RefreshGroupOperationsAfterGroupsChanged();
 			}
 			catch (Exception ex)
 			{
@@ -182,7 +181,7 @@ namespace PoE2BuildCalculator
 				FlowPanelGroups.Controls.Remove(control);
 				control.Dispose();
 
-				// reset operations that have that group as selected
+				RefreshGroupOperationsAfterGroupsChanged();
 			}
 			finally
 			{
@@ -240,7 +239,7 @@ namespace PoE2BuildCalculator
 		{
 			using var tempGroupOperation = new GroupOperationsUserControl(ImmutableDictionary<int, string>.Empty, new Form());
 			using var tempGroup = new ItemStatGroupValidatorUserControl(int.MaxValue, string.Empty);
-			using var tempRow = new ItemStatRow(int.MaxValue, string.Empty, tempGroup);
+			using var tempRow = new ItemStatRow(int.MaxValue, string.Empty);
 			{
 				tempGroup.Width = tempRow.Width + 25; // account for scrollbar
 			}
@@ -279,12 +278,19 @@ namespace PoE2BuildCalculator
 			this.ResumeLayout(true);
 		}
 
-		private void RecheckGroupOperationsControlsCombobox()
+		private void RefreshGroupOperationsAfterDelete()
 		{
 			for (int i = 0; i < _operationControls.Count; i++)
 			{
-				_operationControls[i].SetComboBoxGroupLevelOperatorEnabled(i != _operationControls.Count - 1);
-				_operationControls[i].BackColor = i % 2 == 0 ? Color.LightGray : Color.LightSlateGray;
+				_operationControls[i].RefreshGroupOperationAfterDelete(_operationControls.Count, i);
+			}
+		}
+
+		private void RefreshGroupOperationsAfterGroupsChanged()
+		{
+			for (int i = 0; i < _operationControls.Count; i++)
+			{
+				_operationControls[i].UpdateGroups(_immutableGroups);
 			}
 		}
 	}
