@@ -19,19 +19,6 @@ namespace Domain.Validation
 			}
 		}
 
-		public bool IsMinEnabled
-		{
-			get;
-			set
-			{
-				if (field != value)
-				{
-					field = value;
-					OnPropertyChanged(nameof(IsMinEnabled));
-				}
-			}
-		}
-
 		public double? MinValue
 		{
 			get;
@@ -41,19 +28,6 @@ namespace Domain.Validation
 				{
 					field = value;
 					OnPropertyChanged(nameof(MinValue));
-				}
-			}
-		}
-
-		public bool IsMaxEnabled
-		{
-			get;
-			set
-			{
-				if (field != value)
-				{
-					field = value;
-					OnPropertyChanged(nameof(IsMaxEnabled));
 				}
 			}
 		}
@@ -123,9 +97,26 @@ namespace Domain.Validation
 			}
 		}
 
+		public ValidationTypeEnum ValidationType
+		{
+			get => field;
+			set
+			{
+				if (field != value)
+				{
+					field = value;
+					OnPropertyChanged(nameof(ValidationType));
+				}
+			}
+		}
+
+		public int NumberOfItems { get; set; } = 0;
+
+		public bool NumberOfItemsAsPercentage { get; set; } = false;
+
 
 		[Browsable(false)]
-		public bool IsActive => IsMinEnabled || IsMaxEnabled; // to do: change
+		public bool IsActive => MinOperator != null || MaxOperator != null;
 
 		public event PropertyChangedEventHandler PropertyChanged;
 		protected void OnPropertyChanged(string propertyName)

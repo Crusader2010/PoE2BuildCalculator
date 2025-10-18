@@ -10,7 +10,9 @@ namespace Domain.UserControls
 	public partial class ItemStatGroupValidatorUserControl : UserControl
 	{
 		private static readonly Color HEADER_COLOR = Color.FromArgb(100, 160, 210);
+
 		public event EventHandler GroupDeleted;
+		public Group _group { get; private set; }
 
 		// Cached data - static to share across all instances
 		private static readonly Lazy<IReadOnlyList<PropertyInfo>> _availableProperties = new(() =>
@@ -21,14 +23,11 @@ namespace Domain.UserControls
 							p.PropertyType == typeof(long))
 				.OrderBy(p => p.Name)];
 		});
-
 		// Cache for combo box state restoration
-		private readonly Dictionary<string, int> _comboBoxIndexCache = [];
+		private readonly Dictionary<string, int> _comboBoxIndexCache = new(StringComparer.OrdinalIgnoreCase);
 		private readonly BindingList<ItemStatRow> _statRows = [];
 		private readonly HashSet<string> _usedStats = new(StringComparer.OrdinalIgnoreCase);
 		private bool _needsRefresh = false;
-
-		public Group _group { get; private set; }
 
 		public ItemStatGroupValidatorUserControl(int groupId, string groupName)
 		{
@@ -286,12 +285,12 @@ namespace Domain.UserControls
 
 			_group.Stats ??= [];
 			_group.Stats.Clear();
-			foreach (var statRow in _statRows)
+			for (int i = 0; i < _statRows.Count; i++)
 			{
 				_group.Stats.Add(new GroupStatModel
 				{
-					PropertyName = statRow._selectedStatName,
-					Operator = statRow._selectedOperator
+					PropertyName = _statRows[i]._selectedStatName,
+					Operator = i == _statRows.Count - 1 ? null : _statRows[i]._selectedOperator
 				});
 			}
 		}

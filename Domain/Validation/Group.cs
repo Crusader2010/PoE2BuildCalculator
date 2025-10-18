@@ -21,6 +21,8 @@ namespace Domain.Validation
 
 		public List<GroupStatModel> Stats { get; set; } = [];
 
+		public bool IsActive => Stats != null && Stats.Count > 0;
+
 		public event PropertyChangedEventHandler PropertyChanged;
 		protected void OnPropertyChanged(string propertyName)
 		{

@@ -238,6 +238,8 @@
 			InputBoxItemsCount.Size = new Size(81, 23);
 			InputBoxItemsCount.TabIndex = 5;
 			InputBoxItemsCount.TextAlign = HorizontalAlignment.Center;
+			InputBoxItemsCount.KeyDown += InputBoxItemsCount_KeyDown;
+			InputBoxItemsCount.Validating += InputBoxItemsCount_Validating;
 			// 
 			// lblItems
 			// 
@@ -265,6 +267,7 @@
 			CheckboxPercentage.TabIndex = 6;
 			CheckboxPercentage.Text = "as %";
 			CheckboxPercentage.UseVisualStyleBackColor = false;
+			CheckboxPercentage.CheckedChanged += CheckboxPercentage_CheckedChanged;
 			// 
 			// GroupBoxOptions
 			// 

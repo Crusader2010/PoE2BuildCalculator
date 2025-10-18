@@ -226,6 +226,7 @@
 
 		private void BtnClose_Click(object sender, EventArgs e)
 		{
+			btnClose.CausesValidation = false;
 			this.Close();
 			this.Dispose();
 		}

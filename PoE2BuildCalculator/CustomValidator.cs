@@ -23,7 +23,7 @@ namespace PoE2BuildCalculator
 		private readonly BindingList<Group> _groups = [];
 		private readonly BindingList<GroupOperationsUserControl> _operationControls = [];
 
-		private ImmutableDictionary<int, string> _immutableGroups
+		private ImmutableDictionary<int, string> _immutableGroupDescriptions
 		{
 			get
 			{
@@ -43,7 +43,7 @@ namespace PoE2BuildCalculator
 			InitializeComponent();
 
 			_ownerForm = ownerForm;
-			_groups.ListChanged += (s, e) => _immutableGroups = null;
+			_groups.ListChanged += (s, e) => _immutableGroupDescriptions = null;
 			_cachedSizes = GetUserControlSizes();
 
 			// Enable double buffering for smoother rendering
@@ -52,6 +52,59 @@ namespace PoE2BuildCalculator
 					 ControlStyles.UserPaint, true);
 			UpdateStyles();
 		}
+
+		#region Validation and parsing methods
+
+		private Func<List<Item>, bool> BuildValidatorFunction(List<ValidationModel> operations)
+		{
+			var activeOperations = operations?.Where(g => g != null && g.IsActive)?.ToList() ?? [];
+			var activeGroups = _groups?.Where(x => x.IsActive)?.ToDictionary(g => g.GroupId, g => g) ?? [];
+			if (activeGroups.Count == 0 || activeOperations.Count == 0) return null;
+
+			return items =>
+			{
+				return EvaluateValidationModels(activeOperations, items, activeGroups); ;
+			};
+		}
+
+		private List<ValidationModel> BuildValidationModels()
+		{
+			var result = _operationControls.Select(x => x.GetValidationModel()).Where(x => x != null && x.IsActive).ToList();
+			return result;
+		}
+
+		private bool EvaluateValidationModels(List<ValidationModel> activeOperations, List<Item> items, Dictionary<int, Group> activeGroups)
+		{
+			if (items == null || items.Count == 0) return true;
+			bool overallResult = true;
+
+			foreach (var operation in activeOperations)
+			{
+				var group = operation.GroupId >= 0 && activeGroups.TryGetValue(operation.GroupId, out var dictGroup) ? dictGroup : null;
+				if (group == null) continue;
+
+				foreach (var item in items)
+				{
+					foreach (var stat in group.Stats)
+					{
+						//if (item.ItemStats.TryGetValue(stat.StatId, out var itemStat))
+						//{
+						//	bool statResult = ValidationModel.EvaluateStatCondition(itemStat.Value, stat.Condition, stat.Value);
+						//	overallResult = operation.GroupLevelOperator switch
+						//	{
+						//		GroupLevelOperator.AND => overallResult && statResult,
+						//		GroupLevelOperator.OR => overallResult || statResult,
+						//		_ => overallResult
+						//	};
+						//}
+					}
+				}
+			}
+
+			return overallResult;
+		}
+
+		#endregion
 
 		private void BtnHelp_Click(object sender, EventArgs e)
 		{
@@ -98,7 +151,7 @@ namespace PoE2BuildCalculator
 			FlowPanelOperations.SuspendLayout();
 			try
 			{
-				var operationControl = new GroupOperationsUserControl(_immutableGroups, this)
+				var operationControl = new GroupOperationsUserControl(_immutableGroupDescriptions, this)
 				{
 					BackColor = _operationControls.Count % 2 == 0 ? Color.LightGray : Color.LightSlateGray
 				};
@@ -193,7 +246,7 @@ namespace PoE2BuildCalculator
 		{
 			try
 			{
-				var validatorFunction = BuildValidatorFunction(BuildValidationModelWithOperations());
+				var validatorFunction = BuildValidatorFunction(BuildValidationModels());
 				if (validatorFunction == null)
 				{
 					MessageBox.Show("No validation function can be computed based on the existing groups.\n\nKeeping default logic -> all combinations are valid.", "No usable groups", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -208,31 +261,6 @@ namespace PoE2BuildCalculator
 			{
 				MessageBox.Show($"Error creating validator: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
-		}
-
-		private static Func<List<Item>, bool> BuildValidatorFunction(List<ValidationModel> groupValidationModels)
-		{
-			if (groupValidationModels == null || groupValidationModels.Count == 0) return null;
-
-			var activeGroups = groupValidationModels.Where(g => g.IsActive).ToList();
-			if (activeGroups.Count == 0) return null;
-
-			return items =>
-			{
-				return EvaluateValidationModels(activeGroups, items); ;
-			};
-		}
-
-		private static List<ValidationModel> BuildValidationModelWithOperations()
-		{
-			return [];
-		}
-
-		private static bool EvaluateValidationModels(List<ValidationModel> groupsWithOperations, List<Item> items)
-		{
-			if (groupsWithOperations == null || groupsWithOperations.Count == 0) return true;
-
-			return true;
 		}
 
 		private static (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) GetUserControlSizes()
@@ -290,7 +318,7 @@ namespace PoE2BuildCalculator
 		{
 			for (int i = 0; i < _operationControls.Count; i++)
 			{
-				_operationControls[i].UpdateGroups(_immutableGroups);
+				_operationControls[i].UpdateGroups(_immutableGroupDescriptions);
 			}
 		}
 	}

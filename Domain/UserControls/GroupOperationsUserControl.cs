@@ -1,9 +1,11 @@
 ﻿using System.Collections.Immutable;
+using System.ComponentModel;
 
 using Domain.Enums;
 using Domain.Events;
 using Domain.Helpers;
 using Domain.Static;
+using Domain.Validation;
 
 namespace Domain.UserControls
 {
@@ -13,7 +15,9 @@ namespace Domain.UserControls
 
 		private ImmutableDictionary<int, string> _groups; // Key: Group ID, Value: Group Name
 		private readonly Form _ownerForm;
+		private readonly ErrorProvider _errorProvider = new();
 		private bool _needsRefresh = false;
+		private bool _hasErrors = false;
 
 		/// <summary>
 		/// Initializes a new instance of the GroupOperationsUserControl class.
@@ -117,6 +121,34 @@ namespace Domain.UserControls
 			_needsRefresh = true;  // Mark as stale, don't refresh yet			
 		}
 
+		public ValidationModel GetValidationModel()
+		{
+			if (_hasErrors) return null;
+
+			int groupId = (ComboBoxGroup.SelectedValue is int selectedGroupId) ? selectedGroupId : -1;
+			var groupLevelOperator = ComboBoxGroupLevelOperator.SelectedValue == null ? (GroupLevelOperatorsEnum?)null : (EnumDescriptionCache<GroupLevelOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxGroupLevelOperator.SelectedValue.ToString(), out var op1) ? op1 : null);
+			var minOperator = ComboBoxOperatorMin.SelectedValue == null ? (MinMaxOperatorsEnum?)null : (EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxOperatorMin.SelectedValue.ToString(), out var op2) ? op2 : null);
+			var maxOperator = ComboBoxOperatorMax.SelectedValue == null ? (MinMaxOperatorsEnum?)null : (EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxOperatorMax.SelectedValue.ToString(), out var op3) ? op3 : null);
+			var minMaxOperator = ComboBoxMinMaxOperator.SelectedValue == null ? (MinMaxCombinedOperatorsEnum?)null : (EnumDescriptionCache<MinMaxCombinedOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxMinMaxOperator.SelectedValue.ToString(), out var op4) ? op4 : null);
+			var validationType = OptionAtLeast.Checked ? ValidationTypeEnum.AtLeast :
+									OptionAtMost.Checked ? ValidationTypeEnum.AtMost :
+									OptionEachItem.Checked ? ValidationTypeEnum.EachItem :
+									ValidationTypeEnum.SumALL;
+
+			return new ValidationModel
+			{
+				GroupId = groupId,
+				GroupOperator = ComboBoxGroupLevelOperator.Enabled ? groupLevelOperator : null,
+				MinOperator = CheckboxMin.Enabled ? minOperator : null,
+				MaxOperator = CheckboxMax.Enabled ? maxOperator : null,
+				MinMaxOperator = ComboBoxMinMaxOperator.Enabled ? minMaxOperator : null,
+				MaxValue = CheckboxMax.Checked ? (double)InputBoxMax.Value : null,
+				MinValue = CheckboxMin.Checked ? (double)InputBoxMin.Value : null,
+				NumberOfItems = (validationType is ValidationTypeEnum.AtLeast or ValidationTypeEnum.AtMost) ? (int)InputBoxItemsCount.Value : 0,
+				NumberOfItemsAsPercentage = CheckboxPercentage.Checked,
+				ValidationType = validationType
+			};
+		}
 
 		#endregion
 
@@ -180,6 +212,7 @@ namespace Domain.UserControls
 
 		private void ButtonDeleteOperation_Click(object sender, EventArgs e)
 		{
+			ButtonDeleteOperation.CausesValidation = false;
 			GroupOperationDeleted?.Invoke(this, new ItemStatRowDeletingEventArgs { IsDeleting = true });
 			this.Dispose();
 		}
@@ -187,6 +220,47 @@ namespace Domain.UserControls
 		private void ComboBoxGroup_DropDown(object sender, EventArgs e)
 		{
 			RefreshComboBoxGroup();
+		}
+
+		private void InputBoxItemsCount_Validating(object sender, CancelEventArgs e)
+		{
+			if (CheckboxPercentage.Checked && (InputBoxItemsCount.Value < 0 || InputBoxItemsCount.Value > 100))
+			{
+				e.Cancel = true;
+				_hasErrors = true;
+				InputBoxItemsCount.BackColor = Color.Coral;
+				_errorProvider.SetError(InputBoxItemsCount, "Value must be between 0 and 100 when 'IsPercentage' is checked!");
+			}
+			else
+			{
+				_hasErrors = false;
+				InputBoxItemsCount.BackColor = SystemColors.Window;
+				_errorProvider.SetError(InputBoxItemsCount, "");
+			}
+		}
+
+		private void CheckboxPercentage_CheckedChanged(object sender, EventArgs e)
+		{
+			if (CheckboxPercentage.Checked && (InputBoxItemsCount.Value is > 100 or < 0))
+			{
+				InputBoxItemsCount.Value = 0;
+			}
+		}
+
+		private void InputBoxItemsCount_KeyDown(object sender, KeyEventArgs e)
+		{
+			if (e.KeyCode is Keys.Enter or Keys.Return)
+			{
+				var cancelEventArgs = new CancelEventArgs();
+				InputBoxItemsCount_Validating(sender, cancelEventArgs);
+
+				if (!cancelEventArgs.Cancel)
+				{
+					// Validation passed, move on
+					this.SelectNextControl(InputBoxItemsCount, true, true, true, true);
+				}
+				e.SuppressKeyPress = true;
+			}
 		}
 	}
 }
