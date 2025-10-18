@@ -26,6 +26,7 @@ namespace Domain.UserControls
 		private readonly Dictionary<string, int> _comboBoxIndexCache = [];
 		private readonly BindingList<ItemStatRow> _statRows = [];
 		private readonly HashSet<string> _usedStats = new(StringComparer.OrdinalIgnoreCase);
+		private bool _needsRefresh = false;
 
 		public Group _group { get; private set; }
 
@@ -40,7 +41,7 @@ namespace Domain.UserControls
 
 			InitializeComponent();  // MUST be called here!
 			InitializeComboBoxCache();
-			UpdateStatsComboBox();
+			_needsRefresh = true;
 
 			// Set the group name in the label
 			lblGroupName.Text = groupName;
@@ -74,22 +75,25 @@ namespace Domain.UserControls
 
 		private void UpdateStatsComboBox()
 		{
-			ComboboxItemStats.BeginUpdate();
-			try
+			if (_needsRefresh)
 			{
-				ComboboxItemStats.Items.Clear();
+				ComboboxItemStats.BeginUpdate();
+				try
+				{
+					ComboboxItemStats.Items.Clear();
 
-				// Use LINQ for efficient filtering and ordering
-				var availableItems = _availableProperties.Value
-					.Where(p => !_usedStats.Contains(p.Name))
-					.Select(p => p.Name)
-					.ToArray();
+					var availableItems = _availableProperties.Value
+						.Where(p => !_usedStats.Contains(p.Name))
+						.Select(p => p.Name)
+						.ToArray();
 
-				ComboboxItemStats.Items.AddRange(availableItems);
-			}
-			finally
-			{
-				ComboboxItemStats.EndUpdate();
+					if (availableItems.Length > 0) ComboboxItemStats.Items.AddRange(availableItems);
+				}
+				finally
+				{
+					_needsRefresh = false;
+					ComboboxItemStats.EndUpdate();
+				}
 			}
 		}
 
@@ -144,7 +148,7 @@ namespace Domain.UserControls
 				_statRows[i].SetupStatOperatorSelection(i != _statRows.Count - 1);
 			}
 
-			UpdateStatsComboBox();
+			_needsRefresh = true;
 		}
 
 		private void ButtonAddItemStat_Click(object sender, EventArgs e)
@@ -163,7 +167,7 @@ namespace Domain.UserControls
 			ComboboxItemStats.SelectedIndex = -1;
 
 			AddNewStatRow(propName);
-			UpdateStatsComboBox();
+			_needsRefresh = true;
 		}
 
 		private void Stats_ListChanged(object sender, ListChangedEventArgs e)
@@ -295,6 +299,11 @@ namespace Domain.UserControls
 		public int GetTopRowsHeight()
 		{
 			return this.Height - PanelMainArea.Height - 2;
+		}
+
+		private void ComboboxItemStats_DropDown(object sender, EventArgs e)
+		{
+			UpdateStatsComboBox();
 		}
 	}
 }

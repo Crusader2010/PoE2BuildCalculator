@@ -29,6 +29,7 @@
 		private void InitializeComponent()
 		{
 			PanelGroupValidatorList = new Panel();
+			ButtonDeleteOperation = new Button();
 			PanelNextGroupOperator = new Panel();
 			label2 = new Label();
 			ComboBoxGroupLevelOperator = new ComboBox();
@@ -50,7 +51,6 @@
 			OptionSumAll = new RadioButton();
 			OptionAtMost = new RadioButton();
 			OptionAtLeast = new RadioButton();
-			ButtonDeleteOperation = new Button();
 			PanelGroupValidatorList.SuspendLayout();
 			PanelNextGroupOperator.SuspendLayout();
 			PanelMinMax.SuspendLayout();
@@ -72,6 +72,25 @@
 			PanelGroupValidatorList.Name = "PanelGroupValidatorList";
 			PanelGroupValidatorList.Size = new Size(780, 78);
 			PanelGroupValidatorList.TabIndex = 0;
+			// 
+			// ButtonDeleteOperation
+			// 
+			ButtonDeleteOperation.BackColor = Color.FromArgb(255, 128, 128);
+			ButtonDeleteOperation.BackgroundImageLayout = ImageLayout.Stretch;
+			ButtonDeleteOperation.FlatAppearance.BorderColor = Color.Black;
+			ButtonDeleteOperation.FlatAppearance.BorderSize = 0;
+			ButtonDeleteOperation.FlatAppearance.MouseOverBackColor = Color.FromArgb(255, 192, 255);
+			ButtonDeleteOperation.FlatStyle = FlatStyle.Flat;
+			ButtonDeleteOperation.Font = new Font("Verdana", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
+			ButtonDeleteOperation.ForeColor = Color.Blue;
+			ButtonDeleteOperation.Location = new Point(730, 11);
+			ButtonDeleteOperation.Margin = new Padding(0);
+			ButtonDeleteOperation.Name = "ButtonDeleteOperation";
+			ButtonDeleteOperation.Size = new Size(40, 23);
+			ButtonDeleteOperation.TabIndex = 12;
+			ButtonDeleteOperation.Text = "X";
+			ButtonDeleteOperation.UseVisualStyleBackColor = false;
+			ButtonDeleteOperation.Click += ButtonDeleteOperation_Click;
 			// 
 			// PanelNextGroupOperator
 			// 
@@ -269,6 +288,7 @@
 			ComboBoxGroup.Name = "ComboBoxGroup";
 			ComboBoxGroup.Size = new Size(197, 23);
 			ComboBoxGroup.TabIndex = 0;
+			ComboBoxGroup.DropDown += ComboBoxGroup_DropDown;
 			// 
 			// OptionEachItem
 			// 
@@ -323,25 +343,6 @@
 			OptionAtLeast.TextAlign = ContentAlignment.MiddleCenter;
 			OptionAtLeast.UseVisualStyleBackColor = false;
 			OptionAtLeast.CheckedChanged += OptionAtLeast_CheckedChanged;
-			// 
-			// ButtonDeleteOperation
-			// 
-			ButtonDeleteOperation.BackColor = Color.FromArgb(255, 128, 128);
-			ButtonDeleteOperation.BackgroundImageLayout = ImageLayout.Stretch;
-			ButtonDeleteOperation.FlatAppearance.BorderColor = Color.Black;
-			ButtonDeleteOperation.FlatAppearance.BorderSize = 0;
-			ButtonDeleteOperation.FlatAppearance.MouseOverBackColor = Color.FromArgb(255, 192, 255);
-			ButtonDeleteOperation.FlatStyle = FlatStyle.Flat;
-			ButtonDeleteOperation.Font = new Font("Verdana", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
-			ButtonDeleteOperation.ForeColor = Color.Blue;
-			ButtonDeleteOperation.Location = new Point(730, 11);
-			ButtonDeleteOperation.Margin = new Padding(0);
-			ButtonDeleteOperation.Name = "ButtonDeleteOperation";
-			ButtonDeleteOperation.Size = new Size(40, 23);
-			ButtonDeleteOperation.TabIndex = 12;
-			ButtonDeleteOperation.Text = "X";
-			ButtonDeleteOperation.UseVisualStyleBackColor = false;
-			ButtonDeleteOperation.Click += ButtonDeleteOperation_Click;
 			// 
 			// GroupOperationsUserControl
 			// 

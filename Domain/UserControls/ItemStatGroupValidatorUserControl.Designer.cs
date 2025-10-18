@@ -1,8 +1,8 @@
 ﻿namespace Domain.UserControls
 {
-    partial class ItemStatGroupValidatorUserControl
-    {
-        private System.ComponentModel.IContainer components = null;
+	partial class ItemStatGroupValidatorUserControl
+	{
+		private System.ComponentModel.IContainer components = null;
 
 		#region Component Designer generated code
 
@@ -86,6 +86,7 @@
 			ComboboxItemStats.Name = "ComboboxItemStats";
 			ComboboxItemStats.Size = new Size(234, 24);
 			ComboboxItemStats.TabIndex = 1;
+			ComboboxItemStats.DropDown += ComboboxItemStats_DropDown;
 			// 
 			// ButtonAddItemStat
 			// 
@@ -172,14 +173,14 @@
 		#endregion
 
 		private Panel headerPanel;
-        private Label lblGroupName;
-        private Button ButtonDeleteGroup;
-        private Label lblAddItemStat;
-        private ComboBox ComboboxItemStats;
-        private Button ButtonAddItemStat;
-        private FlowLayoutPanel FlowPanelStats;
-        private Panel panel1;
-        private Panel panel2;
+		private Label lblGroupName;
+		private Button ButtonDeleteGroup;
+		private Label lblAddItemStat;
+		private ComboBox ComboboxItemStats;
+		private Button ButtonAddItemStat;
+		private FlowLayoutPanel FlowPanelStats;
+		private Panel panel1;
+		private Panel panel2;
 		private Panel PanelMainArea;
 	}
 }

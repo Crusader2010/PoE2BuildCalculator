@@ -13,6 +13,7 @@ namespace Domain.UserControls
 
 		private ImmutableDictionary<int, string> _groups; // Key: Group ID, Value: Group Name
 		private readonly Form _ownerForm;
+		private bool _needsRefresh = false;
 
 		/// <summary>
 		/// Initializes a new instance of the GroupOperationsUserControl class.
@@ -31,19 +32,25 @@ namespace Domain.UserControls
 		#region Helper methods
 		private void RefreshComboBoxGroup()
 		{
-			ComboBoxGroup.SuspendLayout();
-			if (_groups.Count > 0)
+			if (_needsRefresh)
 			{
-				ComboBoxGroup.DataSource = _groups.OrderBy(x => x.Key).ToList();
-				ComboBoxGroup.DisplayMember = "Value";  // Show the group name
-				ComboBoxGroup.ValueMember = "Key";
-				ComboBoxGroup.SelectedIndex = -1; // No selection initially
+				ComboBoxGroup.SuspendLayout();
+				if (_groups.Count > 0)
+				{
+					ComboBoxGroup.DataSource = _groups.OrderBy(x => x.Key).ToList();
+					ComboBoxGroup.DisplayMember = "Value";  // Show the group name
+					ComboBoxGroup.ValueMember = "Key";
+					ComboBoxGroup.SelectedIndex = -1; // No selection initially
+				}
+				else
+				{
+					ComboBoxGroup.DataSource = null;
+					ComboBoxGroup.Height = ComboBoxGroupLevelOperator.Height;
+				}
+
+				_needsRefresh = false;
+				ComboBoxGroup.ResumeLayout();
 			}
-			else
-			{
-				ComboBoxGroup.DataSource = null;
-			}
-			ComboBoxGroup.ResumeLayout();
 		}
 
 		private void InitializeFormControlsDefaultState()
@@ -91,23 +98,32 @@ namespace Domain.UserControls
 
 		#region Public methods
 
-		public void SetGroupComboBoxDictionary(ImmutableDictionary<int, string> groups)
-		{
-			_groups = groups;
-			RefreshComboBoxGroup();
-		}
-
 		public void SetComboBoxGroupLevelOperatorEnabled(bool isEnabled)
 		{
 			ComboBoxGroupLevelOperator.Enabled = isEnabled;
 		}
+
+		public void RefreshGroupOperationAfterDelete(int totalCount, int currentIndexInList)
+		{
+			this.SuspendLayout();
+			ComboBoxGroupLevelOperator.Enabled = currentIndexInList != totalCount - 1;
+			this.BackColor = currentIndexInList % 2 == 0 ? Color.LightGray : Color.LightSlateGray;
+			this.ResumeLayout();
+		}
+
+		public void UpdateGroups(ImmutableDictionary<int, string> groups)
+		{
+			_groups = groups;
+			_needsRefresh = true;  // Mark as stale, don't refresh yet			
+		}
+
 
 		#endregion
 
 		private void GroupOperationsUserControl_Load(object sender, EventArgs e)
 		{
 			InitializeFormControlsDefaultState();
-			RefreshComboBoxGroup();
+			_needsRefresh = true;
 		}
 
 		private void ComboBoxEachItemOperator_SelectedIndexChanged(object sender, EventArgs e)
@@ -168,17 +184,8 @@ namespace Domain.UserControls
 			this.Dispose();
 		}
 
-		public void RefreshGroupOperationAfterDelete(int totalCount, int currentIndexInList)
+		private void ComboBoxGroup_DropDown(object sender, EventArgs e)
 		{
-			this.SuspendLayout();
-			ComboBoxGroupLevelOperator.Enabled = totalCount != currentIndexInList;
-			this.BackColor = currentIndexInList % 2 == 0 ? Color.LightGray : Color.LightSlateGray;
-			this.ResumeLayout();
-		}
-
-		public void UpdateGroups(ImmutableDictionary<int, string> groups)
-		{
-			_groups = groups;
 			RefreshComboBoxGroup();
 		}
 	}
