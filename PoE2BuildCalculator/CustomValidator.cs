@@ -73,7 +73,7 @@ namespace PoE2BuildCalculator
 			return result;
 		}
 
-		private bool EvaluateValidationModels(List<ValidationModel> activeOperations, List<Item> items, Dictionary<int, Group> activeGroups)
+		private static bool EvaluateValidationModels(List<ValidationModel> activeOperations, List<Item> items, Dictionary<int, Group> activeGroups)
 		{
 			if (items == null || items.Count == 0) return true;
 			bool overallResult = true;

@@ -256,8 +256,10 @@
 			// CheckboxPercentage
 			// 
 			CheckboxPercentage.AutoSize = true;
+			CheckboxPercentage.AutoCheck = true;
 			CheckboxPercentage.BackColor = Color.Transparent;
 			CheckboxPercentage.BackgroundImageLayout = ImageLayout.Center;
+			CheckboxPercentage.CheckAlign = ContentAlignment.MiddleRight;
 			CheckboxPercentage.FlatAppearance.BorderColor = Color.FromArgb(255, 128, 128);
 			CheckboxPercentage.ForeColor = Color.Black;
 			CheckboxPercentage.Location = new Point(88, 7);

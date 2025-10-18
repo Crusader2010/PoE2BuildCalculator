@@ -1,4 +1,5 @@
-﻿using System.ComponentModel;
+﻿using System.Collections.Immutable;
+using System.ComponentModel;
 using System.Reflection;
 
 using Domain.Events;
@@ -15,16 +16,16 @@ namespace Domain.UserControls
 		public Group _group { get; private set; }
 
 		// Cached data - static to share across all instances
-		private static readonly Lazy<IReadOnlyList<PropertyInfo>> _availableProperties = new(() =>
+		private static readonly Lazy<ImmutableDictionary<string, PropertyInfo>> _availableProperties = new(() =>
 		{
-			return [.. typeof(ItemStats).GetProperties()
+			return typeof(ItemStats).GetProperties()
 				.Where(p => p.PropertyType == typeof(int) ||
 							p.PropertyType == typeof(double) ||
 							p.PropertyType == typeof(long))
-				.OrderBy(p => p.Name)];
+				.OrderBy(p => p.Name)
+				.ToImmutableDictionary(x => x.Name, x => x);
 		});
-		// Cache for combo box state restoration
-		private readonly Dictionary<string, int> _comboBoxIndexCache = new(StringComparer.OrdinalIgnoreCase);
+
 		private readonly BindingList<ItemStatRow> _statRows = [];
 		private readonly HashSet<string> _usedStats = new(StringComparer.OrdinalIgnoreCase);
 		private bool _needsRefresh = false;
@@ -39,7 +40,6 @@ namespace Domain.UserControls
 			};
 
 			InitializeComponent();  // MUST be called here!
-			InitializeComboBoxCache();
 			_needsRefresh = true;
 
 			// Set the group name in the label
@@ -54,6 +54,7 @@ namespace Domain.UserControls
 
 		private void ItemStatGroupValidatorUserControl_Load(object sender, EventArgs e)
 		{
+			this.SuspendLayout();
 			headerPanel.BackColor = HEADER_COLOR;
 			lblGroupName.DataBindings.Add("Text", _group, nameof(_group.GroupName));
 
@@ -62,14 +63,9 @@ namespace Domain.UserControls
 					 ControlStyles.AllPaintingInWmPaint |
 					 ControlStyles.UserPaint, true);
 			UpdateStyles();
-		}
+			this.ResumeLayout();
 
-		private void InitializeComboBoxCache()
-		{
-			for (int i = 0; i < _availableProperties.Value.Count; i++)
-			{
-				_comboBoxIndexCache[_availableProperties.Value[i].Name] = i;
-			}
+			if (_availableProperties.Value != null) return; // Force initialization of static cached data
 		}
 
 		private void UpdateStatsComboBox()
@@ -82,8 +78,9 @@ namespace Domain.UserControls
 					ComboboxItemStats.Items.Clear();
 
 					var availableItems = _availableProperties.Value
-						.Where(p => !_usedStats.Contains(p.Name))
-						.Select(p => p.Name)
+						.Where(p => !_usedStats.Any(k => string.Equals(k, p.Key, StringComparison.OrdinalIgnoreCase)))
+						.Select(p => p.Key)
+						.OrderBy(name => name, StringComparer.OrdinalIgnoreCase)
 						.ToArray();
 
 					if (availableItems.Length > 0) ComboboxItemStats.Items.AddRange(availableItems);
@@ -290,6 +287,7 @@ namespace Domain.UserControls
 				_group.Stats.Add(new GroupStatModel
 				{
 					PropertyName = _statRows[i]._selectedStatName,
+					PropInfo = _availableProperties.Value.TryGetValue(_statRows[i]._selectedStatName, out var dictResult) ? dictResult : null,
 					Operator = i == _statRows.Count - 1 ? null : _statRows[i]._selectedOperator
 				});
 			}
