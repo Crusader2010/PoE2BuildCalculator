@@ -55,10 +55,7 @@ namespace Domain.Main
 		/// <summary>
 		/// The sum of the weights for each stat of the tier.
 		/// </summary>
-		public double TotalStatWeight
-		{
-			get { return StatWeights.Values.Count == 0 ? 0.0d : StatWeights.Values.Sum(); }
-		}
+		public double TotalStatWeight => StatWeights.Values.Count == 0 ? 0.0d : StatWeights.Values.Sum();
 
 		// This method provides a clean way to update a stat weight and ensures
 		// the UI is notified that the TotalStatWeight needs to be refreshed.

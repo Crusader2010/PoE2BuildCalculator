@@ -3,7 +3,7 @@ using System.ComponentModel;
 using System.Reflection;
 
 using Domain.Events;
-using Domain.Main;
+using Domain.Helpers;
 using Domain.Validation;
 
 namespace Domain.UserControls
@@ -18,12 +18,12 @@ namespace Domain.UserControls
 		// Cached data - static to share across all instances
 		private static readonly Lazy<ImmutableDictionary<string, PropertyInfo>> _availableProperties = new(() =>
 		{
-			return typeof(ItemStats).GetProperties()
+			return ItemStatsHelper.GetStatDescriptors()
 				.Where(p => p.PropertyType == typeof(int) ||
 							p.PropertyType == typeof(double) ||
 							p.PropertyType == typeof(long))
-				.OrderBy(p => p.Name)
-				.ToImmutableDictionary(x => x.Name, x => x);
+				.OrderBy(p => p.PropertyName)
+				.ToImmutableDictionary(x => x.PropertyName, x => x.Property);
 		});
 
 		private readonly BindingList<ItemStatRow> _statRows = [];

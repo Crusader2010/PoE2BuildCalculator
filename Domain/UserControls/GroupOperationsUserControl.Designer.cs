@@ -104,12 +104,13 @@
 			// 
 			// label2
 			// 
+			label2.AutoEllipsis = true;
 			label2.Font = new Font("Segoe UI", 8F);
 			label2.Location = new Point(3, 3);
 			label2.Name = "label2";
-			label2.Size = new Size(66, 31);
+			label2.Size = new Size(92, 31);
 			label2.TabIndex = 10;
-			label2.Text = "Next group operator";
+			label2.Text = "Operator for next active:";
 			label2.TextAlign = ContentAlignment.MiddleCenter;
 			// 
 			// ComboBoxGroupLevelOperator
@@ -118,9 +119,9 @@
 			ComboBoxGroupLevelOperator.DropDownStyle = ComboBoxStyle.DropDownList;
 			ComboBoxGroupLevelOperator.Enabled = false;
 			ComboBoxGroupLevelOperator.FormattingEnabled = true;
-			ComboBoxGroupLevelOperator.Location = new Point(76, 7);
+			ComboBoxGroupLevelOperator.Location = new Point(98, 7);
 			ComboBoxGroupLevelOperator.Name = "ComboBoxGroupLevelOperator";
-			ComboBoxGroupLevelOperator.Size = new Size(89, 23);
+			ComboBoxGroupLevelOperator.Size = new Size(67, 23);
 			ComboBoxGroupLevelOperator.TabIndex = 1;
 			// 
 			// PanelMinMax
@@ -256,7 +257,6 @@
 			// CheckboxPercentage
 			// 
 			CheckboxPercentage.AutoSize = true;
-			CheckboxPercentage.AutoCheck = true;
 			CheckboxPercentage.BackColor = Color.Transparent;
 			CheckboxPercentage.BackgroundImageLayout = ImageLayout.Center;
 			CheckboxPercentage.CheckAlign = ContentAlignment.MiddleRight;
