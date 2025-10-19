@@ -126,10 +126,10 @@ namespace Domain.UserControls
 			if (_hasErrors) return null;
 
 			int groupId = (ComboBoxGroup.SelectedValue is int selectedGroupId) ? selectedGroupId : -1;
-			var groupLevelOperator = ComboBoxGroupLevelOperator.SelectedValue == null ? (GroupLevelOperatorsEnum?)null : (EnumDescriptionCache<GroupLevelOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxGroupLevelOperator.SelectedValue.ToString(), out var op1) ? op1 : null);
-			var minOperator = ComboBoxOperatorMin.SelectedValue == null ? (MinMaxOperatorsEnum?)null : (EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxOperatorMin.SelectedValue.ToString(), out var op2) ? op2 : null);
-			var maxOperator = ComboBoxOperatorMax.SelectedValue == null ? (MinMaxOperatorsEnum?)null : (EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxOperatorMax.SelectedValue.ToString(), out var op3) ? op3 : null);
-			var minMaxOperator = ComboBoxMinMaxOperator.SelectedValue == null ? (MinMaxCombinedOperatorsEnum?)null : (EnumDescriptionCache<MinMaxCombinedOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxMinMaxOperator.SelectedValue.ToString(), out var op4) ? op4 : null);
+			var groupLevelOperator = ComboBoxGroupLevelOperator.SelectedItem == null ? (GroupLevelOperatorsEnum?)null : (EnumDescriptionCache<GroupLevelOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxGroupLevelOperator.SelectedItem.ToString(), out var op1) ? op1 : null);
+			var minOperator = ComboBoxOperatorMin.SelectedItem == null ? (MinMaxOperatorsEnum?)null : (EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxOperatorMin.SelectedItem.ToString(), out var op2) ? op2 : null);
+			var maxOperator = ComboBoxOperatorMax.SelectedItem == null ? (MinMaxOperatorsEnum?)null : (EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxOperatorMax.SelectedItem.ToString(), out var op3) ? op3 : null);
+			var minMaxOperator = ComboBoxMinMaxOperator.SelectedItem == null ? (MinMaxCombinedOperatorsEnum?)null : (EnumDescriptionCache<MinMaxCombinedOperatorsEnum>.DescriptionToEnum.TryGetValue(ComboBoxMinMaxOperator.SelectedItem.ToString(), out var op4) ? op4 : null);
 			var validationType = OptionAtLeast.Checked ? ValidationTypeEnum.AtLeast :
 									OptionAtMost.Checked ? ValidationTypeEnum.AtMost :
 									OptionEachItem.Checked ? ValidationTypeEnum.EachItem :
@@ -139,9 +139,9 @@ namespace Domain.UserControls
 			{
 				GroupId = groupId,
 				GroupOperator = ComboBoxGroupLevelOperator.Enabled ? groupLevelOperator : null,
-				MinOperator = CheckboxMin.Enabled ? minOperator : null,
-				MaxOperator = CheckboxMax.Enabled ? maxOperator : null,
-				MinMaxOperator = ComboBoxMinMaxOperator.Enabled ? minMaxOperator : null,
+				MinOperator = CheckboxMin.Checked ? minOperator : null,
+				MaxOperator = CheckboxMax.Checked ? maxOperator : null,
+				MinMaxOperator = CheckboxMax.Checked && CheckboxMin.Checked ? minMaxOperator : null,
 				MaxValue = CheckboxMax.Checked ? (double)InputBoxMax.Value : null,
 				MinValue = CheckboxMin.Checked ? (double)InputBoxMin.Value : null,
 				NumberOfItems = (validationType is ValidationTypeEnum.AtLeast or ValidationTypeEnum.AtMost) ? (int)InputBoxItemsCount.Value : 0,

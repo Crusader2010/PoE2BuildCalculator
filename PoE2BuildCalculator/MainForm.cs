@@ -354,7 +354,7 @@ namespace PoE2BuildCalculator
                 return;
             }
 
-            const int totalIterations = 25;
+            int totalIterations = _customValidator != null && _customValidator._customValidatorCreated ? 2 : 25;
             const int maxListSampleSize = 100;
 
             StatusBarLabel.Text = "Preparing benchmark...";
@@ -525,6 +525,52 @@ namespace PoE2BuildCalculator
 
             MessageBox.Show(summary.ToString(), "Generation Complete",
                 MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
+        private void ButtonTestValidationFunction_Click(object sender, EventArgs e)
+        {
+            if (_fileParser == null)
+            {
+                MessageBox.Show("No parsed data. Load and parse a file first.", "No Data", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            if (_parsedItems == null || _parsedItems.Count == 0) _parsedItems = _fileParser.GetParsedItems();
+            var prepared = ItemPreparationHelper.PrepareItemsForCombinations(_parsedItems);
+
+            if (!prepared.HasItems && !prepared.HasRings)
+            {
+                MessageBox.Show("The loaded file contains no items.", "Missing Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Build one random combination
+            var random = new Random();
+            var combo = new List<Item>();
+
+            foreach (var itemClass in prepared.ItemsWithoutRings.Where(list => list.Count > 0))
+            {
+                combo.Add(itemClass[random.Next(itemClass.Count)]);
+            }
+
+            if (prepared.HasRings && prepared.Rings.Count >= 2)
+            {
+                combo.Add(prepared.Rings[random.Next(prepared.Rings.Count)]);
+                combo.Add(prepared.Rings[random.Next(prepared.Rings.Count)]);
+            }
+
+            // Get validation message
+            lock (_lockObject)
+            {
+                if (_customValidator == null)
+                {
+                    MessageBox.Show("Open the Custom Validator window first and create a custom validation function.", "No Validator", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    return;
+                }
+
+                var (_, message) = _customValidator.TestValidationFunctionTranslation(combo);
+                MessageBox.Show("Validation function translated for a random combination:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
     }
 }

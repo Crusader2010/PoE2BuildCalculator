@@ -45,7 +45,7 @@ namespace Domain.UserControls
 			ComboboxOperator.DropDownWidth = ComboboxOperator.Width;
 			ComboboxOperator.ResumeLayout();
 
-			_selectedOperator = ComboboxOperator.SelectedValue == null ? ArithmeticOperationsEnum.Sum : (EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(ComboboxOperator.SelectedValue.ToString(), out var op) ? op : ArithmeticOperationsEnum.Sum);
+			_selectedOperator = ComboboxOperator.SelectedItem == null ? ArithmeticOperationsEnum.Sum : (EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(ComboboxOperator.SelectedItem.ToString(), out var op) ? op : ArithmeticOperationsEnum.Sum);
 
 			ComboboxOperator.MouseWheel += ComboBox_MouseWheel;
 		}
@@ -78,7 +78,7 @@ namespace Domain.UserControls
 
 		private void ComboboxOperator_SelectedIndexChanged(object sender, EventArgs e)
 		{
-			_selectedOperator = ComboboxOperator.SelectedValue == null ? ArithmeticOperationsEnum.Sum : (EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(ComboboxOperator.SelectedValue.ToString(), out var op) ? op : ArithmeticOperationsEnum.Sum);
+			_selectedOperator = ComboboxOperator.SelectedItem == null ? ArithmeticOperationsEnum.Sum : (EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(ComboboxOperator.SelectedItem.ToString(), out var op) ? op : ArithmeticOperationsEnum.Sum);
 		}
 
 		private void ComboBox_MouseWheel(object sender, MouseEventArgs e)

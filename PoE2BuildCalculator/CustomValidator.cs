@@ -324,19 +324,8 @@ namespace PoE2BuildCalculator
             var groups = _groups.ToDictionary(g => g.GroupId, g => g); // all groups presumed active due to CheckInactiveSelectedGroupsOrOperations() method
             if (groups.Count == 0 || operations.Count == 0) return null;
 
-            bool firstCall = true;
-
             return items =>
             {
-                if (firstCall)
-                {
-                    firstCall = false;
-                    var messageBuilder = new StringBuilder();
-                    bool result = EvaluateValidationModels(operations, items, groups, messageBuilder);
-                    MessageBox.Show(messageBuilder.ToString(), "Validation Function for first item list", MessageBoxButtons.OK, MessageBoxIcon.Information, MessageBoxDefaultButton.Button1);
-                    return result;
-                }
-
                 return EvaluateValidationModels(operations, items, groups, messageBuilder: null);
             };
         }
@@ -385,7 +374,7 @@ namespace PoE2BuildCalculator
                 {
                     messageBuilder.Append(' ');
                     messageBuilder.Append(previousOperation.GroupOperator.Value.GetDescription());
-                    messageBuilder.Append(' ');
+                    messageBuilder.Append("\r\n\r\n");
                 }
 
                 // Evaluate current operation
@@ -399,6 +388,7 @@ namespace PoE2BuildCalculator
             // Add final result to message
             if (messageBuilder != null)
             {
+                messageBuilder.Append("\r\n\r\n");
                 messageBuilder.Append(" => ");
                 messageBuilder.Append(result ? "true" : "false");
             }
@@ -529,7 +519,7 @@ namespace PoE2BuildCalculator
                 messageBuilder.Append(FormatConstraints(operation));
                 messageBuilder.Append(" for ");
                 messageBuilder.Append(FormatValidationType(operation));
-                messageBuilder.Append(" => ");
+                messageBuilder.Append("\r\n\t\t => ");
                 messageBuilder.Append(result ? "true" : "false");
                 messageBuilder.Append(')');
             }
