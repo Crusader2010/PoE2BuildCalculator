@@ -86,20 +86,25 @@ namespace PoE2BuildCalculator
             if (items == null || items.Count == 0) return true;
             bool overallResult = true;
 
-            foreach (var operation in activeOperations)
+            ValidationModel prevOperation = activeOperations[0];
+            for (int i1 = 1; i1 < activeOperations.Count; i1++)
             {
-                var group = operation.GroupId >= 0 && activeGroups.TryGetValue(operation.GroupId, out var dictGroup) ? dictGroup : null;
-                if (group == null) continue;
+                var prevGroup = prevOperation.GroupId >= 0 && activeGroups.TryGetValue(prevOperation.GroupId, out var dictGroupPrev) ? dictGroupPrev : null;
+                if (prevGroup == null) continue;
+
+                ValidationModel nextOperation = activeOperations[i1];
+                var nextGroup = nextOperation.GroupId >= 0 && activeGroups.TryGetValue(nextOperation.GroupId, out var dictGroupNext) ? dictGroupNext : null;
+                if (nextGroup == null) continue;
 
                 foreach (var item in items)
                 {
                     var itemStats = ItemStatsHelper.ToDictionary(item.ItemStats);
-                    double finalItemValue = itemStats.TryGetValue(group.Stats[0].PropertyName, out var initialStat) ? (double)initialStat : 0.0;
+                    double finalItemValue = itemStats.TryGetValue(nextGroup.Stats[0].PropertyName, out var initialStat) ? (double)initialStat : 0.0;
 
-                    for (int i = 1; i < group.Stats.Count; i++)
+                    for (int i = 1; i < nextGroup.Stats.Count; i++)
                     {
-                        var nextValue = itemStats.TryGetValue(group.Stats[i].PropertyName, out var nextStat) ? (double)nextStat : 0.0;
-                        switch (group.Stats[i - 1].Operator)
+                        var nextValue = itemStats.TryGetValue(nextGroup.Stats[i].PropertyName, out var nextStat) ? (double)nextStat : 0.0;
+                        switch (nextGroup.Stats[i - 1].Operator)
                         {
                             case ArithmeticOperationsEnum.Sum:
                                 finalItemValue += nextValue;
@@ -118,8 +123,10 @@ namespace PoE2BuildCalculator
                         }
                     }
 
-                    if (operation.ValidationType == ValidationTypeEnum.EachItem && !ValidateOperationTypeEachItem(operation, finalItemValue)) return false;
+                    if (nextOperation.ValidationType == ValidationTypeEnum.EachItem && !ValidateOperationTypeEachItem(nextOperation, finalItemValue)) return false;
                 }
+
+                prevOperation = nextOperation; // this probably needs to be a clone so they dont end up referecing the same object
             }
 
             return overallResult;
