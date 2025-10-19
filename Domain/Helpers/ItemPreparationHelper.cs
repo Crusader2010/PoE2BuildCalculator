@@ -24,7 +24,7 @@ namespace Domain.Helpers
 		{
 			ArgumentNullException.ThrowIfNull(parsedItems);
 
-			if (parsedItems.Count == 0)
+			if (parsedItems == null || parsedItems.Count == 0)
 			{
 				return new PreparedItems([], null, false, false);
 			}

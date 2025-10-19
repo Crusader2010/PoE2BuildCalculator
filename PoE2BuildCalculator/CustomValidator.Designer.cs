@@ -29,6 +29,7 @@
 			panel1 = new Panel();
 			FlowPanelGroups = new FlowLayoutPanel();
 			FlowPanelOperations = new FlowLayoutPanel();
+			ButtonTranslateValidationFunction = new Button();
 			mainPanel.SuspendLayout();
 			headerPanel.SuspendLayout();
 			bottomPanel.SuspendLayout();
@@ -56,6 +57,7 @@
 			// 
 			// headerPanel
 			// 
+			headerPanel.Controls.Add(ButtonTranslateValidationFunction);
 			headerPanel.Controls.Add(btnAddOperation);
 			headerPanel.Controls.Add(lblTitle);
 			headerPanel.Controls.Add(btnAddGroup);
@@ -115,7 +117,7 @@
 			btnHelp.FlatStyle = FlatStyle.Flat;
 			btnHelp.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
 			btnHelp.ForeColor = Color.White;
-			btnHelp.Location = new Point(550, 3);
+			btnHelp.Location = new Point(705, 3);
 			btnHelp.Name = "btnHelp";
 			btnHelp.Size = new Size(43, 38);
 			btnHelp.TabIndex = 2;
@@ -194,6 +196,21 @@
 			FlowPanelOperations.Size = new Size(270, 568);
 			FlowPanelOperations.TabIndex = 0;
 			// 
+			// ButtonTranslateValidationFunction
+			// 
+			ButtonTranslateValidationFunction.BackColor = Color.FromArgb(70, 130, 180);
+			ButtonTranslateValidationFunction.FlatAppearance.BorderSize = 0;
+			ButtonTranslateValidationFunction.FlatStyle = FlatStyle.Flat;
+			ButtonTranslateValidationFunction.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+			ButtonTranslateValidationFunction.ForeColor = Color.White;
+			ButtonTranslateValidationFunction.Location = new Point(754, 3);
+			ButtonTranslateValidationFunction.Name = "ButtonTranslateValidationFunction";
+			ButtonTranslateValidationFunction.Size = new Size(237, 38);
+			ButtonTranslateValidationFunction.TabIndex = 4;
+			ButtonTranslateValidationFunction.Text = "Translate Validation Function";
+			ButtonTranslateValidationFunction.UseVisualStyleBackColor = false;
+			ButtonTranslateValidationFunction.Click += ButtonTranslateValidationFunction_Click;
+			// 
 			// CustomValidator
 			// 
 			AutoScaleDimensions = new SizeF(96F, 96F);
@@ -244,5 +261,6 @@
 		private Panel panel1;
 		private FlowLayoutPanel FlowPanelGroups;
 		private FlowLayoutPanel FlowPanelOperations;
+		private Button ButtonTranslateValidationFunction;
 	}
 }

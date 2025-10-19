@@ -27,7 +27,6 @@
 			ButtonManageCustomValidator = new Button();
 			ButtonBenchmark = new Button();
 			PanelButtons = new Panel();
-			ButtonTestValidationFunction = new Button();
 			StatusBar.SuspendLayout();
 			PanelButtons.SuspendLayout();
 			SuspendLayout();
@@ -134,7 +133,6 @@
 			// 
 			// PanelButtons
 			// 
-			PanelButtons.Controls.Add(ButtonTestValidationFunction);
 			PanelButtons.Controls.Add(ButtonOpenItemListFile);
 			PanelButtons.Controls.Add(ButtonBenchmark);
 			PanelButtons.Controls.Add(ButtonParseItemListFile);
@@ -145,16 +143,6 @@
 			PanelButtons.Name = "PanelButtons";
 			PanelButtons.Size = new Size(296, 307);
 			PanelButtons.TabIndex = 9;
-			// 
-			// ButtonTestValidationFunction
-			// 
-			ButtonTestValidationFunction.Location = new Point(14, 205);
-			ButtonTestValidationFunction.Name = "ButtonTestValidationFunction";
-			ButtonTestValidationFunction.Size = new Size(126, 58);
-			ButtonTestValidationFunction.TabIndex = 9;
-			ButtonTestValidationFunction.Text = "Display Validation Function";
-			ButtonTestValidationFunction.UseVisualStyleBackColor = true;
-			ButtonTestValidationFunction.Click += ButtonTestValidationFunction_Click;
 			// 
 			// MainForm
 			// 
@@ -193,6 +181,5 @@
         private Button ButtonManageCustomValidator;
         private Button ButtonBenchmark;
         private Panel PanelButtons;
-		private Button ButtonTestValidationFunction;
 	}
 }

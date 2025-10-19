@@ -226,6 +226,35 @@ namespace PoE2BuildCalculator
             }
         }
 
+        private void ButtonTranslateValidationFunction_Click(object sender, EventArgs e)
+        {
+            var prepared = ItemPreparationHelper.PrepareItemsForCombinations(_ownerForm._parsedItems);
+            if (_ownerForm._parsedItems == null || _ownerForm._parsedItems.Count == 0 || (!prepared.HasRings && !prepared.HasItems))
+            {
+                MessageBox.Show("No items have been loaded. Open a file and parse it.", "Missing Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // Build one random combination
+            var random = new Random();
+            var combo = new List<Item>();
+
+            foreach (var itemClass in prepared.ItemsWithoutRings.Where(list => list.Count > 0))
+            {
+                combo.Add(itemClass[random.Next(itemClass.Count)]);
+            }
+
+            if (prepared.HasRings && prepared.Rings.Count >= 2)
+            {
+                combo.Add(prepared.Rings[random.Next(prepared.Rings.Count)]);
+                combo.Add(prepared.Rings[random.Next(prepared.Rings.Count)]);
+            }
+
+            // Get validation message
+            var (_, message) = TestValidationFunctionTranslation(combo);
+            MessageBox.Show("Validation function translated for a random combination:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Information);
+        }
+
         private static (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) GetUserControlSizes()
         {
             using var tempGroupOperation = new GroupOperationsUserControl(ImmutableDictionary<int, string>.Empty, new Form());
@@ -420,14 +449,14 @@ namespace PoE2BuildCalculator
 
             // Start with first stat value (defaults to 0 if missing)
             double result = itemStats.TryGetValue(group.Stats[0].PropertyName, out var initialStat)
-                ? (double)initialStat
+                ? Convert.ToDouble(initialStat)
                 : 0.0;
 
             // Apply each operator successively to build the expression result
             for (int i = 1; i < group.Stats.Count; i++)
             {
                 double nextValue = itemStats.TryGetValue(group.Stats[i].PropertyName, out var nextStat)
-                    ? (double)nextStat
+                    ? Convert.ToDouble(nextStat)
                     : 0.0;
 
                 result = group.Stats[i - 1].Operator switch
