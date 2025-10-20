@@ -116,6 +116,7 @@ namespace Domain.UserControls
 				var itemStatRow = new ItemStatRow(_statRows.Count, statName);
 				itemStatRow.ItemStatRowDeleted += RemoveStatRow;
 				itemStatRow.ItemStatRowSwapped += SwapStats;
+				itemStatRow.OperatorChanged += (s, e) => ReCompileStatsForGroup();
 
 				foreach (var statRow in FlowPanelStats.Controls.OfType<ItemStatRow>())
 				{
@@ -282,13 +283,16 @@ namespace Domain.UserControls
 
 			_group.Stats ??= [];
 			_group.Stats.Clear();
-			for (int i = 0; i < _statRows.Count; i++)
+			var currentRows = FlowPanelStats.Controls.OfType<ItemStatRow>().OrderBy(r => r._currentRowIndex).ToList();
+
+			for (int i = 0; i < currentRows.Count; i++)
 			{
+				var statRow = currentRows[i];
 				_group.Stats.Add(new GroupStatModel
 				{
-					PropertyName = _statRows[i]._selectedStatName,
-					PropInfo = _availableProperties.Value.TryGetValue(_statRows[i]._selectedStatName, out var dictResult) ? dictResult : null,
-					Operator = i == _statRows.Count - 1 ? null : _statRows[i]._selectedOperator
+					PropertyName = statRow._selectedStatName,
+					PropInfo = _availableProperties.Value.TryGetValue(statRow._selectedStatName, out var dictResult) ? dictResult : null,
+					Operator = i == currentRows.Count - 1 ? null : statRow._selectedOperator
 				});
 			}
 		}

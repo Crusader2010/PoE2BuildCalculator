@@ -8,11 +8,27 @@ namespace Domain.UserControls
 	{
 		public int _currentRowIndex { get; private set; }
 		public string _selectedStatName { get; private set; }
-		public ArithmeticOperationsEnum _selectedOperator { get; private set; }
 		private ToolTip _tooltip;
 
 		public event EventHandler ItemStatRowDeleted;
 		public event EventHandler ItemStatRowSwapped;
+		public event EventHandler OperatorChanged;
+
+		public ArithmeticOperationsEnum _selectedOperator
+		{
+			get
+			{
+				if (ComboboxOperator.SelectedItem == null)
+				{
+					return ArithmeticOperationsEnum.Sum;
+				}
+
+				string selected = ComboboxOperator.SelectedItem.ToString();
+				bool found = EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(selected, out var op);
+
+				return found ? op : ArithmeticOperationsEnum.Sum;
+			}
+		}
 
 		public ItemStatRow(int currentRowIndex, string statName)
 		{
@@ -51,8 +67,6 @@ namespace Domain.UserControls
 			ComboboxOperator.DropDownWidth = ComboboxOperator.Width;
 			ComboboxOperator.ResumeLayout();
 
-			_selectedOperator = ComboboxOperator.SelectedItem == null ? ArithmeticOperationsEnum.Sum : (EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(ComboboxOperator.SelectedItem.ToString(), out var op) ? op : ArithmeticOperationsEnum.Sum);
-
 			ComboboxOperator.MouseWheel += ComboBox_MouseWheel;
 		}
 
@@ -81,11 +95,6 @@ namespace Domain.UserControls
 		private void ButtonMoveDown_Click(object sender, EventArgs e)
 		{
 			ItemStatRowSwapped?.Invoke(this, new ItemStatRowSwapEventArgs() { SourceIndex = _currentRowIndex, TargetIndex = _currentRowIndex + 1 });
-		}
-
-		private void ComboboxOperator_SelectedIndexChanged(object sender, EventArgs e)
-		{
-			_selectedOperator = ComboboxOperator.SelectedItem == null ? ArithmeticOperationsEnum.Sum : (EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(ComboboxOperator.SelectedItem.ToString(), out var op) ? op : ArithmeticOperationsEnum.Sum);
 		}
 
 		private void ComboBox_MouseWheel(object sender, MouseEventArgs e)
@@ -129,6 +138,12 @@ namespace Domain.UserControls
 				_tooltip.SetToolTip(textBox, null);
 				_tooltip.SetToolTip(PanelStatText, null);
 			}
+		}
+
+		private void ComboboxOperator_SelectedIndexChanged(object sender, EventArgs e)
+		{
+			// Notify parent that operator changed
+			OperatorChanged?.Invoke(this, EventArgs.Empty);
 		}
 	}
 }

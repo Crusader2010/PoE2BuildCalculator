@@ -19,7 +19,18 @@ namespace Domain.Validation
 			}
 		}
 
-		public List<GroupStatModel> Stats { get; set; } = [];
+		public List<GroupStatModel> Stats
+		{
+			get;
+			set
+			{
+				if (field != value)
+				{
+					field = value;
+					OnPropertyChanged(nameof(Stats));
+				}
+			}
+		} = [];
 
 		public bool IsActive => Stats != null && Stats.Count > 0;
 
