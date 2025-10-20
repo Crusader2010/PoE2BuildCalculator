@@ -29,7 +29,7 @@ namespace Domain.UserControls
 
 		private void ItemStatRow_Load(object sender, EventArgs e)
 		{
-			if (components == null) components = new System.ComponentModel.Container();
+			components ??= new System.ComponentModel.Container();
 			_tooltip = new(components) { AutoPopDelay = 6000, InitialDelay = 100, ReshowDelay = 50, ToolTipIcon = ToolTipIcon.Info };
 
 			TextboxItemStat.Text = _selectedStatName;
@@ -69,7 +69,7 @@ namespace Domain.UserControls
 		private void ButtonRemove_Click(object sender, EventArgs e)
 		{
 			ItemStatRowDeleted?.Invoke(this, new ItemStatRowDeletingEventArgs() { IsDeleting = true });
-			if (_tooltip != null) _tooltip.Dispose();
+			_tooltip?.Dispose();
 			Dispose();
 		}
 
