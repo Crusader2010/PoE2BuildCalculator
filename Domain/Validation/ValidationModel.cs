@@ -45,7 +45,7 @@ namespace Domain.Validation
 			}
 		}
 
-		public GroupLevelOperatorsEnum? GroupOperator
+		public GroupLevelOperatorsEnum? GroupLevelOperator
 		{
 			get => field ?? GroupLevelOperatorsEnum.AND;
 			set
@@ -53,7 +53,7 @@ namespace Domain.Validation
 				if (field != value)
 				{
 					field = value;
-					OnPropertyChanged(nameof(GroupOperator));
+					OnPropertyChanged(nameof(GroupLevelOperator));
 				}
 			}
 		}

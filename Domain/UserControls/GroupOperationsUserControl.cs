@@ -138,7 +138,7 @@ namespace Domain.UserControls
 			return new ValidationModel
 			{
 				GroupId = groupId,
-				GroupOperator = ComboBoxGroupLevelOperator.Enabled ? groupLevelOperator : null,
+				GroupLevelOperator = ComboBoxGroupLevelOperator.Enabled ? groupLevelOperator : null,
 				MinOperator = CheckboxMin.Checked ? minOperator : null,
 				MaxOperator = CheckboxMax.Checked ? maxOperator : null,
 				MinMaxOperator = CheckboxMax.Checked && CheckboxMin.Checked ? minMaxOperator : null,

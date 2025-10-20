@@ -48,7 +48,7 @@ namespace Domain.Main
 			{
 				field = value;
 				OnPropertyChanged(nameof(StatWeights));
-				OnPropertyChanged(nameof(TotalStatWeight)); // Notify the DataGridView of the change
+				OnPropertyChanged(nameof(TotalStatWeight));
 			}
 		} = new Dictionary<string, double>();
 

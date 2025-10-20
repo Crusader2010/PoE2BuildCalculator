@@ -215,7 +215,6 @@ namespace PoE2BuildCalculator
 
                 _masterValidator = validatorFunction;
                 _ownerForm._itemValidatorFunction = _masterValidator;
-                _ownerForm._benchmarkRanOnCustomValidator = false;
                 _customValidatorCreated = validatorFunction.Target != null;
 
                 MessageBox.Show($"Validator created successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -228,18 +227,10 @@ namespace PoE2BuildCalculator
 
         private void ButtonTranslateValidationFunction_Click(object sender, EventArgs e)
         {
-            var prepared = ItemPreparationHelper.PrepareItemsForCombinations(_ownerForm._parsedItems);
-            if (_ownerForm._parsedItems == null || _ownerForm._parsedItems.Count == 0 || prepared == null || (!prepared.HasRings && !prepared.HasItems))
-            {
-                MessageBox.Show("No items have been loaded. Open a file and parse it.", "Missing Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            // Build a combination from one item
-            var items = prepared.ItemsWithoutRings?.FirstOrDefault(list => list.Count > 0) ?? prepared.Rings;
+            var item = new Item() { Class = "TestItem", Id = -1, Name = "Test1", ItemStats = new() };
 
             // Get validation message
-            var (isValid, message) = TestValidationFunctionTranslation(items);
+            var (isValid, message) = TestValidationFunctionTranslation([item]);
             if (!isValid)
             {
                 MessageBox.Show("Error during validation function translation:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -422,10 +413,10 @@ namespace PoE2BuildCalculator
                 }
 
                 // Add operator to message before evaluating next operation
-                if (messageBuilder != null && previousOperation.GroupOperator.HasValue)
+                if (messageBuilder != null && previousOperation.GroupLevelOperator.HasValue)
                 {
                     messageBuilder.Append(' ');
-                    messageBuilder.Append(previousOperation.GroupOperator.Value.GetDescription());
+                    messageBuilder.Append(previousOperation.GroupLevelOperator.Value.GetDescription());
                     messageBuilder.Append("\r\n\r\n");
                 }
 
@@ -434,7 +425,7 @@ namespace PoE2BuildCalculator
 
                 // Combine with accumulated result using operator from PREVIOUS operation
                 // (operator is stored on the operation that comes before the next one)
-                result = CombineOperationResults(result, previousOperation.GroupOperator, currentResult);
+                result = CombineOperationResults(result, previousOperation.GroupLevelOperator, currentResult);
             }
 
             // Add final result to message

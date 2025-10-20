@@ -9,17 +9,17 @@
 		private readonly ToolStrip _statusStrip;
 		private readonly ToolStripButton _cancelButton;
 		private readonly ToolStripStatusLabel _statusLabel;
-		private readonly Panel _controlPanel;
+		private readonly List<Panel> _controlPanels;
 		private CancellationTokenSource _cts;
 		private bool _isActive;
 
-		public ProgressReportingHelper(ToolStripProgressBar progressBar, ToolStripButton cancelButton, ToolStripStatusLabel statusLabel, Panel controlPanel)
+		public ProgressReportingHelper(ToolStripProgressBar progressBar, ToolStripButton cancelButton, ToolStripStatusLabel statusLabel, List<Panel> controlPanels)
 		{
 			_progressBar = progressBar ?? throw new ArgumentNullException(nameof(progressBar));
 			_statusStrip = _progressBar.GetCurrentParent();
 			_cancelButton = cancelButton ?? throw new ArgumentNullException(nameof(cancelButton));
 			_statusLabel = statusLabel ?? throw new ArgumentNullException(nameof(statusLabel));
-			_controlPanel = controlPanel ?? throw new ArgumentNullException(nameof(controlPanel));
+			_controlPanels = controlPanels ?? throw new ArgumentNullException(nameof(controlPanels));
 		}
 
 		public CancellationToken Token => _cts?.Token ?? CancellationToken.None;
@@ -66,7 +66,7 @@
 
 			_statusStrip?.SuspendLayout();
 
-			_controlPanel.Enabled = false;
+			_controlPanels.ForEach(x => x.Enabled = false);
 			_cancelButton.Enabled = true;
 			_cancelButton.Visible = true;
 			_progressBar.Value = 0;
@@ -88,7 +88,7 @@
 			_progressBar.Value = 0;
 			_cancelButton.Enabled = false;
 			_cancelButton.Visible = false;
-			_controlPanel.Enabled = true;
+			_controlPanels.ForEach(x => x.Enabled = true);
 
 			_statusStrip?.ResumeLayout(performLayout: true);
 
