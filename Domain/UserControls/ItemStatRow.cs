@@ -9,6 +9,7 @@ namespace Domain.UserControls
 		public int _currentRowIndex { get; private set; }
 		public string _selectedStatName { get; private set; }
 		public ArithmeticOperationsEnum _selectedOperator { get; private set; }
+		private ToolTip _tooltip;
 
 		public event EventHandler ItemStatRowDeleted;
 		public event EventHandler ItemStatRowSwapped;
@@ -28,7 +29,12 @@ namespace Domain.UserControls
 
 		private void ItemStatRow_Load(object sender, EventArgs e)
 		{
+			if (components == null) components = new System.ComponentModel.Container();
+			_tooltip = new(components) { AutoPopDelay = 6000, InitialDelay = 100, ReshowDelay = 50, ToolTipIcon = ToolTipIcon.Info };
+
 			TextboxItemStat.Text = _selectedStatName;
+			SetTextboxWithEllipsis(TextboxItemStat, _selectedStatName);
+
 			ComboboxOperator.Enabled = false;
 		}
 
@@ -63,6 +69,7 @@ namespace Domain.UserControls
 		private void ButtonRemove_Click(object sender, EventArgs e)
 		{
 			ItemStatRowDeleted?.Invoke(this, new ItemStatRowDeletingEventArgs() { IsDeleting = true });
+			if (_tooltip != null) _tooltip.Dispose();
 			Dispose();
 		}
 
@@ -86,6 +93,41 @@ namespace Domain.UserControls
 			if (e is HandledMouseEventArgs handledE)
 			{
 				handledE.Handled = true;
+			}
+		}
+
+		private void SetTextboxWithEllipsis(TextBox textBox, string fullText)
+		{
+			textBox.Text = fullText;
+
+			// Check if text fits
+			using var g = textBox.CreateGraphics();
+			var textSize = g.MeasureString(fullText, textBox.Font);
+
+			if (textSize.Width > textBox.ClientSize.Width - 4)
+			{
+				// Text too long - truncate and add "..."
+				string truncated = fullText;
+				while (truncated.Length > 0)
+				{
+					var testSize = g.MeasureString(truncated + "...", textBox.Font);
+					if (testSize.Width <= textBox.ClientSize.Width - 4)
+					{
+						textBox.Text = truncated + "...";
+						break;
+					}
+					truncated = truncated[..^1];
+				}
+
+				// Show tooltip
+				_tooltip.SetToolTip(textBox, fullText);
+				_tooltip.SetToolTip(PanelStatText, fullText);
+			}
+			else
+			{
+				// Text fits - no tooltip needed
+				_tooltip.SetToolTip(textBox, null);
+				_tooltip.SetToolTip(PanelStatText, null);
 			}
 		}
 	}

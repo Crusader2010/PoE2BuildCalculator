@@ -34,20 +34,21 @@
 			ButtonMoveDown = new Button();
 			ButtonRemove = new Button();
 			panel1 = new Panel();
-			panel3 = new Panel();
+			PanelStatText = new Panel();
 			panel2 = new Panel();
 			panel1.SuspendLayout();
-			panel3.SuspendLayout();
+			PanelStatText.SuspendLayout();
 			panel2.SuspendLayout();
 			SuspendLayout();
 			// 
 			// TextboxItemStat
 			// 
 			TextboxItemStat.Dock = DockStyle.Fill;
+			TextboxItemStat.Font = new Font("Verdana", 10F, FontStyle.Regular, GraphicsUnit.Point, 0);
 			TextboxItemStat.Location = new Point(1, 2);
 			TextboxItemStat.Name = "TextboxItemStat";
 			TextboxItemStat.ReadOnly = true;
-			TextboxItemStat.Size = new Size(251, 21);
+			TextboxItemStat.Size = new Size(251, 24);
 			TextboxItemStat.TabIndex = 5;
 			// 
 			// ComboboxOperator
@@ -110,7 +111,7 @@
 			// 
 			// panel1
 			// 
-			panel1.Controls.Add(panel3);
+			panel1.Controls.Add(PanelStatText);
 			panel1.Controls.Add(panel2);
 			panel1.Controls.Add(ButtonRemove);
 			panel1.Dock = DockStyle.Fill;
@@ -119,17 +120,17 @@
 			panel1.Size = new Size(367, 28);
 			panel1.TabIndex = 10;
 			// 
-			// panel3
+			// PanelStatText
 			// 
-			panel3.BorderStyle = BorderStyle.FixedSingle;
-			panel3.Controls.Add(TextboxItemStat);
-			panel3.Font = new Font("Courier New", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			panel3.Location = new Point(0, 0);
-			panel3.Margin = new Padding(0);
-			panel3.Name = "panel3";
-			panel3.Padding = new Padding(1, 2, 1, 4);
-			panel3.Size = new Size(255, 28);
-			panel3.TabIndex = 11;
+			PanelStatText.BorderStyle = BorderStyle.FixedSingle;
+			PanelStatText.Controls.Add(TextboxItemStat);
+			PanelStatText.Font = new Font("Courier New", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
+			PanelStatText.Location = new Point(0, 0);
+			PanelStatText.Margin = new Padding(0);
+			PanelStatText.Name = "PanelStatText";
+			PanelStatText.Padding = new Padding(1, 2, 1, 4);
+			PanelStatText.Size = new Size(255, 28);
+			PanelStatText.TabIndex = 11;
 			// 
 			// panel2
 			// 
@@ -154,8 +155,8 @@
 			Size = new Size(367, 28);
 			Load += ItemStatRow_Load;
 			panel1.ResumeLayout(false);
-			panel3.ResumeLayout(false);
-			panel3.PerformLayout();
+			PanelStatText.ResumeLayout(false);
+			PanelStatText.PerformLayout();
 			panel2.ResumeLayout(false);
 			ResumeLayout(false);
 		}
@@ -168,6 +169,6 @@
         private Button ButtonRemove;
         private Panel panel1;
         private Panel panel2;
-        private Panel panel3;
+        private Panel PanelStatText;
     }
 }

@@ -229,30 +229,28 @@ namespace PoE2BuildCalculator
         private void ButtonTranslateValidationFunction_Click(object sender, EventArgs e)
         {
             var prepared = ItemPreparationHelper.PrepareItemsForCombinations(_ownerForm._parsedItems);
-            if (_ownerForm._parsedItems == null || _ownerForm._parsedItems.Count == 0 || (!prepared.HasRings && !prepared.HasItems))
+            if (_ownerForm._parsedItems == null || _ownerForm._parsedItems.Count == 0 || prepared == null || (!prepared.HasRings && !prepared.HasItems))
             {
                 MessageBox.Show("No items have been loaded. Open a file and parse it.", "Missing Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return;
             }
 
-            // Build one random combination
-            var random = new Random();
-            var combo = new List<Item>();
-
-            foreach (var itemClass in prepared.ItemsWithoutRings.Where(list => list.Count > 0))
-            {
-                combo.Add(itemClass[random.Next(itemClass.Count)]);
-            }
-
-            if (prepared.HasRings && prepared.Rings.Count >= 2)
-            {
-                combo.Add(prepared.Rings[random.Next(prepared.Rings.Count)]);
-                combo.Add(prepared.Rings[random.Next(prepared.Rings.Count)]);
-            }
+            // Build a combination from one item
+            var items = prepared.ItemsWithoutRings?.FirstOrDefault(list => list.Count > 0) ?? prepared.Rings;
 
             // Get validation message
-            var (_, message) = TestValidationFunctionTranslation(combo);
-            MessageBox.Show("Validation function translated for a random combination:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            var (isValid, message) = TestValidationFunctionTranslation(items);
+            if (!isValid)
+            {
+                MessageBox.Show("Error during validation function translation:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+            }
+
+            message = message.Replace("\r\n\t\t => true", string.Empty)
+                             .Replace("\r\n\t\t => false", string.Empty)
+                             .Replace("\r\n\r\n => true", string.Empty)
+                             .Replace("\r\n\r\n => false", string.Empty);
+            MessageBox.Show("Validation function translation:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private static (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) GetUserControlSizes()
@@ -297,6 +295,31 @@ namespace PoE2BuildCalculator
 
             this.ResumeLayout(true);
         }
+
+        private void ButtonCloseAndDispose_Click(object sender, EventArgs e)
+        {
+            ButtonCloseAndDispose.CausesValidation = false;
+            components?.Dispose();
+            this.Dispose();
+        }
+
+        private void ButtonHide_Click(object sender, EventArgs e)
+        {
+            ButtonHide.CausesValidation = false;
+            this.Hide();
+            this.Owner?.BringToFront();
+        }
+
+        private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            if (e.CloseReason == CloseReason.UserClosing)
+            {
+                e.Cancel = true;
+                this.Hide();
+                this.Owner?.BringToFront();
+            }
+        }
+
 
         private void RefreshGroupOperationsAfterDelete()
         {
@@ -855,6 +878,8 @@ namespace PoE2BuildCalculator
         /// </summary>
         public (bool IsValid, string Message) TestValidationFunctionTranslation(List<Item> items)
         {
+            if (items == null || items.Count == 0) return (false, "There are no items present.");
+
             var (isValid, message) = CheckInactiveSelectedGroupsOrOperations();
             if (!isValid) return (false, message);
 
@@ -865,7 +890,7 @@ namespace PoE2BuildCalculator
 
             var messageBuilder = new StringBuilder();
             bool result = EvaluateValidationModels(operations, items, groups, messageBuilder);
-            return (result, messageBuilder.ToString());
+            return (true, messageBuilder.ToString());
         }
 
         #endregion

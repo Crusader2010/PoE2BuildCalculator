@@ -184,17 +184,18 @@ namespace PoE2BuildCalculator
 
         private void ShowItemsDataButton_Click(object sender, EventArgs e)
         {
-            if (_fileParser == null || _fileParser.GetParsedItems().Count == 0)
+            bool haveComputedCombinations = _combinations != null && _combinations.Count > 0;
+            if (!haveComputedCombinations && (_fileParser == null || _fileParser.GetParsedItems().Count == 0))
             {
                 StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
                 return;
             }
 
-            var display = new DataDisplay
-            {
-                // pass parser to the dialog before showing it
-                _fileParser = _fileParser
-            };
+            var computedItems = haveComputedCombinations
+                                    ? [.. _combinations.SelectMany(list => list)]
+                                    : _fileParser?.GetParsedItems() ?? [];
+
+            var display = new DataDisplay(computedItems);
 
             // show modal so caller waits for the user to close it
             display.Show(this);
@@ -352,7 +353,7 @@ namespace PoE2BuildCalculator
                 return;
             }
 
-            int totalIterations = _customValidator != null && _customValidator._customValidatorCreated ? 2 : 25;
+            int totalIterations = _customValidator != null && _customValidator._customValidatorCreated ? 5 : 25;
             const int maxListSampleSize = 100;
 
             StatusBarLabel.Text = "Preparing benchmark...";
@@ -449,6 +450,7 @@ namespace PoE2BuildCalculator
         private ExecutionEstimate RunBenchmarkIterations(int totalIterations, List<List<Item>> sampledItems, List<Item> sampledRings, IProgress<BenchmarkProgress> progress)
         {
             ExecutionEstimate estimate = null;
+            var safeSampleSize = _customValidator != null && _customValidator._customValidatorCreated ? 10000 : _safeBenchmarkSampleSize;
 
             for (int i = 0; i < totalIterations; i++)
             {
@@ -458,7 +460,7 @@ namespace PoE2BuildCalculator
                     sampledItems,
                     sampledRings,
                     _itemValidatorFunction,
-                    safeSampleSize: _safeBenchmarkSampleSize,
+                    safeSampleSize: safeSampleSize,
                     skipGarbageCollection: true);
 
                 int currentIteration = i + 1;

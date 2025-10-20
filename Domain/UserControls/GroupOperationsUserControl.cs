@@ -68,13 +68,13 @@ namespace Domain.UserControls
 
 			ComboBoxGroupLevelOperator.Items.AddRange(EnumDescriptionCache<GroupLevelOperatorsEnum>.DescriptionsArray);
 			ComboBoxMinMaxOperator.Items.AddRange(EnumDescriptionCache<MinMaxCombinedOperatorsEnum>.DescriptionsArray);
-			ComboBoxOperatorMax.Items.AddRange(EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionsArray);
 			ComboBoxOperatorMin.Items.AddRange(EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionsArray);
+			ComboBoxOperatorMax.Items.AddRange(EnumDescriptionCache<MinMaxOperatorsEnum>.DescriptionsArray);
 
 			ComboBoxGroupLevelOperator.SelectedIndex = 0;
 			ComboBoxMinMaxOperator.SelectedIndex = 0;
 			ComboBoxOperatorMin.SelectedIndex = 0;
-			ComboBoxOperatorMax.SelectedIndex = 0;
+			ComboBoxOperatorMax.SelectedItem = MinMaxOperatorsEnum.LessEqual.GetDescription();
 
 			CheckboxMin.Checked = true;
 			CheckboxMax.Checked = false;
