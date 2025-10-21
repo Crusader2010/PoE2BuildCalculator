@@ -546,8 +546,27 @@ namespace PoE2BuildCalculator
 			StatusBarEstimate.Visible = false;
 			StatusBarEstimate.Text = "";
 
+			// ✅ CLIENT-SIDE THROTTLING: Process every 5th progress report (500k combinations)
+			long progressReportCounter = 0;
+			var lastProcessedForUI = 0L;
+			const long UI_UPDATE_INTERVAL = 3; // Update UI every 5 reports = 500k combinations
+
 			var progress = new Progress<CombinationProgress>(p =>
 			{
+				// ✅ Increment counter and check if we should update UI
+				long currentCounter = Interlocked.Increment(ref progressReportCounter);
+
+				// ✅ Always update on first report and every Nth report
+				bool shouldUpdateUI = (currentCounter == 1) || (currentCounter % UI_UPDATE_INTERVAL == 0);
+
+				// ✅ Always update on final report (100% complete)
+				if (p.PercentComplete >= 99.99) shouldUpdateUI = true;
+
+				if (!shouldUpdateUI) return;
+
+				// ✅ Track that we processed this update
+				Interlocked.Exchange(ref lastProcessedForUI, p.ProcessedCombinations);
+
 				_progressReportCount++;
 
 				// Calculate estimated time remaining
@@ -571,7 +590,7 @@ namespace PoE2BuildCalculator
 									 $"Processed: {p.ProcessedCombinations}\r\n" +
 									 $"Valid: {p.ValidCombinations}\r\n" +
 									 $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}\r\n" +
-									 $"{estimate}";  // ✅ Also show in text display
+									 $"{estimate}";
 			});
 
 			try
