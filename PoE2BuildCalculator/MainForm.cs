@@ -8,9 +8,11 @@ using Domain.Main;
 
 using Manager;
 
+using PoE2BuildCalculator.Helpers;
+
 namespace PoE2BuildCalculator
 {
-	public partial class MainForm : Form, IDisposable
+	public partial class MainForm : BaseForm, IDisposable
 	{
 		// Field for thread synchronization
 		private readonly object _lockObject = new();
@@ -124,7 +126,7 @@ namespace PoE2BuildCalculator
 			catch (Exception ex)
 			{
 				StatusBarLabel.Text = $"Error: {ex.Message}";
-				ErrorHelper.ShowError(ex, "Parsing Error");
+				ErrorHelper.ShowError(ex, $"{nameof(MainForm)} - {nameof(ButtonParseItemListFile_Click)}");
 			}
 			finally
 			{
@@ -229,7 +231,6 @@ namespace PoE2BuildCalculator
 
 			var tieredStatNames = tiers
 				.SelectMany(t => t.StatWeights.Keys)
-				.Distinct()
 				.ToHashSet(StringComparer.OrdinalIgnoreCase);
 
 			foreach (var statName in tieredStatNames)

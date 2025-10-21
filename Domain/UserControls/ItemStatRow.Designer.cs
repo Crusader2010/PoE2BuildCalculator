@@ -1,24 +1,24 @@
 ﻿namespace Domain.UserControls
 {
-	partial class ItemStatRow
-	{
-		/// <summary> 
-		/// Required designer variable.
-		/// </summary>
-		private System.ComponentModel.IContainer components = null;
+    partial class ItemStatRow
+    {
+        /// <summary> 
+        /// Required designer variable.
+        /// </summary>
+        private System.ComponentModel.IContainer components = null;
 
-		/// <summary> 
-		/// Clean up any resources being used.
-		/// </summary>
-		/// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-		protected override void Dispose(bool disposing)
-		{
-			if (disposing && (components != null))
-			{
-				components.Dispose();
-			}
-			base.Dispose(disposing);
-		}
+        /// <summary> 
+        /// Clean up any resources being used.
+        /// </summary>
+        /// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
+        protected override void Dispose(bool disposing)
+        {
+            if (disposing && (components != null))
+            {
+                components.Dispose();
+            }
+            base.Dispose(disposing);
+        }
 
 		#region Component Designer generated code
 
@@ -163,12 +163,12 @@
 
 		#endregion
 		private TextBox TextboxItemStat;
-		private ComboBox ComboboxOperator;
-		private Button ButtonMoveUp;
-		private Button ButtonMoveDown;
-		private Button ButtonRemove;
-		private Panel panel1;
-		private Panel panel2;
-		private Panel PanelStatText;
-	}
+        private ComboBox ComboboxOperator;
+        private Button ButtonMoveUp;
+        private Button ButtonMoveDown;
+        private Button ButtonRemove;
+        private Panel panel1;
+        private Panel panel2;
+        private Panel PanelStatText;
+    }
 }
