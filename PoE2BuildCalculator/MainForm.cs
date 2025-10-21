@@ -44,6 +44,18 @@ namespace PoE2BuildCalculator
 		private const int MIN_REPORTS_FOR_ESTIMATE = 3;  // Wait for 3 reports before showing estimate
 		private const double SMOOTHING_FACTOR = 0.3;  // Weight for new speed (0.7 for old speed)
 
+		private struct ScoredCombination
+		{
+			public List<Item> Combination;
+			public double Score;
+
+			public ScoredCombination(List<Item> combination, double score)
+			{
+				Combination = combination;
+				Score = score;
+			}
+		}
+
 		public MainForm()
 		{
 			InitializeComponent();
@@ -268,10 +280,18 @@ namespace PoE2BuildCalculator
 			return (value - min) / (max - min); // Maps to [0, 1]
 		}
 
+		/// <summary>
+		/// ✅ Cache tier weights to avoid repeated Sum() calls
+		/// </summary>
 		private static double ScoreCombination(List<Item> combination, List<Tier> tiers, Dictionary<string, (double Min, double Max)> normalization)
 		{
 			if (tiers == null || tiers.Count == 0)
 				return 0;
+
+			// ✅ Pre-compute ONCE per combination
+			var itemStatsDicts = combination
+				.Select(item => ItemStatsHelper.ToDictionary(item.ItemStats))
+				.ToList();
 
 			double totalScore = 0;
 			double totalTierWeight = tiers.Sum(t => t.TierWeight);
@@ -294,9 +314,8 @@ namespace PoE2BuildCalculator
 
 					// Sum stat across all items in combination
 					double rawSum = 0;
-					foreach (var item in combination)
+					foreach (var itemStatsDict in itemStatsDicts) // ✅ Use pre-computed dicts
 					{
-						var itemStatsDict = ItemStatsHelper.ToDictionary(item.ItemStats);
 						if (itemStatsDict.TryGetValue(statName, out var value) && value is not string)
 						{
 							rawSum += Convert.ToDouble(value);
@@ -542,9 +561,9 @@ namespace PoE2BuildCalculator
 				}
 
 				string statusText = $"Processing: {p.PercentComplete:F2}% | " +
-								  $"Processed: {p.ProcessedCombinations} | " +
-								  $"Valid: {p.ValidCombinations} | " +
-								  $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
+									  $"Processed: {p.ProcessedCombinations} | " +
+									  $"Valid: {p.ValidCombinations} | " +
+									  $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
 
 				_progressHelper.UpdateProgress((int)p.PercentComplete, statusText);
 
@@ -573,20 +592,74 @@ namespace PoE2BuildCalculator
 				{
 					StatusBarLabel.Text = "Scoring combinations...";
 
-					var scoredCombinations = result.ValidCombinationsCollection
-						.AsParallel()
-						.Select(combo => new
-						{
-							Combination = combo,
-							Score = ScoreCombination(combo, tiers, _statNormalization)
-						})
-						.OrderByDescending(x => x.Score)
-						.Take(_bestCombinationCount) // Top 100
-						.ToList();
+					// ✅ Use min-heap for top-N selection (O(n log k) instead of O(n log n))
+					var globalTopN = new PriorityQueue<ScoredCombination, double>();
+					var lockObj = new object();
+
+					Parallel.ForEach(
+						result.ValidCombinationsCollection,
+									new ParallelOptions
+									{
+										MaxDegreeOfParallelism = Environment.ProcessorCount
+									},
+									() => new PriorityQueue<ScoredCombination, double>(), // Thread-local min-heap
+									(combo, state, localQueue) =>
+									{
+										double score = ScoreCombination(combo, tiers, _statNormalization);
+										var scored = new ScoredCombination(combo, score);
+
+										if (localQueue.Count < _bestCombinationCount)
+										{
+											localQueue.Enqueue(scored, score); // Min-heap
+										}
+										else
+										{
+											var minInQueue = localQueue.Peek();
+											if (score > minInQueue.Score)
+											{
+												localQueue.Dequeue();
+												localQueue.Enqueue(scored, score);
+											}
+										}
+
+										return localQueue;
+									},
+									localQueue =>
+									{
+										lock (lockObj)
+										{
+											while (localQueue.Count > 0)
+											{
+												var item = localQueue.Dequeue();
+
+												if (globalTopN.Count < _bestCombinationCount)
+												{
+													globalTopN.Enqueue(item, item.Score);
+												}
+												else
+												{
+													var minInGlobal = globalTopN.Peek();
+													if (item.Score > minInGlobal.Score)
+													{
+														globalTopN.Dequeue();
+														globalTopN.Enqueue(item, item.Score);
+													}
+												}
+											}
+										}
+									});
+
+					// Extract and sort results (only sorting top N items)
+					var scoredCombinations = new List<ScoredCombination>(_bestCombinationCount);
+					while (globalTopN.Count > 0)
+					{
+						scoredCombinations.Add(globalTopN.Dequeue());
+					}
+					scoredCombinations.Reverse(); // Dequeued in ascending order, reverse for descending
 
 					// Display scored results
 					var scoredSummary = new System.Text.StringBuilder();
-					scoredSummary.AppendLine("=== TOP 100 COMBINATIONS (by score) ===\n");
+					scoredSummary.AppendLine($"=== TOP {scoredCombinations.Count} COMBINATIONS (by score) ===\n");
 
 					for (int i = 0; i < scoredCombinations.Count; i++)
 					{
@@ -613,8 +686,7 @@ namespace PoE2BuildCalculator
 			{
 				TextboxDisplay.Text = $"Error: {ex.Message}";
 				StatusBarLabel.Text = "Error during processing.";
-				MessageBox.Show($"An error occurred:\n\n{ex.Message}", "Error",
-					MessageBoxButtons.OK, MessageBoxIcon.Error);
+				MessageBox.Show($"An error occurred:\n\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
 			finally
 			{
