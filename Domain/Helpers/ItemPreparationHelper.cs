@@ -44,22 +44,5 @@ namespace Domain.Helpers
 
 			return new PreparedItems(itemsWithoutRings, rings, hasItems, hasRings);
 		}
-
-		/// <summary>
-		/// Creates sampled versions of item lists for benchmarking.
-		/// </summary>
-		public static (List<List<Item>> SampledItems, List<Item> SampledRings) CreateSamples(
-			List<List<Item>> itemsWithoutRings,
-			List<Item> rings,
-			int maxSampleSize)
-		{
-			var sampledItems = itemsWithoutRings
-				.Select(list => list.Take(maxSampleSize).ToList())
-				.ToList();
-
-			var sampledRings = rings?.Take(maxSampleSize).ToList();
-
-			return (sampledItems, sampledRings);
-		}
 	}
 }
