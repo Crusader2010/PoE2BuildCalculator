@@ -2,11 +2,6 @@
 {
 	public partial class BaseForm : Form
 	{
-		public BaseForm()
-		{
-			InitializeComponent();
-		}
-
 		protected override void OnCreateControl()
 		{
 			base.OnCreateControl();
