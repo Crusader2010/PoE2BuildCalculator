@@ -56,13 +56,16 @@ namespace Domain.Combinations
 
 		private static int GetCacheKey<T>(List<List<T>> lists, List<T> rings)
 		{
-			int hash = 17;
+			var hash = new HashCode();
+
 			foreach (var list in lists.Where(l => l != null && l.Count > 0))
 			{
-				hash = hash * 31 + list.Count;
+				hash.Add(list.Count);
 			}
-			hash = hash * 31 + (rings?.Count ?? 0);
-			return hash;
+
+			hash.Add(rings?.Count ?? 0);
+
+			return hash.ToHashCode();
 		}
 
 		/// <summary>
@@ -79,6 +82,7 @@ namespace Domain.Combinations
 			CancellationToken cancellationToken = default)
 		{
 			var sw = Stopwatch.StartNew();
+			validator ??= x => true;
 
 			// ✅ Pre-filter for Strict mode (most efficient!)
 			if (filterStrategy == CombinationFilterStrategy.Strict && tieredItemIds != null)

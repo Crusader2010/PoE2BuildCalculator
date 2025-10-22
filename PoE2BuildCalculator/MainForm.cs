@@ -372,6 +372,7 @@ namespace PoE2BuildCalculator
 			// Calculate current speed (combinations per second)
 			long combinationsProcessed = processedCombinations - _lastProcessedCount;
 			double currentSpeed = combinationsProcessed / elapsedSeconds;
+			double adaptiveFactor = _progressReportCount < 10 ? 0.5 : SMOOTHING_FACTOR;
 
 			// Update smoothed speed (exponential moving average)
 			if (_smoothedSpeed == 0)
@@ -380,7 +381,7 @@ namespace PoE2BuildCalculator
 			}
 			else
 			{
-				_smoothedSpeed = (1 - SMOOTHING_FACTOR) * _smoothedSpeed + SMOOTHING_FACTOR * currentSpeed;
+				_smoothedSpeed = (1 - adaptiveFactor) * _smoothedSpeed + adaptiveFactor * currentSpeed;
 			}
 
 			// Update tracking variables
@@ -451,6 +452,12 @@ namespace PoE2BuildCalculator
 			_lastProcessedCount = 0;
 			_lastProgressTime = DateTime.MinValue;
 			_progressReportCount = 0;
+
+			if (StatusBarEstimate != null)
+			{
+				StatusBarEstimate.Visible = false;
+				StatusBarEstimate.Text = "";
+			}
 		}
 
 		#endregion

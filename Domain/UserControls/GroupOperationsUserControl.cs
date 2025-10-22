@@ -163,11 +163,6 @@ namespace Domain.UserControls
 
 		}
 
-		private void ButtonHelp_Click(object sender, EventArgs e)
-		{
-
-		}
-
 		private void ComboBox_MouseWheel(object sender, MouseEventArgs e)
 		{
 			if (e is HandledMouseEventArgs handledE)

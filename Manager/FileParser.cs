@@ -37,6 +37,8 @@ namespace Manager
 			int itemId = 0;
 			Item currentItem = null;
 
+			if (totalBytes > 100_000_000) { throw new InvalidOperationException($"File size ({totalBytes:N0} bytes) exceeds maximum supported size of 100MB."); }
+
 			while (!sr.EndOfStream)
 			{
 				cancellationToken.ThrowIfCancellationRequested();

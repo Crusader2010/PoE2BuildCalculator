@@ -83,7 +83,6 @@ namespace Domain.UserControls
 		private void ButtonRemove_Click(object sender, EventArgs e)
 		{
 			ItemStatRowDeleted?.Invoke(this, new ItemStatRowDeletingEventArgs() { IsDeleting = true });
-			_tooltip?.Dispose();
 			Dispose();
 		}
 
@@ -109,17 +108,14 @@ namespace Domain.UserControls
 		{
 			textBox.Text = fullText;
 
-			// Check if text fits
-			using var g = textBox.CreateGraphics();
-			var textSize = g.MeasureString(fullText, textBox.Font);
-
+			var textSize = TextRenderer.MeasureText(fullText, textBox.Font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding);
 			if (textSize.Width > textBox.ClientSize.Width - 4)
 			{
 				// Text too long - truncate and add "..."
 				string truncated = fullText;
 				while (truncated.Length > 0)
 				{
-					var testSize = g.MeasureString(truncated + "...", textBox.Font);
+					var testSize = TextRenderer.MeasureText(truncated + "...", textBox.Font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding);
 					if (testSize.Width <= textBox.ClientSize.Width - 4)
 					{
 						textBox.Text = truncated + "...";
@@ -144,6 +140,16 @@ namespace Domain.UserControls
 		{
 			// Notify parent that operator changed
 			OperatorChanged?.Invoke(this, EventArgs.Empty);
+		}
+
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing)
+			{
+				_tooltip?.Dispose();
+				components?.Dispose();
+			}
+			base.Dispose(disposing);
 		}
 	}
 }

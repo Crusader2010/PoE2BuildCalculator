@@ -65,7 +65,10 @@ namespace Domain.Helpers
 				TypeCode.Int32 => Convert.ChangeType(value, typeof(int)) ?? 0,
 				TypeCode.Int64 => Convert.ChangeType(value, typeof(long)) ?? 0,
 				TypeCode.String => Convert.ChangeType(value, typeof(string)) ?? string.Empty,
-				_ => value,
+				TypeCode.Decimal => Convert.ChangeType(value, typeof(double)) ?? 0.0d,
+				TypeCode.Single => Convert.ChangeType(value, typeof(double)) ?? 0.0d,
+				TypeCode.Boolean => Convert.ChangeType(value, typeof(bool)) ?? false,
+				_ => value ?? (propertyType.IsValueType ? Activator.CreateInstance(propertyType) : null)
 			};
 		}
 

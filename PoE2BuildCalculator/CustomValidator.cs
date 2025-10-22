@@ -165,7 +165,7 @@ namespace PoE2BuildCalculator
 		{
 			try
 			{
-				var (isValid, message) = CheckInactiveSelectedGroupsOrOperations();
+				var (isValid, message) = CheckInvalidSelectedGroupsOrOperations();
 				if (!isValid)
 				{
 					MessageBox.Show(message, "Inactive/invalid groups or operations", MessageBoxButtons.OK, MessageBoxIcon.Warning);
@@ -296,7 +296,7 @@ namespace PoE2BuildCalculator
 			}
 		}
 
-		private (bool isValid, string message) CheckInactiveSelectedGroupsOrOperations()
+		private (bool isValid, string message) CheckInvalidSelectedGroupsOrOperations()
 		{
 			var grpMsg = string.Empty;
 			var operMsg = string.Empty;
@@ -305,18 +305,26 @@ namespace PoE2BuildCalculator
 			var inactiveGroups = _groups.Where(x => x == null || !x.IsActive).ToList();
 			if (inactiveGroups.Count > 0)
 			{
-				grpMsg = $"The following groups are inactive: {string.Join(",", inactiveGroups.Select(x => x.GroupName))}.";
+				grpMsg = $"The following groups are inactive: {string.Join(",", inactiveGroups.Select(x => x.GroupName))}. Make sure they have at least one item stat selected.";
 				isValid = false;
 			}
 
 			var inactiveGroupIds = inactiveGroups.Select(x => x.GroupId).ToHashSet();
-			int inactiveOperations = _operationControls
-				.Select(x => x.GetValidationModel())
-				.Count(x => x == null || !x.IsActive || x.GroupId == -1 || inactiveGroupIds.Contains(x.GroupId));
+			var validationModels = _operationControls.Select(x => x.GetValidationModel());
 
+			int inactiveOperations = validationModels.Count(x => x == null || !x.IsActive || x.GroupId == -1 || inactiveGroupIds.Contains(x.GroupId));
 			if (inactiveOperations > 0)
 			{
-				operMsg = $"There are currently {inactiveOperations} group operations that are either inactive or have an inactive or no group selected.";
+				operMsg = $"There are currently {inactiveOperations} group operations that are either inactive or have an inactive or no group selected. Make sure the groups have at least one item stat selected, " +
+							$"and that each operation has a group selected and at least the MIN or the MAX checkboxes set.";
+				isValid = false;
+			}
+
+			var invalidOperations = validationModels.Where(x => x.IsActive && x.MinValue.HasValue && x.MaxValue.HasValue && x.MinValue > x.MaxValue).Select(x => x.GroupId).ToHashSet();
+			if (invalidOperations.Count > 0)
+			{
+				var groupNames = _immutableGroupDescriptions.Where(x => invalidOperations.Contains(x.Key)).Select(x => x.Value).ToList();
+				operMsg = $"At least some of the operations linked to group names {string.Join(",", groupNames)} are invalid. Make sure the MAX value is greater or equal to the MIN value.";
 				isValid = false;
 			}
 
@@ -446,8 +454,7 @@ namespace PoE2BuildCalculator
 					ArithmeticOperationsEnum.Sum => result + nextValue,
 					ArithmeticOperationsEnum.Diff => result - nextValue,
 					ArithmeticOperationsEnum.Mult => result * nextValue,
-					ArithmeticOperationsEnum.Div when nextValue != 0.0 => result / nextValue,
-					ArithmeticOperationsEnum.Div => result, // Avoid division by zero
+					ArithmeticOperationsEnum.Div => nextValue != 0.0 ? result / nextValue : result,
 					_ => result
 				};
 			}
@@ -839,7 +846,7 @@ namespace PoE2BuildCalculator
 		{
 			if (items == null || items.Count == 0) return (false, "There are no items present.");
 
-			var (isValid, message) = CheckInactiveSelectedGroupsOrOperations();
+			var (isValid, message) = CheckInvalidSelectedGroupsOrOperations();
 			if (!isValid) return (false, message);
 
 			var groups = _groups.ToDictionary(g => g.GroupId, g => g); // all groups presumed active due to CheckInactiveSelectedGroupsOrOperations() method
