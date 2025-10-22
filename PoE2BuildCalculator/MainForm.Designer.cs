@@ -117,13 +117,14 @@
 			// TextboxDisplay
 			// 
 			TextboxDisplay.BorderStyle = BorderStyle.FixedSingle;
-			TextboxDisplay.Location = new Point(314, 155);
+			TextboxDisplay.Dock = DockStyle.Fill;
+			TextboxDisplay.Location = new Point(296, 137);
 			TextboxDisplay.MaxLength = int.MaxValue;
 			TextboxDisplay.Multiline = true;
 			TextboxDisplay.Name = "TextboxDisplay";
 			TextboxDisplay.ReadOnly = true;
 			TextboxDisplay.ScrollBars = ScrollBars.Both;
-			TextboxDisplay.Size = new Size(415, 307);
+			TextboxDisplay.Size = new Size(445, 339);
 			TextboxDisplay.TabIndex = 6;
 			// 
 			// ButtonManageCustomValidator
@@ -144,9 +145,10 @@
 			PanelButtons.Controls.Add(ButtonManageCustomValidator);
 			PanelButtons.Controls.Add(TierManagerButton);
 			PanelButtons.Controls.Add(ButtonComputeCombinations);
-			PanelButtons.Location = new Point(12, 155);
+			PanelButtons.Dock = DockStyle.Left;
+			PanelButtons.Location = new Point(0, 137);
 			PanelButtons.Name = "PanelButtons";
-			PanelButtons.Size = new Size(296, 307);
+			PanelButtons.Size = new Size(296, 339);
 			PanelButtons.TabIndex = 9;
 			// 
 			// GroupBoxStrategy
@@ -201,9 +203,10 @@
 			PanelConfig.Controls.Add(NumericBestCombinationsCount);
 			PanelConfig.Controls.Add(GroupBoxStrategy);
 			PanelConfig.Controls.Add(label1);
-			PanelConfig.Location = new Point(12, 12);
+			PanelConfig.Dock = DockStyle.Top;
+			PanelConfig.Location = new Point(0, 0);
 			PanelConfig.Name = "PanelConfig";
-			PanelConfig.Size = new Size(717, 137);
+			PanelConfig.Size = new Size(741, 137);
 			PanelConfig.TabIndex = 11;
 			// 
 			// NumericBestCombinationsCount
@@ -230,9 +233,9 @@
 			AutoScaleDimensions = new SizeF(96F, 96F);
 			AutoScaleMode = AutoScaleMode.Dpi;
 			ClientSize = new Size(741, 498);
-			Controls.Add(PanelConfig);
-			Controls.Add(PanelButtons);
 			Controls.Add(TextboxDisplay);
+			Controls.Add(PanelButtons);
+			Controls.Add(PanelConfig);
 			Controls.Add(StatusBar);
 			DoubleBuffered = true;
 			FormBorderStyle = FormBorderStyle.FixedSingle;

@@ -15,6 +15,8 @@ namespace PoE2BuildCalculator
 {
 	public partial class TierManager : BaseForm
 	{
+		public event EventHandler TiersChanged;
+
 		private double _totalTierWeight => _bindingTiers.Sum(t => t.TierWeight);
 
 		private Color _validationBackColorSuccess;
@@ -114,6 +116,8 @@ namespace PoE2BuildCalculator
 			SetTotalTierWeights();
 
 			if (TableTiers.RowCount > 0) TableTiers.FirstDisplayedScrollingRowIndex = TableTiers.RowCount - 1;
+
+			TiersChanged?.Invoke(this, EventArgs.Empty);
 		}
 		private void RemoveTierButton_Click(object sender, EventArgs e)
 		{
@@ -563,6 +567,7 @@ namespace PoE2BuildCalculator
 
 				RefreshTierIds();
 				SetTotalTierWeights();
+				TiersChanged?.Invoke(this, EventArgs.Empty);
 			}
 		}
 

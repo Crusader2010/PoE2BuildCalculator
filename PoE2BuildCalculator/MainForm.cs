@@ -82,11 +82,18 @@ namespace PoE2BuildCalculator
 					_statusProgressBar,
 					_cancelButton,
 					StatusBarLabel,
-					[PanelButtons, PanelConfig]);
+					[PanelButtons]);
 			}
 
 			this.FormClosing += MainForm_FormClosing;
 			NumericBestCombinationsCount.Value = _bestCombinationCount;
+
+			PanelConfig.Enabled = false;
+			if (_tierManager != null)
+			{
+				_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
+				_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
+			}
 
 			// Enable double buffering for smoother rendering
 			SetStyle(ControlStyles.OptimizedDoubleBuffer |
@@ -467,7 +474,16 @@ namespace PoE2BuildCalculator
 			var tierManager = new TierManager();
 			_tierManager = tierManager;
 
+			tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
+			tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
+
 			tierManager.Show(this);
+		}
+
+		private void UpdatePanelConfigState()
+		{
+			bool hasTiers = _tierManager?.GetTiers()?.Count > 0;
+			PanelConfig.Enabled = hasTiers;
 		}
 
 		private void ShowItemsDataButton_Click(object sender, EventArgs e)
