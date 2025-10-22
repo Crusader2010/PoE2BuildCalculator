@@ -6,6 +6,7 @@ using System.Text;
 using Domain.Enums;
 using Domain.Helpers;
 using Domain.Main;
+using Domain.Serialization;
 using Domain.Static;
 using Domain.UserControls;
 using Domain.Validation;
@@ -58,6 +59,82 @@ namespace PoE2BuildCalculator
 					 ControlStyles.UserPaint, true);
 			UpdateStyles();
 		}
+
+		public (List<GroupDto>, List<ValidationModel>) ExportData()
+		{
+			var groups = _groups.Select(g => new GroupDto
+			{
+				GroupId = g.GroupId,
+				GroupName = g.GroupName,
+				Stats = g.Stats?.Select(s => new GroupStatDto
+				{
+					PropertyName = s.PropertyName,
+					Operator = s.Operator?.ToString()
+				}).ToList() ?? []
+			}).ToList();
+
+			var operations = _operationControls.Select(c => c.GetValidationModel()).ToList();
+			return (groups, operations);
+		}
+
+		public void ImportData(List<GroupDto> groupDtos, List<ValidationModel> operations)
+		{
+			_groups.Clear();
+			_operationControls.Clear();
+
+			FlowPanelGroups.SuspendLayout();
+			FlowPanelOperations.SuspendLayout();
+
+			foreach (var control in FlowPanelGroups.Controls.OfType<ItemStatGroupValidatorUserControl>())
+				control.Dispose();
+			foreach (var control in FlowPanelOperations.Controls.OfType<GroupOperationsUserControl>())
+				control.Dispose();
+
+			FlowPanelGroups.Controls.Clear();
+			FlowPanelOperations.Controls.Clear();
+
+			// Rebuild groups
+			foreach (var dto in groupDtos)
+			{
+				var control = new ItemStatGroupValidatorUserControl(dto.GroupId, dto.GroupName)
+				{
+					Width = _cachedSizes.widthStat + 25,
+					Height = _cachedSizes.heightGroupTop + (_cachedSizes.heightStat * GROUP_ITEMSTATSROWS_VISIBLE) + 5
+				};
+
+				control.LoadStatsFromDto(dto.Stats);
+				control.GroupDeleted += (s, e) => DeleteGroup(control);
+
+				_groups.Add(control._group);
+				FlowPanelGroups.Controls.Add(control);
+			}
+
+			_immutableGroupDescriptions = null;
+
+			// Rebuild operations
+			foreach (var op in operations)
+			{
+				var control = new GroupOperationsUserControl(_immutableGroupDescriptions, this)
+				{
+					BackColor = _operationControls.Count % 2 == 0 ? Color.LightGray : Color.LightSlateGray
+				};
+
+				control.LoadFromValidationModel(op);
+				control.GroupOperationDeleted += OperationControl_GroupOperationDeleted;
+
+				_operationControls.Add(control);
+				FlowPanelOperations.Controls.Add(control);
+			}
+
+			if (_operationControls.Count > 0)
+				_operationControls[^1].SetComboBoxGroupLevelOperatorEnabled(true);
+
+			FlowPanelGroups.ResumeLayout(true);
+			FlowPanelOperations.ResumeLayout(true);
+
+			_nextGroupId = _groups.Any() ? _groups.Max(g => g.GroupId) + 1 : 1;
+		}
+
 
 		private void BtnHelp_Click(object sender, EventArgs e)
 		{

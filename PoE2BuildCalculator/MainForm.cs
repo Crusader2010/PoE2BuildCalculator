@@ -5,6 +5,7 @@ using Domain.Combinations;
 using Domain.Enums;
 using Domain.Helpers;
 using Domain.Main;
+using Domain.Serialization;
 
 using Manager;
 
@@ -158,6 +159,71 @@ namespace PoE2BuildCalculator
 		{
 			_progressHelper.Cancel();
 		}
+
+		#region Saving and loading
+
+		private void SaveConfig()
+		{
+			using var sfd = new SaveFileDialog { Filter = "JSON|*.json", DefaultExt = "json" };
+			if (sfd.ShowDialog() != DialogResult.OK) return;
+
+			try
+			{
+				var data = new SaveData
+				{
+					SavedAt = DateTime.Now,
+					Tiers = _tierManager?.ExportTiers() ?? []
+				};
+
+				if (_customValidator?.IsDisposed == false)
+				{
+					var (groups, ops) = _customValidator.ExportData();
+					data.Groups = groups;
+					data.Operations = ops;
+				}
+
+				SerializationHelper.SaveToFile(data, sfd.FileName);
+				StatusBarLabel.Text = $"Saved: {Path.GetFileName(sfd.FileName)}";
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, "Save");
+			}
+		}
+
+		private void LoadConfig()
+		{
+			using var ofd = new OpenFileDialog { Filter = "JSON|*.json" };
+			if (ofd.ShowDialog() != DialogResult.OK) return;
+
+			try
+			{
+				var data = SerializationHelper.LoadFromFile(ofd.FileName);
+
+				if (data.Tiers?.Count > 0)
+				{
+					_tierManager ??= new TierManager();
+					_tierManager.ImportTiers(data.Tiers);
+					if (!_tierManager.Visible) _tierManager.Show(this);
+					UpdatePanelConfigState();
+				}
+
+				if (data.Groups?.Count > 0)
+				{
+					_customValidator ??= new CustomValidator(this);
+					_customValidator.ImportData(data.Groups, data.Operations);
+					if (!_customValidator.Visible) _customValidator.Show(this);
+				}
+
+				StatusBarLabel.Text = $"Loaded: {Path.GetFileName(ofd.FileName)}";
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, "Load");
+			}
+		}
+
+		#endregion
 
 		#region Prepare controls
 

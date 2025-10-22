@@ -150,6 +150,56 @@ namespace Domain.UserControls
 			};
 		}
 
+		public void LoadFromValidationModel(ValidationModel model)
+		{
+			this.SuspendLayout();
+
+			// Set group
+			if (ComboBoxGroup.Items.Count > 0)
+			{
+				for (int i = 0; i < ComboBoxGroup.Items.Count; i++)
+				{
+					if (ComboBoxGroup.Items[i] is KeyValuePair<int, string> kvp && kvp.Key == model.GroupId)
+					{
+						ComboBoxGroup.SelectedIndex = i;
+						break;
+					}
+				}
+			}
+
+			// Set validation type
+			OptionSumAll.Checked = model.ValidationType == ValidationTypeEnum.SumALL;
+			OptionEachItem.Checked = model.ValidationType == ValidationTypeEnum.EachItem;
+			OptionAtLeast.Checked = model.ValidationType == ValidationTypeEnum.AtLeast;
+			OptionAtMost.Checked = model.ValidationType == ValidationTypeEnum.AtMost;
+
+			// Set min/max
+			CheckboxMin.Checked = model.MinOperator.HasValue;
+			CheckboxMax.Checked = model.MaxOperator.HasValue;
+
+			if (model.MinValue.HasValue) InputBoxMin.Value = (decimal)model.MinValue.Value;
+			if (model.MaxValue.HasValue) InputBoxMax.Value = (decimal)model.MaxValue.Value;
+
+			// Set operators
+			if (model.MinOperator.HasValue)
+				ComboBoxOperatorMin.SelectedItem = model.MinOperator.Value.GetDescription();
+			if (model.MaxOperator.HasValue)
+				ComboBoxOperatorMax.SelectedItem = model.MaxOperator.Value.GetDescription();
+			if (model.MinMaxOperator.HasValue)
+				ComboBoxMinMaxOperator.SelectedItem = model.MinMaxOperator.Value.GetDescription();
+			if (model.GroupLevelOperator.HasValue)
+				ComboBoxGroupLevelOperator.SelectedItem = model.GroupLevelOperator.Value.GetDescription();
+
+			// Set item count
+			if (model.ValidationType is ValidationTypeEnum.AtLeast or ValidationTypeEnum.AtMost)
+			{
+				InputBoxItemsCount.Value = model.NumberOfItems;
+				CheckboxPercentage.Checked = model.NumberOfItemsAsPercentage;
+			}
+
+			this.ResumeLayout();
+		}
+
 		#endregion
 
 		private void GroupOperationsUserControl_Load(object sender, EventArgs e)

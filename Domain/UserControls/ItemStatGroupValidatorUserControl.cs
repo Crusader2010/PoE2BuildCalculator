@@ -4,6 +4,7 @@ using System.Reflection;
 
 using Domain.Events;
 using Domain.Helpers;
+using Domain.Serialization;
 using Domain.Validation;
 
 namespace Domain.UserControls
@@ -300,6 +301,41 @@ namespace Domain.UserControls
 		public int GetTopRowsHeight()
 		{
 			return this.Height - PanelMainArea.Height - 2;
+		}
+
+		public void LoadStatsFromDto(List<GroupStatDto> statDtos)
+		{
+			FlowPanelStats.SuspendLayout();
+			_statRows.Clear();
+			_usedStats.Clear();
+
+			foreach (var control in FlowPanelStats.Controls.OfType<ItemStatRow>())
+				control.Dispose();
+			FlowPanelStats.Controls.Clear();
+
+			var propLookup = ItemStatsHelper.GetStatDescriptors()
+				.ToImmutableDictionary(d => d.PropertyName, d => d.Property, StringComparer.OrdinalIgnoreCase);
+
+			for (int i = 0; i < statDtos.Count; i++)
+			{
+				var dto = statDtos[i];
+				if (!propLookup.ContainsKey(dto.PropertyName)) continue;
+
+				var row = new ItemStatRow(i, dto.PropertyName);
+
+				if (!string.IsNullOrEmpty(dto.Operator) && i < statDtos.Count - 1)
+				{
+					row.SetupStatOperatorSelection(true);
+					// Set operator after control is added to form
+				}
+
+				_statRows.Add(row);
+				_usedStats.Add(dto.PropertyName);
+				FlowPanelStats.Controls.Add(row);
+			}
+
+			FlowPanelStats.ResumeLayout(true);
+			ReCompileStatsForGroup();
 		}
 
 		private void ComboboxItemStats_DropDown(object sender, EventArgs e)

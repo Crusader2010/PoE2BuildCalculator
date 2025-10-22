@@ -71,6 +71,18 @@ namespace PoE2BuildCalculator
 		{
 			return [.. _bindingTiers];
 		}
+		public List<Tier> ExportTiers() => [.. _bindingTiers];
+		public void ImportTiers(List<Tier> tiers)
+		{
+			_bindingTiers.Clear();
+			foreach (var tier in tiers) _bindingTiers.Add(tier);
+
+			RefreshTierIds();
+			SetTotalTierWeights();
+			TiersChanged?.Invoke(this, EventArgs.Empty);
+		}
+
+
 
 		private void TierManager_Load(object sender, EventArgs e)
 		{
@@ -95,7 +107,6 @@ namespace PoE2BuildCalculator
 					 ControlStyles.UserPaint, true);
 			UpdateStyles();
 		}
-
 		private void AddTierButton_Click(object sender, EventArgs e)
 		{
 			var newTier = new Tier
