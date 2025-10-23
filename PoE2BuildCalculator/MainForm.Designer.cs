@@ -34,11 +34,15 @@
 			PanelConfig = new Panel();
 			NumericBestCombinationsCount = new NumericUpDown();
 			label1 = new Label();
+			MenuStrip = new MenuStrip();
+			LoadConfigMenuButton = new ToolStripMenuItem();
+			SaveConfigMenuButton = new ToolStripMenuItem();
 			StatusBar.SuspendLayout();
 			PanelButtons.SuspendLayout();
 			GroupBoxStrategy.SuspendLayout();
 			PanelConfig.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)NumericBestCombinationsCount).BeginInit();
+			MenuStrip.SuspendLayout();
 			SuspendLayout();
 			// 
 			// OpenPoE2ItemList
@@ -118,13 +122,13 @@
 			// 
 			TextboxDisplay.BorderStyle = BorderStyle.FixedSingle;
 			TextboxDisplay.Dock = DockStyle.Fill;
-			TextboxDisplay.Location = new Point(296, 137);
+			TextboxDisplay.Location = new Point(296, 162);
 			TextboxDisplay.MaxLength = int.MaxValue;
 			TextboxDisplay.Multiline = true;
 			TextboxDisplay.Name = "TextboxDisplay";
 			TextboxDisplay.ReadOnly = true;
 			TextboxDisplay.ScrollBars = ScrollBars.Both;
-			TextboxDisplay.Size = new Size(445, 339);
+			TextboxDisplay.Size = new Size(445, 314);
 			TextboxDisplay.TabIndex = 6;
 			// 
 			// ButtonManageCustomValidator
@@ -139,6 +143,7 @@
 			// 
 			// PanelButtons
 			// 
+			PanelButtons.BorderStyle = BorderStyle.FixedSingle;
 			PanelButtons.Controls.Add(ButtonOpenItemListFile);
 			PanelButtons.Controls.Add(ShowItemsDataButton);
 			PanelButtons.Controls.Add(ButtonParseItemListFile);
@@ -146,9 +151,9 @@
 			PanelButtons.Controls.Add(TierManagerButton);
 			PanelButtons.Controls.Add(ButtonComputeCombinations);
 			PanelButtons.Dock = DockStyle.Left;
-			PanelButtons.Location = new Point(0, 137);
+			PanelButtons.Location = new Point(0, 162);
 			PanelButtons.Name = "PanelButtons";
-			PanelButtons.Size = new Size(296, 339);
+			PanelButtons.Size = new Size(296, 314);
 			PanelButtons.TabIndex = 9;
 			// 
 			// GroupBoxStrategy
@@ -200,13 +205,14 @@
 			// 
 			// PanelConfig
 			// 
+			PanelConfig.BorderStyle = BorderStyle.FixedSingle;
 			PanelConfig.Controls.Add(NumericBestCombinationsCount);
 			PanelConfig.Controls.Add(GroupBoxStrategy);
 			PanelConfig.Controls.Add(label1);
 			PanelConfig.Dock = DockStyle.Top;
-			PanelConfig.Location = new Point(0, 0);
+			PanelConfig.Location = new Point(0, 24);
 			PanelConfig.Name = "PanelConfig";
-			PanelConfig.Size = new Size(741, 137);
+			PanelConfig.Size = new Size(741, 138);
 			PanelConfig.TabIndex = 11;
 			// 
 			// NumericBestCombinationsCount
@@ -228,6 +234,31 @@
 			label1.TabIndex = 1;
 			label1.Text = "Best combinations count";
 			// 
+			// MenuStrip
+			// 
+			MenuStrip.BackColor = Color.LightBlue;
+			MenuStrip.Items.AddRange(new ToolStripItem[] { LoadConfigMenuButton, SaveConfigMenuButton });
+			MenuStrip.Location = new Point(0, 0);
+			MenuStrip.Name = "MenuStrip";
+			MenuStrip.Size = new Size(741, 24);
+			MenuStrip.TabIndex = 12;
+			// 
+			// LoadConfigMenuButton
+			// 
+			LoadConfigMenuButton.Name = "LoadConfigMenuButton";
+			LoadConfigMenuButton.Size = new Size(82, 20);
+			LoadConfigMenuButton.Text = "Load config";
+			LoadConfigMenuButton.ToolTipText = "Load the configured tiers and validation groups/operations";
+			LoadConfigMenuButton.Click += LoadConfigMenuButton_Click;
+			// 
+			// SaveConfigMenuButton
+			// 
+			SaveConfigMenuButton.Name = "SaveConfigMenuButton";
+			SaveConfigMenuButton.Size = new Size(80, 20);
+			SaveConfigMenuButton.Text = "Save config";
+			SaveConfigMenuButton.ToolTipText = "Save the configured tiers and validation groups/operations";
+			SaveConfigMenuButton.Click += SaveConfigMenuButton_Click;
+			// 
 			// MainForm
 			// 
 			AutoScaleDimensions = new SizeF(96F, 96F);
@@ -237,8 +268,10 @@
 			Controls.Add(PanelButtons);
 			Controls.Add(PanelConfig);
 			Controls.Add(StatusBar);
+			Controls.Add(MenuStrip);
 			DoubleBuffered = true;
 			FormBorderStyle = FormBorderStyle.FixedSingle;
+			MainMenuStrip = MenuStrip;
 			MaximizeBox = false;
 			Name = "MainForm";
 			StartPosition = FormStartPosition.CenterScreen;
@@ -251,6 +284,8 @@
 			GroupBoxStrategy.PerformLayout();
 			PanelConfig.ResumeLayout(false);
 			((System.ComponentModel.ISupportInitialize)NumericBestCombinationsCount).EndInit();
+			MenuStrip.ResumeLayout(false);
+			MenuStrip.PerformLayout();
 			ResumeLayout(false);
 			PerformLayout();
 		}
@@ -275,5 +310,8 @@
         private Panel PanelConfig;
         private NumericUpDown NumericBestCombinationsCount;
         private Label label1;
-    }
+		private MenuStrip MenuStrip;
+		private ToolStripMenuItem LoadConfigMenuButton;
+		private ToolStripMenuItem SaveConfigMenuButton;
+	}
 }

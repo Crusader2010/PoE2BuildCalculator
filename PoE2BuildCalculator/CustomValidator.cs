@@ -15,7 +15,7 @@ using PoE2BuildCalculator.Helpers;
 
 namespace PoE2BuildCalculator
 {
-	public partial class CustomValidator : BaseForm
+	public partial class CustomValidator : BaseForm, IConfigurable
 	{
 		private Func<List<Item>, bool> _masterValidator = x => true;
 		public bool _customValidatorCreated { get; private set; } = false;
@@ -58,6 +58,18 @@ namespace PoE2BuildCalculator
 					 ControlStyles.AllPaintingInWmPaint |
 					 ControlStyles.UserPaint, true);
 			UpdateStyles();
+		}
+
+		#region IConfigurable Implementation
+
+		public bool HasData => _groups.Count > 0 || _operationControls.Count > 0;
+
+		public object ExportConfig() => ExportData();
+
+		public void ImportConfig(object data)
+		{
+			if (data is not (List<GroupDto> groups, List<ValidationModel> operations)) return;
+			ImportData(groups, operations);
 		}
 
 		public (List<GroupDto>, List<ValidationModel>) ExportData()
@@ -135,6 +147,7 @@ namespace PoE2BuildCalculator
 			_nextGroupId = _groups.Any() ? _groups.Max(g => g.GroupId) + 1 : 1;
 		}
 
+		#endregion
 
 		private void BtnHelp_Click(object sender, EventArgs e)
 		{

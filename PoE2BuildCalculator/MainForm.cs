@@ -1,5 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
+using System.Threading.Tasks;
 
 using Domain.Combinations;
 using Domain.Enums;
@@ -27,6 +28,7 @@ namespace PoE2BuildCalculator
 		private FileParser _fileParser { get; set; }
 		private TierManager _tierManager { get; set; }
 		private CustomValidator _customValidator { get; set; }
+		private ConfigurationManager _configManager;
 		private ProgressReportingHelper _progressHelper;
 
 		private List<List<Item>> _combinations { get; set; } = [];
@@ -66,6 +68,9 @@ namespace PoE2BuildCalculator
 		{
 			ConfigureOpenFileDialog();
 			ConfigureParserControls();
+
+			// Initialize ConfigurationManager
+			_configManager = new ConfigurationManager();
 
 			// ✅ Validate controls were created
 			if (_statusProgressBar == null || _cancelButton == null)
@@ -162,64 +167,115 @@ namespace PoE2BuildCalculator
 
 		#region Saving and loading
 
-		private void SaveConfig()
+		private async void SaveConfig()
 		{
 			using var sfd = new SaveFileDialog { Filter = "JSON|*.json", DefaultExt = "json" };
 			if (sfd.ShowDialog() != DialogResult.OK) return;
 
 			try
 			{
-				var data = new SaveData
-				{
-					SavedAt = DateTime.Now,
-					Tiers = _tierManager?.ExportTiers() ?? []
-				};
+				PanelButtons.Enabled = false;
+				StatusBarLabel.Text = "Saving configuration...";
 
-				if (_customValidator?.IsDisposed == false)
-				{
-					var (groups, ops) = _customValidator.ExportData();
-					data.Groups = groups;
-					data.Operations = ops;
-				}
+				// Update memory from active forms
+				if (_tierManager is { IsDisposed: false, HasData: true })
+					_configManager.SetConfigData(ConfigSections.Tiers, _tierManager.ExportConfig());
 
-				SerializationHelper.SaveToFile(data, sfd.FileName);
+				if (_customValidator is { IsDisposed: false, HasData: true })
+					_configManager.SetConfigData(ConfigSections.Validator, _customValidator.ExportConfig());
+
+				// Persist to disk
+				await _configManager.SaveAllAsync(sfd.FileName, CancellationToken.None).ConfigureAwait(true);
+
 				StatusBarLabel.Text = $"Saved: {Path.GetFileName(sfd.FileName)}";
 			}
 			catch (Exception ex)
 			{
-				ErrorHelper.ShowError(ex, "Save");
+				ErrorHelper.ShowError(ex, "Save Configuration");
+				StatusBarLabel.Text = "Save failed.";
+			}
+			finally
+			{
+				PanelButtons.Enabled = true;
 			}
 		}
 
-		private void LoadConfig()
+		private async void LoadConfig()
 		{
 			using var ofd = new OpenFileDialog { Filter = "JSON|*.json" };
 			if (ofd.ShowDialog() != DialogResult.OK) return;
 
 			try
 			{
-				var data = SerializationHelper.LoadFromFile(ofd.FileName);
+				PanelButtons.Enabled = false;
+				StatusBarLabel.Text = "Loading configuration...";
 
-				if (data.Tiers?.Count > 0)
+				// Load into memory
+				var (success, errorMessage, migratedFrom) = await _configManager.LoadAllAsync(ofd.FileName, CancellationToken.None).ConfigureAwait(true);
+
+				if (!success)
 				{
-					_tierManager ??= new TierManager();
-					_tierManager.ImportTiers(data.Tiers);
-					if (!_tierManager.Visible) _tierManager.Show(this);
-					UpdatePanelConfigState();
+					MessageBox.Show(errorMessage, "Load Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+					StatusBarLabel.Text = "Load failed.";
+					return;
 				}
 
-				if (data.Groups?.Count > 0)
+				// Show migration message
+				if (migratedFrom != null)
 				{
-					_customValidator ??= new CustomValidator(this);
-					_customValidator.ImportData(data.Groups, data.Operations);
-					if (!_customValidator.Visible) _customValidator.Show(this);
+					MessageBox.Show(
+						$"Configuration migrated from version {migratedFrom} to current version.\n\n" +
+						"Please verify your settings and save to persist the migration.",
+						"Configuration Migrated",
+						MessageBoxButtons.OK,
+						MessageBoxIcon.Information);
+				}
+
+				// Apply config to TierManager (create if needed)
+				if (_configManager.HasConfigData(ConfigSections.Tiers))
+				{
+					if (_tierManager == null || _tierManager.IsDisposed)
+					{
+						_tierManager = new TierManager();
+						_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
+						_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
+					}
+
+					var tiersConfig = _configManager.GetConfigData(ConfigSections.Tiers);
+					if (tiersConfig != null)
+						_tierManager.ImportConfig(tiersConfig);
+
+					if (!_tierManager.Visible)
+					{
+						_tierManager.Show(this);
+						UpdatePanelConfigState();
+					}
+				}
+
+				// Apply config to CustomValidator (create if needed)
+				if (_configManager.HasConfigData(ConfigSections.Validator))
+				{
+					if (_customValidator == null || _customValidator.IsDisposed)
+						_customValidator = new CustomValidator(this);
+
+					var validatorConfig = _configManager.GetConfigData(ConfigSections.Validator);
+					if (validatorConfig != null)
+						_customValidator.ImportConfig(validatorConfig);
+
+					if (!_customValidator.Visible)
+						_customValidator.Show(this);
 				}
 
 				StatusBarLabel.Text = $"Loaded: {Path.GetFileName(ofd.FileName)}";
 			}
 			catch (Exception ex)
 			{
-				ErrorHelper.ShowError(ex, "Load");
+				ErrorHelper.ShowError(ex, "Load Configuration");
+				StatusBarLabel.Text = "Load failed.";
+			}
+			finally
+			{
+				PanelButtons.Enabled = true;
 			}
 		}
 
@@ -539,12 +595,19 @@ namespace PoE2BuildCalculator
 		{
 			lock (_lockObject)
 			{
-				if (_tierManager == null || _tierManager.IsDisposed) _tierManager = new TierManager();
+				if (_tierManager == null || _tierManager.IsDisposed)
+				{
+					_tierManager = new TierManager();
+					_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
+					_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
 
-				_tierManager.TiersChanged -= (s, args) => UpdatePanelConfigState();
-				_tierManager.FormClosed -= (s, args) => UpdatePanelConfigState();
-				_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
-				_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
+					// Pull config from memory if it exists
+					if (_configManager.HasConfigData(ConfigSections.Tiers))
+					{
+						var config = _configManager.GetConfigData(ConfigSections.Tiers);
+						if (config != null) _tierManager.ImportConfig(config);
+					}
+				}
 
 				_tierManager.Show(this);
 				_tierManager.Activate();
@@ -813,7 +876,18 @@ namespace PoE2BuildCalculator
 		{
 			lock (_lockObject)
 			{
-				if (_customValidator == null || _customValidator.IsDisposed) _customValidator = new CustomValidator(this);
+				if (_customValidator == null || _customValidator.IsDisposed)
+				{
+					_customValidator = new CustomValidator(this);
+
+					// Pull config from memory if it exists
+					if (_configManager.HasConfigData(ConfigSections.Validator))
+					{
+						var config = _configManager.GetConfigData(ConfigSections.Validator);
+						if (config != null) _customValidator.ImportConfig(config);
+					}
+				}
+
 				_customValidator.Show(this);
 				_customValidator.Activate();
 			}
@@ -822,6 +896,7 @@ namespace PoE2BuildCalculator
 		private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
 		{
 			_progressHelper?.Dispose();
+			_configManager = null; // Allow GC
 
 			lock (_lockObject)
 			{
@@ -899,6 +974,16 @@ namespace PoE2BuildCalculator
 		private void NumericBestCombinationsCount_ValueChanged(object sender, EventArgs e)
 		{
 			_bestCombinationCount = (int)NumericBestCombinationsCount.Value;
+		}
+
+		private async void LoadConfigMenuButton_Click(object sender, EventArgs e)
+		{
+			LoadConfig();
+		}
+
+		private async void SaveConfigMenuButton_Click(object sender, EventArgs e)
+		{
+			SaveConfig();
 		}
 	}
 }

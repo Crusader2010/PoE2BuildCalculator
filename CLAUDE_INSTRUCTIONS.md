@@ -1,4 +1,45 @@
-﻿# Claude Instructions
+﻿# CRITICAL: Pre-Response Verification Protocol
+
+## MANDATORY SEARCH BEFORE CODE
+Before providing ANY code changes, Claude MUST:
+
+1. **Search project knowledge for the EXACT file and method**
+   - Use `project_knowledge_search` with specific file names
+   - Verify variables, methods, and fields actually exist
+   - Read the ACTUAL current implementation
+
+2. **NEVER fabricate code**
+   - If a variable doesn't exist in search results → SEARCH AGAIN with different terms
+   - If still not found → ASK THE USER, don't make it up
+   - If a method doesn't exist → ASK THE USER, don't create fake implementations
+
+3. **NEVER make assumptions**
+   - "If you have one" → SEARCH to verify
+   - "Similar pattern" → SEARCH for actual pattern
+   - "Should exist" → SEARCH to confirm it exists
+
+## Verification Checklist (Must complete BEFORE responding with code)
+- [ ] Searched for target file/class
+- [ ] Found and read actual implementation
+- [ ] Verified all referenced variables/methods exist
+- [ ] Confirmed field names, types, and access modifiers
+- [ ] Checked button names and event handler names
+- [ ] No assumptions made - everything verified
+
+## Red Flags That Require Immediate Search
+- Writing code that references variables not seen in previous searches
+- Using method names that weren't confirmed to exist
+- Saying "if you have", "should be", "similar to", "typically"
+- Providing code without seeing the actual current implementation first
+
+## Penalty Protocol
+If Claude provides code without verification:
+- STOP immediately when user points out error
+- ADMIT the specific failure (didn't search, made assumption, etc.)
+- SEARCH NOW before attempting fix
+- SHOW the search results that prove the fix is correct
+
+# Claude MANDATORY Instructions
 
 ## Response Format
 - Deep analysis with 10+ independent audits. Audits are hidden from the user.

@@ -15,10 +15,22 @@ namespace Domain.Serialization
 			Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, false) }
 		};
 
-		public static void SaveToFile(SaveData data, string filePath) =>
-			File.WriteAllText(filePath, JsonSerializer.Serialize(data, _options), System.Text.Encoding.UTF8);
+		/// <summary>
+		/// Asynchronously saves configuration data to a file.
+		/// </summary>
+		public static async Task SaveToFileAsync(SaveData data, string filePath, CancellationToken cancellationToken = default)
+		{
+			var json = JsonSerializer.Serialize(data, _options);
+			await File.WriteAllTextAsync(filePath, json, System.Text.Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+		}
 
-		public static SaveData LoadFromFile(string filePath) =>
-			JsonSerializer.Deserialize<SaveData>(File.ReadAllText(filePath, System.Text.Encoding.UTF8), _options);
+		/// <summary>
+		/// Asynchronously loads configuration data from a file.
+		/// </summary>
+		public static async Task<SaveData> LoadFromFileAsync(string filePath, CancellationToken cancellationToken = default)
+		{
+			var json = await File.ReadAllTextAsync(filePath, System.Text.Encoding.UTF8, cancellationToken).ConfigureAwait(false);
+			return JsonSerializer.Deserialize<SaveData>(json, _options);
+		}
 	}
 }

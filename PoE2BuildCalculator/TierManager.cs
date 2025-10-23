@@ -1,6 +1,7 @@
 ﻿using Domain.Helpers;
 using Domain.Main;
 using Domain.Static;
+using Domain.Serialization;
 
 using PoE2BuildCalculator.Helpers;
 
@@ -13,7 +14,7 @@ using Timer = System.Windows.Forms.Timer;
 
 namespace PoE2BuildCalculator
 {
-	public partial class TierManager : BaseForm
+	public partial class TierManager : BaseForm, IConfigurable
 	{
 		public event EventHandler TiersChanged;
 
@@ -71,7 +72,21 @@ namespace PoE2BuildCalculator
 		{
 			return [.. _bindingTiers];
 		}
+
+		#region IConfigurable Implementation
+
+		public bool HasData => _bindingTiers.Count > 0;
+
+		public object ExportConfig() => ExportTiers();
+
+		public void ImportConfig(object data)
+		{
+			if (data is not List<Tier> tiers) return;
+			ImportTiers(tiers);
+		}
+
 		public List<Tier> ExportTiers() => [.. _bindingTiers];
+
 		public void ImportTiers(List<Tier> tiers)
 		{
 			_bindingTiers.Clear();
@@ -82,7 +97,7 @@ namespace PoE2BuildCalculator
 			TiersChanged?.Invoke(this, EventArgs.Empty);
 		}
 
-
+		#endregion
 
 		private void TierManager_Load(object sender, EventArgs e)
 		{

@@ -5,9 +5,17 @@ namespace Domain.Serialization
 {
 	public class SaveData
 	{
-		public string Version { get; set; } = "1.0";
+		/// <summary>
+		/// Configuration schema version (Semantic Versioning: Major.Minor.Patch).
+		/// </summary>
+		public string Version { get; set; } = "1.0.0";
+
 		public DateTime SavedAt { get; set; }
+
+		// Section: Tiers
 		public List<Tier> Tiers { get; set; } = [];
+
+		// Section: Validator
 		public List<GroupDto> Groups { get; set; } = [];
 		public List<ValidationModel> Operations { get; set; } = [];
 	}
