@@ -47,7 +47,7 @@ namespace Domain.Validation
 
 		public GroupLevelOperatorsEnum? GroupLevelOperator
 		{
-			get => field ?? GroupLevelOperatorsEnum.AND;
+			get => field;
 			set
 			{
 				if (field != value)
@@ -60,7 +60,7 @@ namespace Domain.Validation
 
 		public MinMaxOperatorsEnum? MinOperator
 		{
-			get => field ?? MinMaxOperatorsEnum.GreaterEqual;
+			get => field;
 			set
 			{
 				if (field != value)
@@ -73,7 +73,7 @@ namespace Domain.Validation
 
 		public MinMaxOperatorsEnum? MaxOperator
 		{
-			get => field ?? MinMaxOperatorsEnum.GreaterEqual;
+			get => field;
 			set
 			{
 				if (field != value)
@@ -86,7 +86,7 @@ namespace Domain.Validation
 
 		public MinMaxCombinedOperatorsEnum? MinMaxOperator
 		{
-			get => field ?? MinMaxCombinedOperatorsEnum.AND;
+			get => field;
 			set
 			{
 				if (field != value)
@@ -113,6 +113,10 @@ namespace Domain.Validation
 		public int NumberOfItems { get; set; } = 0;
 
 		public bool NumberOfItemsAsPercentage { get; set; } = false;
+
+		public bool IsMinChecked { get; set; } = true;
+
+		public bool IsMaxChecked { get; set; } = false;
 
 
 		[Browsable(false)]

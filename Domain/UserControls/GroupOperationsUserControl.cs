@@ -28,6 +28,8 @@ namespace Domain.UserControls
 			_groups = groups;
 			_ownerForm = ownerForm;
 			InitializeComponent();
+			InitializeFormControlsDefaultState();
+			_needsRefresh = true;
 
 			this.Margin = new Padding(0, 0, 1, 3);
 			this.Padding = new Padding(0);
@@ -146,13 +148,17 @@ namespace Domain.UserControls
 				MinValue = CheckboxMin.Checked ? (double)InputBoxMin.Value : null,
 				NumberOfItems = (validationType is ValidationTypeEnum.AtLeast or ValidationTypeEnum.AtMost) ? (int)InputBoxItemsCount.Value : 0,
 				NumberOfItemsAsPercentage = CheckboxPercentage.Checked,
-				ValidationType = validationType
+				ValidationType = validationType,
+				IsMinChecked = CheckboxMin.Checked,
+				IsMaxChecked = CheckboxMax.Checked
 			};
 		}
 
 		public void LoadFromValidationModel(ValidationModel model)
 		{
 			this.SuspendLayout();
+
+			RefreshComboBoxGroup();
 
 			// Set group
 			if (ComboBoxGroup.Items.Count > 0)
@@ -174,8 +180,8 @@ namespace Domain.UserControls
 			OptionAtMost.Checked = model.ValidationType == ValidationTypeEnum.AtMost;
 
 			// Set min/max
-			CheckboxMin.Checked = model.MinOperator.HasValue;
-			CheckboxMax.Checked = model.MaxOperator.HasValue;
+			CheckboxMin.Checked = model.IsMinChecked;
+			CheckboxMax.Checked = model.IsMaxChecked;
 
 			if (model.MinValue.HasValue) InputBoxMin.Value = (decimal)model.MinValue.Value;
 			if (model.MaxValue.HasValue) InputBoxMax.Value = (decimal)model.MaxValue.Value;
@@ -183,8 +189,14 @@ namespace Domain.UserControls
 			// Set operators
 			if (model.MinOperator.HasValue)
 				ComboBoxOperatorMin.SelectedItem = model.MinOperator.Value.GetDescription();
+			else if (CheckboxMin.Checked)
+				ComboBoxOperatorMin.SelectedIndex = 0; // Default to first operator
+
 			if (model.MaxOperator.HasValue)
 				ComboBoxOperatorMax.SelectedItem = model.MaxOperator.Value.GetDescription();
+			else if (CheckboxMax.Checked)
+				ComboBoxOperatorMax.SelectedIndex = 0; // Default to first operator
+
 			if (model.MinMaxOperator.HasValue)
 				ComboBoxMinMaxOperator.SelectedItem = model.MinMaxOperator.Value.GetDescription();
 			if (model.GroupLevelOperator.HasValue)
@@ -204,7 +216,6 @@ namespace Domain.UserControls
 
 		private void GroupOperationsUserControl_Load(object sender, EventArgs e)
 		{
-			InitializeFormControlsDefaultState();
 			_needsRefresh = true;
 		}
 

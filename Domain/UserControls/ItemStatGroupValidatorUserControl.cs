@@ -303,7 +303,7 @@ namespace Domain.UserControls
 			return this.Height - PanelMainArea.Height - 2;
 		}
 
-		public void LoadStatsFromDto(List<GroupStatDto> statDtos)
+		public void LoadStatsFromConfig(List<GroupStatDto> statDtos)
 		{
 			FlowPanelStats.SuspendLayout();
 			_statRows.Clear();
@@ -322,6 +322,9 @@ namespace Domain.UserControls
 				if (!propLookup.ContainsKey(dto.PropertyName)) continue;
 
 				var row = new ItemStatRow(i, dto.PropertyName);
+				row.ItemStatRowDeleted += RemoveStatRow;
+				row.ItemStatRowSwapped += SwapStats;
+				row.OperatorChanged += (s, e) => ReCompileStatsForGroup();
 
 				if (!string.IsNullOrEmpty(dto.Operator) && i < statDtos.Count - 1)
 				{

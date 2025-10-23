@@ -1,11 +1,11 @@
 ﻿namespace PoE2BuildCalculator
 {
-    partial class MainForm
-    {
-        /// <summary>
-        ///  Required designer variable.
-        /// </summary>
-        private System.ComponentModel.IContainer components = null;
+	partial class MainForm
+	{
+		/// <summary>
+		///  Required designer variable.
+		/// </summary>
+		private System.ComponentModel.IContainer components = null;
 
 		#region Windows Form Designer generated code
 
@@ -245,6 +245,8 @@
 			// 
 			// LoadConfigMenuButton
 			// 
+			LoadConfigMenuButton.AutoToolTip = true;
+			LoadConfigMenuButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
 			LoadConfigMenuButton.Name = "LoadConfigMenuButton";
 			LoadConfigMenuButton.Size = new Size(82, 20);
 			LoadConfigMenuButton.Text = "Load config";
@@ -253,6 +255,8 @@
 			// 
 			// SaveConfigMenuButton
 			// 
+			SaveConfigMenuButton.AutoToolTip = true;
+			SaveConfigMenuButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
 			SaveConfigMenuButton.Name = "SaveConfigMenuButton";
 			SaveConfigMenuButton.Size = new Size(80, 20);
 			SaveConfigMenuButton.Text = "Save config";
@@ -293,23 +297,23 @@
 		#endregion
 
 		private OpenFileDialog OpenPoE2ItemList;
-        private Button ButtonOpenItemListFile;
-        private StatusStrip StatusBar;
-        private ToolStripStatusLabel StatusBarLabel;
-        private Button ButtonParseItemListFile;
-        private Button TierManagerButton;
-        private Button ShowItemsDataButton;
-        private Button ButtonComputeCombinations;
-        private TextBox TextboxDisplay;
-        private Button ButtonManageCustomValidator;
-        private Panel PanelButtons;
-        private GroupBox GroupBoxStrategy;
-        private RadioButton RadioComprehensive;
-        private RadioButton RadioBalanced;
-        private RadioButton RadioStrict;
-        private Panel PanelConfig;
-        private NumericUpDown NumericBestCombinationsCount;
-        private Label label1;
+		private Button ButtonOpenItemListFile;
+		private StatusStrip StatusBar;
+		private ToolStripStatusLabel StatusBarLabel;
+		private Button ButtonParseItemListFile;
+		private Button TierManagerButton;
+		private Button ShowItemsDataButton;
+		private Button ButtonComputeCombinations;
+		private TextBox TextboxDisplay;
+		private Button ButtonManageCustomValidator;
+		private Panel PanelButtons;
+		private GroupBox GroupBoxStrategy;
+		private RadioButton RadioComprehensive;
+		private RadioButton RadioBalanced;
+		private RadioButton RadioStrict;
+		private Panel PanelConfig;
+		private NumericUpDown NumericBestCombinationsCount;
+		private Label label1;
 		private MenuStrip MenuStrip;
 		private ToolStripMenuItem LoadConfigMenuButton;
 		private ToolStripMenuItem SaveConfigMenuButton;

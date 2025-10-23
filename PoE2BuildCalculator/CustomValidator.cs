@@ -114,7 +114,7 @@ namespace PoE2BuildCalculator
 					Height = _cachedSizes.heightGroupTop + (_cachedSizes.heightStat * GROUP_ITEMSTATSROWS_VISIBLE) + 5
 				};
 
-				control.LoadStatsFromDto(dto.Stats);
+				control.LoadStatsFromConfig(dto.Stats);
 				control.GroupDeleted += (s, e) => DeleteGroup(control);
 
 				_groups.Add(control._group);

@@ -1,6 +1,5 @@
 ﻿using System.Collections.Immutable;
 using System.Numerics;
-using System.Threading.Tasks;
 
 using Domain.Combinations;
 using Domain.Enums;
@@ -100,6 +99,11 @@ namespace PoE2BuildCalculator
 				_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
 				_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
 			}
+
+			MenuStrip.Renderer = new ToolStripProfessionalRenderer(new CustomColorTable());
+			MenuStrip.Items.Insert(0, new ToolStripSeparator());
+			MenuStrip.Items.Insert(2, new ToolStripSeparator());
+			MenuStrip.Items.Insert(4, new ToolStripSeparator());
 
 			// Enable double buffering for smoother rendering
 			SetStyle(ControlStyles.OptimizedDoubleBuffer |
@@ -244,12 +248,6 @@ namespace PoE2BuildCalculator
 					var tiersConfig = _configManager.GetConfigData(ConfigSections.Tiers);
 					if (tiersConfig != null)
 						_tierManager.ImportConfig(tiersConfig);
-
-					if (!_tierManager.Visible)
-					{
-						_tierManager.Show(this);
-						UpdatePanelConfigState();
-					}
 				}
 
 				// Apply config to CustomValidator (create if needed)
@@ -261,9 +259,6 @@ namespace PoE2BuildCalculator
 					var validatorConfig = _configManager.GetConfigData(ConfigSections.Validator);
 					if (validatorConfig != null)
 						_customValidator.ImportConfig(validatorConfig);
-
-					if (!_customValidator.Visible)
-						_customValidator.Show(this);
 				}
 
 				StatusBarLabel.Text = $"Loaded: {Path.GetFileName(ofd.FileName)}";
