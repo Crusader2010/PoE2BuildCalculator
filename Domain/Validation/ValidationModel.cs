@@ -118,6 +118,8 @@ namespace Domain.Validation
 
 		public bool IsMaxChecked { get; set; } = false;
 
+		public bool IsGroupLevelOperatorEnabled { get; set; } = false;
+
 
 		[Browsable(false)]
 		public bool IsActive => MinOperator != null || MaxOperator != null;

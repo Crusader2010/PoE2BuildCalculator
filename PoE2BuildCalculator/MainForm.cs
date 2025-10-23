@@ -94,11 +94,6 @@ namespace PoE2BuildCalculator
 			NumericBestCombinationsCount.Value = _bestCombinationCount;
 
 			PanelConfig.Enabled = false;
-			if (_tierManager != null)
-			{
-				_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
-				_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
-			}
 
 			MenuStrip.Renderer = new ToolStripProfessionalRenderer(new CustomColorTable());
 			MenuStrip.Items.Insert(0, new ToolStripSeparator());
@@ -247,18 +242,44 @@ namespace PoE2BuildCalculator
 
 					var tiersConfig = _configManager.GetConfigData(ConfigSections.Tiers);
 					if (tiersConfig != null)
-						_tierManager.ImportConfig(tiersConfig);
+					{
+						try
+						{
+							_tierManager.ImportConfig(tiersConfig);
+							UpdatePanelConfigState();  // Refresh UI based on imported data
+						}
+						catch (Exception ex)
+						{
+							ErrorHelper.ShowError(ex, "Import Tiers Configuration");
+							return;
+						}
+					}
 				}
 
 				// Apply config to CustomValidator (create if needed)
 				if (_configManager.HasConfigData(ConfigSections.Validator))
 				{
 					if (_customValidator == null || _customValidator.IsDisposed)
-						_customValidator = new CustomValidator(this);
+					{
+						_customValidator = new CustomValidator(this)
+						{
+							Owner = this
+						};
+					}
 
 					var validatorConfig = _configManager.GetConfigData(ConfigSections.Validator);
 					if (validatorConfig != null)
-						_customValidator.ImportConfig(validatorConfig);
+					{
+						try
+						{
+							_customValidator.ImportConfig(validatorConfig);
+						}
+						catch (Exception ex)
+						{
+							ErrorHelper.ShowError(ex, "Import Validator Configuration");
+							return;
+						}
+					}
 				}
 
 				StatusBarLabel.Text = $"Loaded: {Path.GetFileName(ofd.FileName)}";

@@ -150,7 +150,8 @@ namespace Domain.UserControls
 				NumberOfItemsAsPercentage = CheckboxPercentage.Checked,
 				ValidationType = validationType,
 				IsMinChecked = CheckboxMin.Checked,
-				IsMaxChecked = CheckboxMax.Checked
+				IsMaxChecked = CheckboxMax.Checked,
+				IsGroupLevelOperatorEnabled = ComboBoxGroupLevelOperator.Enabled
 			};
 		}
 
@@ -182,6 +183,7 @@ namespace Domain.UserControls
 			// Set min/max
 			CheckboxMin.Checked = model.IsMinChecked;
 			CheckboxMax.Checked = model.IsMaxChecked;
+			ComboBoxGroupLevelOperator.Enabled = model.IsGroupLevelOperatorEnabled;
 
 			if (model.MinValue.HasValue) InputBoxMin.Value = (decimal)model.MinValue.Value;
 			if (model.MaxValue.HasValue) InputBoxMax.Value = (decimal)model.MaxValue.Value;

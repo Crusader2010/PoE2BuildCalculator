@@ -138,9 +138,6 @@ namespace PoE2BuildCalculator
 				FlowPanelOperations.Controls.Add(control);
 			}
 
-			if (_operationControls.Count > 0)
-				_operationControls[^1].SetComboBoxGroupLevelOperatorEnabled(true);
-
 			FlowPanelGroups.ResumeLayout(true);
 			FlowPanelOperations.ResumeLayout(true);
 
