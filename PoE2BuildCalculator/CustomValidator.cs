@@ -138,7 +138,7 @@ namespace PoE2BuildCalculator
 
 		private void BtnHelp_Click(object sender, EventArgs e)
 		{
-			using var helpForm = new CustomMessageBox(Constants.VALIDATOR_HELP_TEXT, "Validation Help", MessageBoxButtons.OKCancel, MessageBoxIcon.Information);
+			using var helpForm = new CustomMessageBox(Constants.VALIDATOR_HELP_TEXT, "Validation Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
 			helpForm.ShowDialog(this);
 		}
 
@@ -341,7 +341,7 @@ namespace PoE2BuildCalculator
 
 		private void ButtonHide_Click(object sender, EventArgs e)
 		{
-			ButtonHide.CausesValidation = false;
+			ButtonHide.CausesValidation = true;
 			this.Hide();
 			this.Owner?.BringToFront();
 		}

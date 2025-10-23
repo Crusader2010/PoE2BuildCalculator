@@ -144,6 +144,14 @@ namespace PoE2BuildCalculator
 			}
 			catch { }
 
+			if (e.CloseReason == CloseReason.UserClosing)
+			{
+				e.Cancel = true;
+				this.Hide();
+				this.Owner?.BringToFront();
+				return;
+			}
+
 			// Detach handlers that Designer may have attached in InitializeComponent
 			try
 			{
@@ -166,7 +174,18 @@ namespace PoE2BuildCalculator
 		{
 			StartFlashingIfNeeded();
 		}
-
+		private void ButtonHide_Click(object sender, EventArgs e)
+		{
+			ButtonHide.CausesValidation = true;
+			this.Hide();
+			this.Owner?.BringToFront();
+		}
+		private void ButtonClose_Click(object sender, EventArgs e)
+		{
+			ButtonClose.CausesValidation = false;
+			components?.Dispose();
+			this.Dispose();
+		}
 
 
 

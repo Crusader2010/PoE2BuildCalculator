@@ -537,13 +537,18 @@ namespace PoE2BuildCalculator
 
 		private void TierManagerButton_Click(object sender, EventArgs e)
 		{
-			var tierManager = new TierManager();
-			_tierManager = tierManager;
+			lock (_lockObject)
+			{
+				if (_tierManager == null || _tierManager.IsDisposed) _tierManager = new TierManager();
 
-			tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
-			tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
+				_tierManager.TiersChanged -= (s, args) => UpdatePanelConfigState();
+				_tierManager.FormClosed -= (s, args) => UpdatePanelConfigState();
+				_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
+				_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
 
-			tierManager.Show(this);
+				_tierManager.Show(this);
+				_tierManager.Activate();
+			}
 		}
 
 		private void UpdatePanelConfigState()
@@ -808,11 +813,7 @@ namespace PoE2BuildCalculator
 		{
 			lock (_lockObject)
 			{
-				if (_customValidator == null || _customValidator.IsDisposed)
-				{
-					_customValidator = new CustomValidator(this);
-				}
-
+				if (_customValidator == null || _customValidator.IsDisposed) _customValidator = new CustomValidator(this);
 				_customValidator.Show(this);
 				_customValidator.Activate();
 			}
