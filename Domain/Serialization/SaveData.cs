@@ -1,4 +1,5 @@
-﻿using Domain.Main;
+﻿using Domain.Enums;
+using Domain.Main;
 using Domain.Validation;
 
 namespace Domain.Serialization
@@ -30,6 +31,6 @@ namespace Domain.Serialization
 	public class GroupStatDto
 	{
 		public string PropertyName { get; set; }
-		public string Operator { get; set; }
+		public ArithmeticOperationsEnum? Operator { get; set; }
 	}
 }

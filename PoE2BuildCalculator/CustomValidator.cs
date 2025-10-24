@@ -86,7 +86,7 @@ namespace PoE2BuildCalculator
 				Stats = g.Stats?.Select(s => new GroupStatDto
 				{
 					PropertyName = s.PropertyName,
-					Operator = s.Operator?.ToString()
+					Operator = s.Operator
 				}).ToList() ?? []
 			}).ToList();
 
@@ -98,6 +98,7 @@ namespace PoE2BuildCalculator
 		{
 			_groups.Clear();
 			_operationControls.Clear();
+			_immutableGroupDescriptions = null;
 
 			FlowPanelGroups.SuspendLayout();
 			FlowPanelOperations.SuspendLayout();
@@ -126,8 +127,6 @@ namespace PoE2BuildCalculator
 				FlowPanelGroups.Controls.Add(control);
 			}
 
-			_immutableGroupDescriptions = null;
-
 			// Rebuild operations
 			foreach (var op in operations)
 			{
@@ -150,7 +149,15 @@ namespace PoE2BuildCalculator
 
 			_masterValidator = x => true; // reset
 			var validatorFunction = CreateValidatorFunction(true);
-			if (!validatorFunction.Created) CustomMessageBox.Show(validatorFunction.Message, "Unable to recreate validator function", MessageBoxButtons.OK, MessageBoxIcon.Error, this);
+			if (!validatorFunction.Created)
+			{
+				// Reset to safe state
+				_groups.Clear();
+				_operationControls.Clear();
+				FlowPanelGroups.Controls.Clear();
+				FlowPanelOperations.Controls.Clear();
+				CustomMessageBox.Show($"Configuration loaded but validator recreation failed:\n\n{validatorFunction.Message}\n\nGroups and operations have been cleared. Please reconfigure.", "Unable to recreate validator function", MessageBoxButtons.OK, MessageBoxIcon.Error, this);
+			}
 		}
 
 		#endregion

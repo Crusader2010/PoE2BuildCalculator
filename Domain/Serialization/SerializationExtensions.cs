@@ -1,7 +1,6 @@
 ﻿using System.Collections.Immutable;
 using System.Reflection;
 
-using Domain.Enums;
 using Domain.Helpers;
 using Domain.Validation;
 
@@ -23,7 +22,7 @@ namespace Domain.Serialization
 			Stats = group.Stats?.Select(s => new GroupStatDto
 			{
 				PropertyName = s.PropertyName,
-				Operator = s.Operator?.ToString()
+				Operator = s.Operator
 			}).ToList() ?? []
 		};
 
@@ -36,9 +35,7 @@ namespace Domain.Serialization
 			{
 				PropertyName = s.PropertyName,
 				PropInfo = _propLookup.GetValueOrDefault(s.PropertyName),
-				Operator = string.IsNullOrEmpty(s.Operator)
-					? null
-					: Enum.Parse<ArithmeticOperationsEnum>(s.Operator)
+				Operator = s.Operator
 			}).ToList() ?? []
 		};
 	}

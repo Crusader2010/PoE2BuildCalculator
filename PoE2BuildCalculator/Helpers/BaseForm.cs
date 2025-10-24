@@ -5,7 +5,7 @@
 		protected override void OnCreateControl()
 		{
 			base.OnCreateControl();
-			this.Font = new Font("Verdana", 9F);
+			this.Font = new Font("Nirmala UI", this.Font.Size, this.Font.Style, this.Font.Unit);
 		}
 	}
 }

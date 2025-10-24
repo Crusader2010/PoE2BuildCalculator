@@ -326,10 +326,10 @@ namespace Domain.UserControls
 				row.ItemStatRowSwapped += SwapStats;
 				row.OperatorChanged += (s, e) => ReCompileStatsForGroup();
 
-				if (!string.IsNullOrEmpty(dto.Operator) && i < statDtos.Count - 1)
+				if (dto.Operator.HasValue && i < statDtos.Count - 1)
 				{
+					row.SetOperator(dto.Operator.Value);
 					row.SetupStatOperatorSelection(true);
-					// Set operator after control is added to form
 				}
 
 				_statRows.Add(row);

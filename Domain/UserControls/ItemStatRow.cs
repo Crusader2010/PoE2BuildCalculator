@@ -1,5 +1,6 @@
 ﻿using Domain.Enums;
 using Domain.Events;
+using Domain.Helpers;
 using Domain.Static;
 
 namespace Domain.UserControls
@@ -18,10 +19,7 @@ namespace Domain.UserControls
 		{
 			get
 			{
-				if (ComboboxOperator.SelectedItem == null)
-				{
-					return ArithmeticOperationsEnum.Sum;
-				}
+				if (ComboboxOperator.SelectedItem == null) return ArithmeticOperationsEnum.Sum;
 
 				string selected = ComboboxOperator.SelectedItem.ToString();
 				bool found = EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(selected, out var op);
@@ -43,6 +41,22 @@ namespace Domain.UserControls
 			this.Margin = new Padding(0);
 		}
 
+		public void SetupStatOperatorSelection(bool isEnabled)
+		{
+			ComboboxOperator.Enabled = isEnabled;
+		}
+
+		public void ChangeCurrentRowIndex(int newRowIndex)
+		{
+			_currentRowIndex = newRowIndex;
+		}
+
+		public void SetOperator(ArithmeticOperationsEnum operatorValue)
+		{
+			ComboboxOperator.SelectedItem = operatorValue.GetDescription();
+		}
+
+
 		private void ItemStatRow_Load(object sender, EventArgs e)
 		{
 			components ??= new System.ComponentModel.Container();
@@ -51,7 +65,7 @@ namespace Domain.UserControls
 			TextboxItemStat.Text = _selectedStatName;
 			SetTextboxWithEllipsis(TextboxItemStat, _selectedStatName);
 
-			ComboboxOperator.Enabled = false;
+			//ComboboxOperator.Enabled = false; - commented to allow loading from json
 		}
 
 		private void InitializeOperatorCombobox()
@@ -68,16 +82,6 @@ namespace Domain.UserControls
 			ComboboxOperator.ResumeLayout();
 
 			ComboboxOperator.MouseWheel += ComboBox_MouseWheel;
-		}
-
-		public void ChangeCurrentRowIndex(int newRowIndex)
-		{
-			_currentRowIndex = newRowIndex;
-		}
-
-		public void SetupStatOperatorSelection(bool isEnabled)
-		{
-			ComboboxOperator.Enabled = isEnabled;
 		}
 
 		private void ButtonRemove_Click(object sender, EventArgs e)

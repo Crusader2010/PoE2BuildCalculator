@@ -12,6 +12,7 @@ namespace Domain.Serialization
 			DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
 			AllowTrailingCommas = true,
 			PropertyNameCaseInsensitive = true,
+			NumberHandling = JsonNumberHandling.AllowReadingFromString,
 			Converters = { new JsonStringEnumConverter(JsonNamingPolicy.CamelCase, false) }
 		};
 

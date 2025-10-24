@@ -43,6 +43,7 @@
 			ComboboxOperator.BackColor = Color.FromArgb(192, 255, 192);
 			ComboboxOperator.Dock = DockStyle.Left;
 			ComboboxOperator.DropDownStyle = ComboBoxStyle.DropDownList;
+			ComboboxOperator.Enabled = false;
 			ComboboxOperator.Font = new Font("Courier New", 12F, FontStyle.Bold);
 			ComboboxOperator.ForeColor = Color.Red;
 			ComboboxOperator.ItemHeight = 18;

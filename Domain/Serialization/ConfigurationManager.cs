@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 
 using Domain.Enums;
+using Domain.Validation;
 
 namespace Domain.Serialization
 {
@@ -37,10 +38,10 @@ namespace Domain.Serialization
 		/// </summary>
 		public object GetConfigData(ConfigSections section) => section switch
 		{
-			ConfigSections.Tiers => _configData.Tiers?.Count > 0 ? _configData.Tiers : null,
-			ConfigSections.Validator => _configData.Groups?.Count > 0 || _configData.Operations?.Count > 0
-				? (_configData.Groups, _configData.Operations)
-				: null,
+			ConfigSections.Tiers => _configData?.Tiers?.Count > 0 ? _configData.Tiers : null,
+			ConfigSections.Validator => (_configData?.Groups?.Count > 0 || _configData?.Operations?.Count > 0)
+											? (_configData.Groups ?? new List<GroupDto>(), _configData.Operations ?? new List<ValidationModel>())
+											: null,
 			_ => null
 		};
 
@@ -55,7 +56,7 @@ namespace Domain.Serialization
 					_configData.Tiers = data as List<Main.Tier> ?? [];
 					break;
 				case ConfigSections.Validator:
-					if (data is ValueTuple<List<GroupDto>, List<Validation.ValidationModel>> validatorData)
+					if (data is ValueTuple<List<GroupDto>, List<ValidationModel>> validatorData)
 					{
 						_configData.Groups = validatorData.Item1;
 						_configData.Operations = validatorData.Item2;
@@ -232,8 +233,9 @@ namespace Domain.Serialization
 
 		private static void InitializeMigrationHandlers()
 		{
-			return;
 			// Future migrations go here
+			// Example for future use:
+			// _migrationHandlers["1.1.0"] = data => { /* migration logic */ };
 		}
 
 		private enum VersionComparison
