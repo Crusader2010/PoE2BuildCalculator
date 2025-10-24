@@ -20,15 +20,15 @@ namespace PoE2BuildCalculator
 		private Func<List<Item>, bool> _masterValidator = x => true;
 		public bool _customValidatorCreated { get; private set; } = false;
 
+		private readonly BindingList<Group> _groups = [];
+		private readonly BindingList<GroupOperationsUserControl> _operationControls = [];
+
 		private readonly MainForm _ownerForm;
 		private int _nextGroupId = 1;
 
 		// Cached layout calculations
 		private readonly (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) _cachedSizes;
 		private const int GROUP_ITEMSTATSROWS_VISIBLE = 5;
-
-		private readonly BindingList<Group> _groups = [];
-		private readonly BindingList<GroupOperationsUserControl> _operationControls = [];
 
 		private ImmutableDictionary<int, string> _immutableGroupDescriptions
 		{
@@ -60,7 +60,12 @@ namespace PoE2BuildCalculator
 			UpdateStyles();
 		}
 
-		#region IConfigurable Implementation
+		public List<Group> GetGroups()
+		{
+			return [.. _groups];
+		}
+
+		#region JSON import - export
 
 		public bool HasData => _groups.Count > 0 || _operationControls.Count > 0;
 
@@ -142,14 +147,17 @@ namespace PoE2BuildCalculator
 			FlowPanelOperations.ResumeLayout(true);
 
 			_nextGroupId = _groups.Any() ? _groups.Max(g => g.GroupId) + 1 : 1;
+
+			_masterValidator = x => true; // reset
+			var validatorFunction = CreateValidatorFunction(true);
+			if (!validatorFunction.Created) CustomMessageBox.Show(validatorFunction.Message, "Unable to recreate validator function", MessageBoxButtons.OK, MessageBoxIcon.Error, this);
 		}
 
 		#endregion
 
 		private void BtnHelp_Click(object sender, EventArgs e)
 		{
-			using var helpForm = new CustomMessageBox(Constants.VALIDATOR_HELP_TEXT, "Validation Help", MessageBoxButtons.OK, MessageBoxIcon.Information);
-			helpForm.ShowDialog(this);
+			CustomMessageBox.Show(Constants.VALIDATOR_HELP_TEXT, "Validation Help", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
 		}
 
 		private void BtnAddOperation_Click(object sender, EventArgs e)
@@ -250,34 +258,7 @@ namespace PoE2BuildCalculator
 
 		private void BtnCreateValidator_Click(object sender, EventArgs e)
 		{
-			try
-			{
-				var (isValid, message) = CheckInvalidSelectedGroupsOrOperations();
-				if (!isValid)
-				{
-					MessageBox.Show(message, "Inactive/invalid groups or operations", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-					return;
-				}
-
-				var operations = BuildValidationModels();
-				var validatorFunction = BuildValidatorFunction(operations);
-
-				if (validatorFunction == null)
-				{
-					MessageBox.Show("No validation function can be computed based on the existing groups and/or operations.\n\nKeeping default logic -> all combinations are valid.", "No active/valid groups/operations", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-					return;
-				}
-
-				_masterValidator = validatorFunction;
-				_ownerForm._itemValidatorFunction = _masterValidator;
-				_customValidatorCreated = validatorFunction.Target != null;
-
-				MessageBox.Show($"Validator created successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-			}
-			catch (Exception ex)
-			{
-				MessageBox.Show($"Error creating validator: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-			}
+			CreateValidatorFunction(false);
 		}
 
 		private void ButtonTranslateValidationFunction_Click(object sender, EventArgs e)
@@ -416,6 +397,41 @@ namespace PoE2BuildCalculator
 			}
 
 			return (isValid, string.Join("\r\n", grpMsg, operMsg, "\r\nBefore a validation function can be created, you must remove or edit the inactive or invalid groups and operations."));
+		}
+
+		private (bool Created, string Message) CreateValidatorFunction(bool suppressMessageBoxes)
+		{
+			try
+			{
+				var (isValid, message) = CheckInvalidSelectedGroupsOrOperations();
+				if (!isValid)
+				{
+					if (!suppressMessageBoxes) CustomMessageBox.Show(message, "Inactive/invalid groups or operations", MessageBoxButtons.OK, MessageBoxIcon.Warning, this);
+					return (false, message);
+				}
+
+				var operations = BuildValidationModels();
+				var validatorFunction = BuildValidatorFunction(operations);
+
+				if (validatorFunction == null)
+				{
+					string msg = "No validation function can be computed based on the existing groups and/or operations.\n\nKeeping default logic -> all combinations are valid.";
+					if (!suppressMessageBoxes) CustomMessageBox.Show(msg, "No active/valid groups/operations", MessageBoxButtons.OK, MessageBoxIcon.Warning, this);
+					return (false, msg);
+				}
+
+				_masterValidator = validatorFunction;
+				_ownerForm._itemValidatorFunction = _masterValidator;
+				_customValidatorCreated = validatorFunction.Target != null;
+
+				if (!suppressMessageBoxes) CustomMessageBox.Show($"Validator created successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
+				return (true, $"Validator created successfully!");
+			}
+			catch (Exception ex)
+			{
+				if (!suppressMessageBoxes) ErrorHelper.ShowError(ex, $"{nameof(CustomValidator)} - {nameof(CreateValidatorFunction)}");
+				return (false, $"Error: {ex}");
+			}
 		}
 
 		#region Validation and parsing methods

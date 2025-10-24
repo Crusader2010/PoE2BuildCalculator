@@ -37,6 +37,7 @@
 			MenuStrip = new MenuStrip();
 			LoadConfigMenuButton = new ToolStripMenuItem();
 			SaveConfigMenuButton = new ToolStripMenuItem();
+			ShowScoredCombinationsButton = new Button();
 			StatusBar.SuspendLayout();
 			PanelButtons.SuspendLayout();
 			GroupBoxStrategy.SuspendLayout();
@@ -144,6 +145,7 @@
 			// PanelButtons
 			// 
 			PanelButtons.BorderStyle = BorderStyle.FixedSingle;
+			PanelButtons.Controls.Add(ShowScoredCombinationsButton);
 			PanelButtons.Controls.Add(ButtonOpenItemListFile);
 			PanelButtons.Controls.Add(ShowItemsDataButton);
 			PanelButtons.Controls.Add(ButtonParseItemListFile);
@@ -263,6 +265,16 @@
 			SaveConfigMenuButton.ToolTipText = "Save the configured tiers and validation groups/operations";
 			SaveConfigMenuButton.Click += SaveConfigMenuButton_Click;
 			// 
+			// ShowScoredCombinationsButton
+			// 
+			ShowScoredCombinationsButton.Location = new Point(14, 205);
+			ShowScoredCombinationsButton.Name = "ShowScoredCombinationsButton";
+			ShowScoredCombinationsButton.Size = new Size(126, 58);
+			ShowScoredCombinationsButton.TabIndex = 8;
+			ShowScoredCombinationsButton.Text = "Display scored combinations";
+			ShowScoredCombinationsButton.UseVisualStyleBackColor = true;
+			ShowScoredCombinationsButton.Click += ShowScoredCombinationsButton_Click;
+			// 
 			// MainForm
 			// 
 			AutoScaleDimensions = new SizeF(96F, 96F);
@@ -317,5 +329,6 @@
 		private MenuStrip MenuStrip;
 		private ToolStripMenuItem LoadConfigMenuButton;
 		private ToolStripMenuItem SaveConfigMenuButton;
+		private Button ShowScoredCombinationsButton;
 	}
 }

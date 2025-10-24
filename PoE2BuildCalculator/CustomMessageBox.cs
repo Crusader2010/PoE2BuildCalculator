@@ -22,6 +22,16 @@ namespace PoE2BuildCalculator
 			_icon = icon;
 		}
 
+		/// <summary>
+		/// Shows a CustomMessageBox as a modal dialog and returns the result.
+		/// Automatically handles initialization and disposal.
+		/// </summary>
+		public static DialogResult Show(string message, string title, MessageBoxButtons buttons = MessageBoxButtons.OK, MessageBoxIcon icon = MessageBoxIcon.None, IWin32Window owner = null)
+		{
+			using var dialog = new CustomMessageBox(message, title, buttons, icon);
+			return owner != null ? dialog.ShowDialog(owner) : dialog.ShowDialog();
+		}
+
 		private void CustomMessageBox_Load(object sender, EventArgs e)
 		{
 			SetControls();

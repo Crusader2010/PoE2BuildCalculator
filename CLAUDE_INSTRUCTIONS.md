@@ -45,10 +45,15 @@ If Claude provides code without verification:
 - Deep analysis with 10+ independent audits. Audits are hidden from the user.
 - Always show the number of audits you performed to reach the final answer
 - Maximum conciseness, minimal clutter
-- Code: one snippet per method/file, always specify file path + method name.
-- Code: when only parts of a method need changing, make sure you specify EXACTLY what the limits of the changed code are (always provide previous and next unchanged code lines, that surround the required changes)
-- Code: when there are multiple changes within the same method, try to provide the full method instead OR include more code that surrounds the changes for clarity
-- Always apply optimizations (all but not limited to: C# 14+, caching, static methods, unused code removal, syntactic sugar)
+
+## Code requirements
+- Always apply optimizations (not limited to: C# 14+ expressions and syntax, async, caching, static methods, unused code removal, syntactic sugar)
+- I/O operations must be made async and threadsafe. Also make async any other operations that can benefit from it.
+- Apply best practices and design patterns that are easy to understand or provide great benefits for performance/efficiency.
+- Ensure high performance and low memory usage.
+- Response: one snippet per method/file, always specify file path + method name.
+- Response: when only parts of a method need changing, make sure you specify EXACTLY what the limits of the changed code are (always provide previous and next unchanged code lines, that surround the required changes)
+- Response: when there are multiple changes within the same method, try to provide the full method instead OR include more code that surrounds the changes for clarity
 
 ## Issue Analysis
 Classify all findings by priority: **Critical | High | Medium | Low**

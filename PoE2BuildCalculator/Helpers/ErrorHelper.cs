@@ -19,8 +19,7 @@
 		/// <param name="caption">Optional caption for the message box.</param>
 		public static void ShowError(string message, string caption = "Error")
 		{
-			using var dialog = new CustomMessageBox(message, caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
-			dialog.ShowDialog();
+			CustomMessageBox.Show(message, caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
 		}
 	}
 }

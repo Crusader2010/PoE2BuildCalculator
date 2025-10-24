@@ -31,10 +31,11 @@ namespace PoE2BuildCalculator
 		private ProgressReportingHelper _progressHelper;
 
 		private List<List<Item>> _combinations { get; set; } = [];
+		private List<(List<Item> Combination, double Score)> _scoredCombinations { get; set; } = [];
+
 		private ToolStripProgressBar _statusProgressBar;
 		private ToolStripStatusLabel StatusBarEstimate;
 		private ToolStripButton _cancelButton;
-
 		private CombinationFilterStrategy _filterStrategy = CombinationFilterStrategy.Balanced;
 		private Dictionary<string, (double Min, double Max)> _statNormalization;
 
@@ -485,6 +486,48 @@ namespace PoE2BuildCalculator
 			return totalScore;
 		}
 
+		private void ShowCombinationDisplay()
+		{
+			if (_scoredCombinations == null || _scoredCombinations.Count == 0)
+			{
+				MessageBox.Show(
+					"No scored combinations available. Please compute combinations with tiers configured first.",
+					"No Data",
+					MessageBoxButtons.OK,
+					MessageBoxIcon.Information);
+				return;
+			}
+
+			try
+			{
+				// Get tiers from TierManager
+				List<Tier> tiers = null;
+				if (_tierManager != null && !_tierManager.IsDisposed)
+				{
+					tiers = _tierManager.GetTiers();
+				}
+
+				// Get validator groups from CustomValidator
+				List<Domain.Validation.Group> validatorGroups = null;
+				if (_customValidator != null && !_customValidator.IsDisposed)
+				{
+					validatorGroups = _customValidator.GetGroups();
+				}
+
+				// Create and show the CombinationDisplay form
+				var combinationDisplay = new CombinationDisplay(
+					_scoredCombinations,
+					tiers,
+					validatorGroups);
+
+				combinationDisplay.Show(this);
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, $"{nameof(MainForm)} - {nameof(ShowCombinationDisplay)}");
+			}
+		}
+
 		#endregion
 
 		#region Combination computation estimate
@@ -849,15 +892,24 @@ namespace PoE2BuildCalculator
 					}
 					scoredCombinations.Reverse(); // Dequeued in ascending order, reverse for descending
 
-					// Display scored results
+					// Store scored combinations for later display
+					_scoredCombinations = [.. scoredCombinations.Select(sc => (sc.Combination, sc.Score))];
+
+					// Show summary in textbox
 					var scoredSummary = new System.Text.StringBuilder();
 					scoredSummary.AppendLine($"=== TOP {scoredCombinations.Count} COMBINATIONS (by score) ===\n");
 
-					for (int i = 0; i < scoredCombinations.Count; i++)
+					for (int i = 0; i < Math.Min(10, scoredCombinations.Count); i++)
 					{
 						scoredSummary.AppendLine($"#{i + 1} - Score: {scoredCombinations[i].Score:F2}");
 						scoredSummary.AppendLine($"  Items: {string.Join(", ", scoredCombinations[i].Combination.Select(item => item.Name))}");
 						scoredSummary.AppendLine();
+					}
+
+					if (scoredCombinations.Count > 10)
+					{
+						scoredSummary.AppendLine($"... and {scoredCombinations.Count - 10} more combinations.");
+						scoredSummary.AppendLine("\nClick 'Display Combinations' to view all results in detail.");
 					}
 
 					TextboxDisplay.Text = scoredSummary.ToString();
@@ -1000,6 +1052,11 @@ namespace PoE2BuildCalculator
 		private async void SaveConfigMenuButton_Click(object sender, EventArgs e)
 		{
 			SaveConfig();
+		}
+
+		private void ShowScoredCombinationsButton_Click(object sender, EventArgs e)
+		{
+			ShowCombinationDisplay();
 		}
 	}
 }
