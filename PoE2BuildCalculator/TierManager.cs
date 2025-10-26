@@ -1,13 +1,14 @@
-﻿using Domain.Helpers;
-using Domain.Main;
-using Domain.Static;
-using Domain.Serialization;
-
-using PoE2BuildCalculator.Helpers;
-
-using System.ComponentModel;
+﻿using System.ComponentModel;
 using System.Data;
 using System.Reflection;
+
+using Domain.Enums;
+using Domain.Helpers;
+using Domain.Main;
+using Domain.Serialization;
+using Domain.Static;
+
+using PoE2BuildCalculator.Helpers;
 
 using TextBox = System.Windows.Forms.TextBox;
 using Timer = System.Windows.Forms.Timer;
@@ -35,6 +36,7 @@ namespace PoE2BuildCalculator
 		private readonly Color _tierWeightTextColor = Color.Blue;
 		private readonly Color _tierWeightBackColor = Color.Wheat;
 
+		private readonly ConfigurationManager _configManager;
 		private readonly BindingList<Tier> _bindingTiers = [];
 		private readonly IReadOnlyList<ItemStatsHelper.StatDescriptor> _itemStatsDescriptors;
 		private Dictionary<string, int> _statToTierMapping = new(StringComparer.OrdinalIgnoreCase);
@@ -62,8 +64,10 @@ namespace PoE2BuildCalculator
 			FormatProvider = System.Globalization.CultureInfo.InvariantCulture
 		};
 
-		public TierManager()
+		public TierManager(ConfigurationManager configManager)
 		{
+			ArgumentNullException.ThrowIfNull(configManager);
+			_configManager = configManager;
 			_itemStatsDescriptors = ItemStatsHelper.GetStatDescriptors();
 			InitializeComponent();
 		}
@@ -845,7 +849,29 @@ namespace PoE2BuildCalculator
 
 		private void ButtonLoadConfig_Click(object sender, EventArgs e)
 		{
+			if (!_configManager.HasConfigData(ConfigSections.Tiers))
+			{
+				CustomMessageBox.Show(
+					"No tier configuration data available in memory.\n\nPlease load a configuration file from MainForm first.",
+					"No Data",
+					MessageBoxButtons.OK,
+					MessageBoxIcon.Information);
+				return;
+			}
 
+			var tiersConfig = _configManager.GetConfigData(ConfigSections.Tiers);
+			if (tiersConfig == null) return;
+
+			try
+			{
+				this.SuspendLayout();
+				ImportConfig(tiersConfig);
+				this.ResumeLayout(true);
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, "Load Tier Configuration");
+			}
 		}
 	}
 }

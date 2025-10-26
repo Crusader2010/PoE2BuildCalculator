@@ -24,6 +24,7 @@ namespace PoE2BuildCalculator
 		private readonly BindingList<GroupOperationsUserControl> _operationControls = [];
 
 		private readonly MainForm _ownerForm;
+		private readonly ConfigurationManager _configManager;
 		private int _nextGroupId = 1;
 
 		// Cached layout calculations
@@ -44,12 +45,14 @@ namespace PoE2BuildCalculator
 			set;
 		}
 
-		public CustomValidator(MainForm ownerForm)
+		public CustomValidator(MainForm ownerForm, ConfigurationManager configManager)
 		{
 			ArgumentNullException.ThrowIfNull(ownerForm);
+			ArgumentNullException.ThrowIfNull(configManager);
 			InitializeComponent();
 
 			_ownerForm = ownerForm;
+			_configManager = configManager;
 			_groups.ListChanged += (s, e) => _immutableGroupDescriptions = null;
 			_cachedSizes = GetUserControlSizes();
 
@@ -973,7 +976,29 @@ namespace PoE2BuildCalculator
 
 		private void ButtonLoadConfig_Click(object sender, EventArgs e)
 		{
+			if (!_configManager.HasConfigData(ConfigSections.Validator))
+			{
+				CustomMessageBox.Show(
+					"No validator configuration data available in memory.\n\nPlease load a configuration file from MainForm first.",
+					"No Data",
+					MessageBoxButtons.OK,
+					MessageBoxIcon.Information);
+				return;
+			}
 
+			var validatorConfig = _configManager.GetConfigData(ConfigSections.Validator);
+			if (validatorConfig == null) return;
+
+			try
+			{
+				this.SuspendLayout();
+				ImportConfig(validatorConfig);
+				this.ResumeLayout(true);
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, "Load Validator Configuration");
+			}
 		}
 	}
 }

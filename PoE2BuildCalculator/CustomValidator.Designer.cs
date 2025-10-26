@@ -19,6 +19,7 @@
 		{
 			mainPanel = new TableLayoutPanel();
 			headerPanel = new Panel();
+			ButtonLoadConfig = new Button();
 			ButtonTranslateValidationFunction = new Button();
 			btnAddOperation = new Button();
 			lblTitle = new Label();
@@ -31,7 +32,6 @@
 			panel1 = new Panel();
 			FlowPanelGroups = new FlowLayoutPanel();
 			FlowPanelOperations = new FlowLayoutPanel();
-			ButtonLoadConfig = new Button();
 			mainPanel.SuspendLayout();
 			headerPanel.SuspendLayout();
 			bottomPanel.SuspendLayout();
@@ -72,6 +72,21 @@
 			headerPanel.Size = new Size(1178, 48);
 			headerPanel.TabIndex = 0;
 			// 
+			// ButtonLoadConfig
+			// 
+			ButtonLoadConfig.BackColor = Color.FromArgb(0, 192, 0);
+			ButtonLoadConfig.FlatAppearance.BorderSize = 0;
+			ButtonLoadConfig.FlatStyle = FlatStyle.Popup;
+			ButtonLoadConfig.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
+			ButtonLoadConfig.ForeColor = Color.White;
+			ButtonLoadConfig.Location = new Point(613, 5);
+			ButtonLoadConfig.Name = "ButtonLoadConfig";
+			ButtonLoadConfig.Size = new Size(162, 38);
+			ButtonLoadConfig.TabIndex = 5;
+			ButtonLoadConfig.Text = "Load from JSON";
+			ButtonLoadConfig.UseVisualStyleBackColor = false;
+			ButtonLoadConfig.Click += ButtonLoadConfig_Click;
+			// 
 			// ButtonTranslateValidationFunction
 			// 
 			ButtonTranslateValidationFunction.BackColor = Color.FromArgb(70, 130, 180);
@@ -79,7 +94,7 @@
 			ButtonTranslateValidationFunction.FlatStyle = FlatStyle.Flat;
 			ButtonTranslateValidationFunction.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
 			ButtonTranslateValidationFunction.ForeColor = Color.White;
-			ButtonTranslateValidationFunction.Location = new Point(876, 4);
+			ButtonTranslateValidationFunction.Location = new Point(876, 5);
 			ButtonTranslateValidationFunction.Name = "ButtonTranslateValidationFunction";
 			ButtonTranslateValidationFunction.Size = new Size(237, 38);
 			ButtonTranslateValidationFunction.TabIndex = 4;
@@ -94,7 +109,7 @@
 			btnAddOperation.FlatStyle = FlatStyle.Flat;
 			btnAddOperation.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
 			btnAddOperation.ForeColor = Color.White;
-			btnAddOperation.Location = new Point(362, 4);
+			btnAddOperation.Location = new Point(362, 5);
 			btnAddOperation.Name = "btnAddOperation";
 			btnAddOperation.Size = new Size(182, 38);
 			btnAddOperation.TabIndex = 3;
@@ -119,7 +134,7 @@
 			btnAddGroup.FlatStyle = FlatStyle.Flat;
 			btnAddGroup.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
 			btnAddGroup.ForeColor = Color.White;
-			btnAddGroup.Location = new Point(193, 4);
+			btnAddGroup.Location = new Point(193, 5);
 			btnAddGroup.Name = "btnAddGroup";
 			btnAddGroup.Size = new Size(162, 38);
 			btnAddGroup.TabIndex = 1;
@@ -135,7 +150,7 @@
 			btnHelp.FlatStyle = FlatStyle.Flat;
 			btnHelp.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
 			btnHelp.ForeColor = Color.White;
-			btnHelp.Location = new Point(827, 4);
+			btnHelp.Location = new Point(827, 5);
 			btnHelp.Name = "btnHelp";
 			btnHelp.Size = new Size(43, 38);
 			btnHelp.TabIndex = 2;
@@ -159,7 +174,7 @@
 			ButtonHide.BackColor = Color.FromArgb(220, 220, 220);
 			ButtonHide.FlatStyle = FlatStyle.Flat;
 			ButtonHide.Font = new Font("Segoe UI", 10F);
-			ButtonHide.Location = new Point(611, 10);
+			ButtonHide.Location = new Point(165, 7);
 			ButtonHide.Name = "ButtonHide";
 			ButtonHide.Size = new Size(135, 40);
 			ButtonHide.TabIndex = 2;
@@ -174,7 +189,7 @@
 			btnCreateValidator.FlatStyle = FlatStyle.Flat;
 			btnCreateValidator.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
 			btnCreateValidator.ForeColor = Color.White;
-			btnCreateValidator.Location = new Point(453, 10);
+			btnCreateValidator.Location = new Point(7, 7);
 			btnCreateValidator.Name = "btnCreateValidator";
 			btnCreateValidator.Size = new Size(150, 40);
 			btnCreateValidator.TabIndex = 0;
@@ -184,10 +199,12 @@
 			// 
 			// ButtonCloseAndDispose
 			// 
-			ButtonCloseAndDispose.BackColor = Color.FromArgb(220, 220, 220);
-			ButtonCloseAndDispose.FlatStyle = FlatStyle.Flat;
-			ButtonCloseAndDispose.Font = new Font("Segoe UI", 10F);
-			ButtonCloseAndDispose.Location = new Point(1015, 10);
+			ButtonCloseAndDispose.BackColor = Color.Thistle;
+			ButtonCloseAndDispose.FlatAppearance.BorderSize = 0;
+			ButtonCloseAndDispose.FlatStyle = FlatStyle.Popup;
+			ButtonCloseAndDispose.Font = new Font("Segoe UI", 9F, FontStyle.Bold);
+			ButtonCloseAndDispose.ForeColor = Color.FromArgb(128, 128, 255);
+			ButtonCloseAndDispose.Location = new Point(395, 7);
 			ButtonCloseAndDispose.Name = "ButtonCloseAndDispose";
 			ButtonCloseAndDispose.Size = new Size(135, 40);
 			ButtonCloseAndDispose.TabIndex = 1;
@@ -227,21 +244,6 @@
 			FlowPanelOperations.Name = "FlowPanelOperations";
 			FlowPanelOperations.Size = new Size(270, 568);
 			FlowPanelOperations.TabIndex = 0;
-			// 
-			// ButtonLoadConfig
-			// 
-			ButtonLoadConfig.BackColor = Color.FromArgb(0, 192, 0);
-			ButtonLoadConfig.FlatAppearance.BorderSize = 0;
-			ButtonLoadConfig.FlatStyle = FlatStyle.Flat;
-			ButtonLoadConfig.Font = new Font("Segoe UI", 10F, FontStyle.Bold);
-			ButtonLoadConfig.ForeColor = Color.White;
-			ButtonLoadConfig.Location = new Point(613, 4);
-			ButtonLoadConfig.Name = "ButtonLoadConfig";
-			ButtonLoadConfig.Size = new Size(162, 38);
-			ButtonLoadConfig.TabIndex = 5;
-			ButtonLoadConfig.Text = "Load from JSON";
-			ButtonLoadConfig.UseVisualStyleBackColor = false;
-			ButtonLoadConfig.Click += ButtonLoadConfig_Click;
 			// 
 			// CustomValidator
 			// 

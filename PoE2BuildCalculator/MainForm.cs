@@ -215,7 +215,7 @@ namespace PoE2BuildCalculator
 
 				if (!success)
 				{
-					MessageBox.Show(errorMessage, "Load Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+					CustomMessageBox.Show(errorMessage, "Load Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
 					StatusBarLabel.Text = "Load failed.";
 					return;
 				}
@@ -223,64 +223,12 @@ namespace PoE2BuildCalculator
 				// Show migration message
 				if (migratedFrom != null)
 				{
-					MessageBox.Show(
+					CustomMessageBox.Show(
 						$"Configuration migrated from version {migratedFrom} to current version.\n\n" +
 						"Please verify your settings and save to persist the migration.",
 						"Configuration Migrated",
 						MessageBoxButtons.OK,
 						MessageBoxIcon.Information);
-				}
-
-				// Apply config to TierManager (create if needed)
-				if (_configManager.HasConfigData(ConfigSections.Tiers))
-				{
-					if (_tierManager == null || _tierManager.IsDisposed)
-					{
-						_tierManager = new TierManager();
-						_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
-						_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
-					}
-
-					var tiersConfig = _configManager.GetConfigData(ConfigSections.Tiers);
-					if (tiersConfig != null)
-					{
-						try
-						{
-							_tierManager.ImportConfig(tiersConfig);
-							UpdatePanelConfigState();  // Refresh UI based on imported data
-						}
-						catch (Exception ex)
-						{
-							ErrorHelper.ShowError(ex, "Import Tiers Configuration");
-							return;
-						}
-					}
-				}
-
-				// Apply config to CustomValidator (create if needed)
-				if (_configManager.HasConfigData(ConfigSections.Validator))
-				{
-					if (_customValidator == null || _customValidator.IsDisposed)
-					{
-						_customValidator = new CustomValidator(this)
-						{
-							Owner = this
-						};
-					}
-
-					var validatorConfig = _configManager.GetConfigData(ConfigSections.Validator);
-					if (validatorConfig != null)
-					{
-						try
-						{
-							_customValidator.ImportConfig(validatorConfig);
-						}
-						catch (Exception ex)
-						{
-							ErrorHelper.ShowError(ex, "Import Validator Configuration");
-							return;
-						}
-					}
 				}
 
 				StatusBarLabel.Text = $"Loaded: {Path.GetFileName(ofd.FileName)}";
@@ -656,16 +604,9 @@ namespace PoE2BuildCalculator
 			{
 				if (_tierManager == null || _tierManager.IsDisposed)
 				{
-					_tierManager = new TierManager();
+					_tierManager = new TierManager(_configManager);
 					_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
 					_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
-
-					// Pull config from memory if it exists
-					if (_configManager.HasConfigData(ConfigSections.Tiers))
-					{
-						var config = _configManager.GetConfigData(ConfigSections.Tiers);
-						if (config != null) _tierManager.ImportConfig(config);
-					}
 				}
 
 				_tierManager.Show(this);
@@ -673,29 +614,16 @@ namespace PoE2BuildCalculator
 			}
 		}
 
-		private void UpdatePanelConfigState()
+		private void ButtonManageCustomValidator_Click(object sender, EventArgs e)
 		{
-			bool hasTiers = _tierManager?.GetTiers()?.Count > 0;
-			PanelConfig.Enabled = hasTiers;
-		}
-
-		private void ShowItemsDataButton_Click(object sender, EventArgs e)
-		{
-			bool haveComputedCombinations = _combinations != null && _combinations.Count > 0;
-			if (!haveComputedCombinations && (_fileParser == null || _fileParser.GetParsedItems().Count == 0))
+			lock (_lockObject)
 			{
-				StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
-				return;
+				if (_customValidator == null || _customValidator.IsDisposed)
+					_customValidator = new CustomValidator(this, _configManager);
+
+				_customValidator.Show(this);
+				_customValidator.Activate();
 			}
-
-			var computedItems = haveComputedCombinations
-									? [.. _combinations.SelectMany(list => list)]
-									: _fileParser?.GetParsedItems() ?? [];
-
-			var display = new DataDisplay(computedItems);
-
-			// show modal so caller waits for the user to close it
-			display.Show(this);
 		}
 
 		private async void ButtonComputeCombinations_Click(object sender, EventArgs e)
@@ -940,25 +868,29 @@ namespace PoE2BuildCalculator
 			}
 		}
 
-		private void ButtonManageCustomValidator_Click(object sender, EventArgs e)
+		private void UpdatePanelConfigState()
 		{
-			lock (_lockObject)
+			bool hasTiers = _tierManager?.GetTiers()?.Count > 0;
+			PanelConfig.Enabled = hasTiers;
+		}
+
+		private void ShowItemsDataButton_Click(object sender, EventArgs e)
+		{
+			bool haveComputedCombinations = _combinations != null && _combinations.Count > 0;
+			if (!haveComputedCombinations && (_fileParser == null || _fileParser.GetParsedItems().Count == 0))
 			{
-				if (_customValidator == null || _customValidator.IsDisposed)
-				{
-					_customValidator = new CustomValidator(this);
-
-					// Pull config from memory if it exists
-					if (_configManager.HasConfigData(ConfigSections.Validator))
-					{
-						var config = _configManager.GetConfigData(ConfigSections.Validator);
-						if (config != null) _customValidator.ImportConfig(config);
-					}
-				}
-
-				_customValidator.Show(this);
-				_customValidator.Activate();
+				StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
+				return;
 			}
+
+			var computedItems = haveComputedCombinations
+									? [.. _combinations.SelectMany(list => list)]
+									: _fileParser?.GetParsedItems() ?? [];
+
+			var display = new DataDisplay(computedItems);
+
+			// show modal so caller waits for the user to close it
+			display.Show(this);
 		}
 
 		private void MainForm_FormClosing(object sender, FormClosingEventArgs e)

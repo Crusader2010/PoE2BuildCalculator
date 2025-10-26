@@ -91,3 +91,5 @@ Before providing the final answer, audit until:
 - ✓ All fringe cases covered
 - ✓ The issues / user requirements / fringe cases are fixed/covered in the best possible way
 - ✓ All improvements identified (implement if space permits or user requested specifically)
+- ✓ Always use my CustomMessageBox.Show(), instead of MessageBox.Show(), when displaying message boxes.
+- ✓ Always use my ErrorHelper methods for exception handling.
