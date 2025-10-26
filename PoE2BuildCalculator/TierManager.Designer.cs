@@ -42,6 +42,7 @@
 			label2 = new Label();
 			ButtonHide = new Button();
 			ButtonClose = new Button();
+			ButtonLoadConfig = new Button();
 			((System.ComponentModel.ISupportInitialize)TableTiers).BeginInit();
 			((System.ComponentModel.ISupportInitialize)TableStatsWeightSum).BeginInit();
 			SuspendLayout();
@@ -194,12 +195,23 @@
 			ButtonClose.UseVisualStyleBackColor = true;
 			ButtonClose.Click += ButtonClose_Click;
 			// 
+			// ButtonLoadConfig
+			// 
+			ButtonLoadConfig.Location = new Point(653, 4);
+			ButtonLoadConfig.Name = "ButtonLoadConfig";
+			ButtonLoadConfig.Size = new Size(150, 31);
+			ButtonLoadConfig.TabIndex = 13;
+			ButtonLoadConfig.Text = "Load from JSON";
+			ButtonLoadConfig.UseVisualStyleBackColor = true;
+			ButtonLoadConfig.Click += ButtonLoadConfig_Click;
+			// 
 			// TierManager
 			// 
 			AutoScaleDimensions = new SizeF(96F, 96F);
 			AutoScaleMode = AutoScaleMode.Dpi;
 			AutoSizeMode = AutoSizeMode.GrowAndShrink;
 			ClientSize = new Size(1303, 498);
+			Controls.Add(ButtonLoadConfig);
 			Controls.Add(ButtonClose);
 			Controls.Add(ButtonHide);
 			Controls.Add(label2);
@@ -233,5 +245,6 @@
         private Label label2;
 		private Button ButtonHide;
 		private Button ButtonClose;
+		private Button ButtonLoadConfig;
 	}
 }

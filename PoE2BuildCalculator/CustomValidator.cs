@@ -970,5 +970,10 @@ namespace PoE2BuildCalculator
 		}
 
 		#endregion
+
+		private void ButtonLoadConfig_Click(object sender, EventArgs e)
+		{
+
+		}
 	}
 }

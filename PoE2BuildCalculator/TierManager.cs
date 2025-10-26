@@ -73,7 +73,7 @@ namespace PoE2BuildCalculator
 			return [.. _bindingTiers];
 		}
 
-		#region IConfigurable Implementation
+		#region JSON import - export
 
 		public bool HasData => _bindingTiers.Count > 0;
 
@@ -842,5 +842,10 @@ namespace PoE2BuildCalculator
 		}
 
 		#endregion
+
+		private void ButtonLoadConfig_Click(object sender, EventArgs e)
+		{
+
+		}
 	}
 }
