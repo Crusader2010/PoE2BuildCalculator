@@ -4,6 +4,7 @@ using System.Reflection;
 using System.Text;
 
 using Domain.Enums;
+using Domain.HelperForms;
 using Domain.Helpers;
 using Domain.Main;
 using Domain.Serialization;
@@ -11,11 +12,11 @@ using Domain.Static;
 using Domain.UserControls;
 using Domain.Validation;
 
-using PoE2BuildCalculator.Helpers;
+using Manager;
 
 namespace PoE2BuildCalculator
 {
-	public partial class CustomValidator : BaseForm, IConfigurable
+	public partial class CustomValidator : BaseForm, IConfiguration
 	{
 		private Func<List<Item>, bool> _masterValidator = x => true;
 		public bool _customValidatorCreated { get; private set; } = false;
@@ -106,60 +107,66 @@ namespace PoE2BuildCalculator
 			FlowPanelGroups.SuspendLayout();
 			FlowPanelOperations.SuspendLayout();
 
-			foreach (var control in FlowPanelGroups.Controls.OfType<ItemStatGroupValidatorUserControl>())
-				control.Dispose();
-			foreach (var control in FlowPanelOperations.Controls.OfType<GroupOperationsUserControl>())
-				control.Dispose();
-
-			FlowPanelGroups.Controls.Clear();
-			FlowPanelOperations.Controls.Clear();
-
-			// Rebuild groups
-			foreach (var dto in groupDtos)
+			try
 			{
-				var control = new ItemStatGroupValidatorUserControl(dto.GroupId, dto.GroupName)
-				{
-					Width = _cachedSizes.widthStat + 25,
-					Height = _cachedSizes.heightGroupTop + (_cachedSizes.heightStat * GROUP_ITEMSTATSROWS_VISIBLE) + 5
-				};
+				foreach (var control in FlowPanelGroups.Controls.OfType<ItemStatGroupValidatorUserControl>())
+					control.Dispose();
+				foreach (var control in FlowPanelOperations.Controls.OfType<GroupOperationsUserControl>())
+					control.Dispose();
 
-				control.LoadStatsFromConfig(dto.Stats);
-				control.GroupDeleted += (s, e) => DeleteGroup(control);
-
-				_groups.Add(control._group);
-				FlowPanelGroups.Controls.Add(control);
-			}
-
-			// Rebuild operations
-			foreach (var op in operations)
-			{
-				var control = new GroupOperationsUserControl(_immutableGroupDescriptions, this)
-				{
-					BackColor = _operationControls.Count % 2 == 0 ? Color.LightGray : Color.LightSlateGray
-				};
-
-				control.LoadFromValidationModel(op);
-				control.GroupOperationDeleted += OperationControl_GroupOperationDeleted;
-
-				_operationControls.Add(control);
-				FlowPanelOperations.Controls.Add(control);
-			}
-
-			FlowPanelGroups.ResumeLayout(true);
-			FlowPanelOperations.ResumeLayout(true);
-
-			_nextGroupId = _groups.Any() ? _groups.Max(g => g.GroupId) + 1 : 1;
-
-			_masterValidator = x => true; // reset
-			var validatorFunction = CreateValidatorFunction(true);
-			if (!validatorFunction.Created)
-			{
-				// Reset to safe state
-				_groups.Clear();
-				_operationControls.Clear();
 				FlowPanelGroups.Controls.Clear();
 				FlowPanelOperations.Controls.Clear();
-				CustomMessageBox.Show($"Configuration loaded but validator recreation failed:\n\n{validatorFunction.Message}\n\nGroups and operations have been cleared. Please reconfigure.", "Unable to recreate validator function", MessageBoxButtons.OK, MessageBoxIcon.Error, this);
+
+				// Rebuild groups
+				foreach (var dto in groupDtos)
+				{
+					var control = new ItemStatGroupValidatorUserControl(dto.GroupId, dto.GroupName)
+					{
+						Width = _cachedSizes.widthStat + 25,
+						Height = _cachedSizes.heightGroupTop + (_cachedSizes.heightStat * GROUP_ITEMSTATSROWS_VISIBLE) + 5
+					};
+
+					control.LoadStatsFromConfig(dto.Stats);
+					control.GroupDeleted += (s, e) => DeleteGroup(control);
+
+					_groups.Add(control._group);
+					FlowPanelGroups.Controls.Add(control);
+				}
+
+				// Rebuild operations
+				foreach (var op in operations)
+				{
+					var control = new GroupOperationsUserControl(_immutableGroupDescriptions, this)
+					{
+						BackColor = _operationControls.Count % 2 == 0 ? Color.LightGray : Color.LightSlateGray
+					};
+
+					control.LoadFromValidationModel(op);
+					control.GroupOperationDeleted += OperationControl_GroupOperationDeleted;
+
+					_operationControls.Add(control);
+					FlowPanelOperations.Controls.Add(control);
+				}
+
+				_nextGroupId = _groups.Any() ? _groups.Max(g => g.GroupId) + 1 : 1;
+				_masterValidator = x => true; // reset
+
+				var validatorFunction = CreateValidatorFunction(true);
+				if (!validatorFunction.Created)
+				{
+					// Reset to safe state
+					_groups.Clear();
+					_operationControls.Clear();
+					FlowPanelGroups.Controls.Clear();
+					FlowPanelOperations.Controls.Clear();
+					CustomMessageBox.Show($"Configuration loaded but validator recreation failed:\r\n\r\n{validatorFunction.Message}\r\n\r\nGroups and operations have been cleared. Please reconfigure.", "Unable to recreate validator function", MessageBoxButtons.OK, MessageBoxIcon.Error, this);
+				}
+			}
+			finally
+			{
+				FlowPanelGroups.ResumeLayout(true);
+				FlowPanelOperations.ResumeLayout(true);
+
 			}
 		}
 
@@ -189,7 +196,7 @@ namespace PoE2BuildCalculator
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show($"Error creating group operation control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				CustomMessageBox.Show($"Error creating group operation control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
 			finally
 			{
@@ -211,7 +218,7 @@ namespace PoE2BuildCalculator
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show($"Error when deleting a group operation control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				CustomMessageBox.Show($"Error when deleting a group operation control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
 			finally
 			{
@@ -240,7 +247,7 @@ namespace PoE2BuildCalculator
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show($"Error creating group control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				CustomMessageBox.Show($"Error creating group control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
 			finally
 			{
@@ -279,7 +286,7 @@ namespace PoE2BuildCalculator
 			var (isValid, message) = TestValidationFunctionTranslation([item]);
 			if (!isValid)
 			{
-				MessageBox.Show("Error during validation function translation:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				CustomMessageBox.Show("Error during validation function translation:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Error);
 				return;
 			}
 
@@ -287,7 +294,7 @@ namespace PoE2BuildCalculator
 							 .Replace("\r\n\t\t => false", string.Empty)
 							 .Replace("\r\n\r\n => true", string.Empty)
 							 .Replace("\r\n\r\n => false", string.Empty);
-			MessageBox.Show("Validation function translation:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Information);
+			CustomMessageBox.Show("Validation function translation:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 
 		private static (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) GetUserControlSizes()
@@ -425,7 +432,7 @@ namespace PoE2BuildCalculator
 
 				if (validatorFunction == null)
 				{
-					string msg = "No validation function can be computed based on the existing groups and/or operations.\n\nKeeping default logic -> all combinations are valid.";
+					string msg = "No validation function can be computed based on the existing groups and/or operations.\r\n\r\nKeeping default logic -> all combinations are valid.";
 					if (!suppressMessageBoxes) CustomMessageBox.Show(msg, "No active/valid groups/operations", MessageBoxButtons.OK, MessageBoxIcon.Warning, this);
 					return (false, msg);
 				}
@@ -979,19 +986,21 @@ namespace PoE2BuildCalculator
 			if (!_configManager.HasConfigData(ConfigSections.Validator))
 			{
 				CustomMessageBox.Show(
-					"No validator configuration data available in memory.\n\nPlease load a configuration file from MainForm first.",
+					"No validator configuration data available in memory.\r\n\r\nPlease load a configuration file from MainForm first.",
 					"No Data",
 					MessageBoxButtons.OK,
 					MessageBoxIcon.Information);
 				return;
 			}
 
-			this.SuspendLayout();
 			var validatorConfig = _configManager.GetConfigData(ConfigSections.Validator);
 			if (validatorConfig == null) return;
 
+			// Prevent flicker by hiding form during import
+			bool wasVisible = this.Visible;
 			try
 			{
+				if (wasVisible) this.Visible = false;
 				ImportConfig(validatorConfig);
 			}
 			catch (Exception ex)
@@ -1000,7 +1009,7 @@ namespace PoE2BuildCalculator
 			}
 			finally
 			{
-				this.ResumeLayout(true);
+				if (wasVisible) this.Visible = true;
 			}
 		}
 	}

@@ -1,4 +1,6 @@
-﻿namespace PoE2BuildCalculator.Helpers
+﻿using Domain.HelperForms;
+
+namespace Domain.Helpers
 {
 	public static class ErrorHelper
 	{

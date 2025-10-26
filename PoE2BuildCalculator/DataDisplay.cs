@@ -1,9 +1,8 @@
 ﻿using System.Collections.Immutable;
 
+using Domain.HelperForms;
 using Domain.Helpers;
 using Domain.Main;
-
-using PoE2BuildCalculator.Helpers;
 
 namespace PoE2BuildCalculator
 {
@@ -50,7 +49,7 @@ namespace PoE2BuildCalculator
 		{
 			if (_itemsToDisplay == null || _itemsToDisplay.Count == 0)
 			{
-				MessageBox.Show("No parsed items to display.");
+				CustomMessageBox.Show($"No parsed items to display.", "Missing parsed items");
 				return;
 			}
 

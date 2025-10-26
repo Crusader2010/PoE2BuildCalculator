@@ -1,9 +1,9 @@
-﻿namespace Domain.Serialization
+﻿namespace Manager
 {
 	/// <summary>
 	/// Interface for forms that can save/load their configuration.
 	/// </summary>
-	public interface IConfigurable
+	public interface IConfiguration
 	{
 		/// <summary>
 		/// Exports the form's configuration data.

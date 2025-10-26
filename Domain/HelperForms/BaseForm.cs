@@ -1,4 +1,4 @@
-﻿namespace PoE2BuildCalculator.Helpers
+﻿namespace Domain.HelperForms
 {
 	public partial class BaseForm : Form
 	{

@@ -24,4 +24,13 @@
 		<PackageReference Include="System.Management" Version="9.0.9" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Compile Update="HelperForms\BaseForm.cs">
+	    <SubType>Form</SubType>
+	  </Compile>
+	  <Compile Update="HelperForms\CustomMessageBox.cs">
+	    <SubType>Form</SubType>
+	  </Compile>
+	</ItemGroup>
+
 </Project>

@@ -3,19 +3,19 @@ using System.Data;
 using System.Reflection;
 
 using Domain.Enums;
+using Domain.HelperForms;
 using Domain.Helpers;
 using Domain.Main;
-using Domain.Serialization;
 using Domain.Static;
 
-using PoE2BuildCalculator.Helpers;
+using Manager;
 
 using TextBox = System.Windows.Forms.TextBox;
 using Timer = System.Windows.Forms.Timer;
 
 namespace PoE2BuildCalculator
 {
-	public partial class TierManager : BaseForm, IConfigurable
+	public partial class TierManager : BaseForm, IConfiguration
 	{
 		public event EventHandler TiersChanged;
 
@@ -852,19 +852,21 @@ namespace PoE2BuildCalculator
 			if (!_configManager.HasConfigData(ConfigSections.Tiers))
 			{
 				CustomMessageBox.Show(
-					"No tier configuration data available in memory.\n\nPlease load a configuration file from MainForm first.",
+					"No tier configuration data available in memory.\r\n\r\nPlease load a configuration file from the main window first.",
 					"No Data",
 					MessageBoxButtons.OK,
 					MessageBoxIcon.Information);
 				return;
 			}
 
-			this.SuspendLayout();
 			var tiersConfig = _configManager.GetConfigData(ConfigSections.Tiers);
 			if (tiersConfig == null) return;
 
+			// Prevent flicker by hiding form during import
+			bool wasVisible = this.Visible;
 			try
 			{
+				if (wasVisible) this.Visible = false;
 				ImportConfig(tiersConfig);
 			}
 			catch (Exception ex)
@@ -873,7 +875,7 @@ namespace PoE2BuildCalculator
 			}
 			finally
 			{
-				this.ResumeLayout(true);
+				if (wasVisible) this.Visible = true;
 			}
 		}
 	}

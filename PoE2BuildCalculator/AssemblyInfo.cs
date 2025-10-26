@@ -24,8 +24,8 @@ using System.Runtime.Versioning;
 //
 // You can specify all the values or you can default the Build and Revision Numbers by using the '*' e.g.: [assembly: AssemblyVersion("1.0.*")]
 [assembly: SupportedOSPlatform("windows")]
-[assembly: AssemblyVersion("0.0.4")]
-[assembly: AssemblyFileVersion("0.0.4")]
+[assembly: AssemblyVersion("0.1.0")]
+[assembly: AssemblyFileVersion("0.1.0")]
 
 // The following GUID is for the ID of the typelib if this project is exposed to COM.
 [assembly: Guid("325c879c-4b35-4452-a28a-557e142c3c85")]

@@ -1,4 +1,4 @@
-﻿namespace PoE2BuildCalculator
+﻿namespace Domain.HelperForms
 {
 	partial class CustomMessageBox
 	{
@@ -29,6 +29,7 @@
 		private void InitializeComponent()
 		{
 			MainPanel = new Panel();
+			BorderPanel = new Panel();
 			TextBoxMessage = new TextBox();
 			PanelBottom = new Panel();
 			BottomTablePanel = new TableLayoutPanel();
@@ -38,6 +39,7 @@
 			CheckboxWrapText = new CheckBox();
 			PictureBoxIcon = new PictureBox();
 			MainPanel.SuspendLayout();
+			BorderPanel.SuspendLayout();
 			PanelBottom.SuspendLayout();
 			BottomTablePanel.SuspendLayout();
 			FlowPanelButtons.SuspendLayout();
@@ -46,26 +48,39 @@
 			// 
 			// MainPanel
 			// 
-			MainPanel.Controls.Add(TextBoxMessage);
+			MainPanel.BackColor = Color.White;
+			MainPanel.Controls.Add(BorderPanel);
 			MainPanel.Dock = DockStyle.Fill;
 			MainPanel.Location = new Point(0, 0);
 			MainPanel.Margin = new Padding(0);
 			MainPanel.Name = "MainPanel";
-			MainPanel.Size = new Size(534, 560);
+			MainPanel.Padding = new Padding(12, 8, 12, 8);
+			MainPanel.Size = new Size(439, 355);
 			MainPanel.TabIndex = 0;
+			// 
+			// BorderPanel
+			// 
+			BorderPanel.Controls.Add(TextBoxMessage);
+			BorderPanel.Dock = DockStyle.Fill;
+			BorderPanel.Location = new Point(12, 8);
+			BorderPanel.Name = "BorderPanel";
+			BorderPanel.Size = new Size(415, 339);
+			BorderPanel.TabIndex = 0;
 			// 
 			// TextBoxMessage
 			// 
+			TextBoxMessage.BackColor = Color.FromArgb(250, 250, 250);
+			TextBoxMessage.BorderStyle = BorderStyle.None;
 			TextBoxMessage.Dock = DockStyle.Fill;
-			TextBoxMessage.Font = new Font("Verdana", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			TextBoxMessage.ForeColor = Color.Blue;
+			TextBoxMessage.Font = new Font("Segoe UI", 10.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
+			TextBoxMessage.ForeColor = Color.FromArgb(50, 50, 50);
 			TextBoxMessage.Location = new Point(0, 0);
 			TextBoxMessage.MaxLength = 2147483646;
 			TextBoxMessage.Multiline = true;
 			TextBoxMessage.Name = "TextBoxMessage";
 			TextBoxMessage.ReadOnly = true;
 			TextBoxMessage.ScrollBars = ScrollBars.Both;
-			TextBoxMessage.Size = new Size(534, 560);
+			TextBoxMessage.Size = new Size(415, 339);
 			TextBoxMessage.TabIndex = 0;
 			TextBoxMessage.WordWrap = false;
 			// 
@@ -73,9 +88,9 @@
 			// 
 			PanelBottom.Controls.Add(BottomTablePanel);
 			PanelBottom.Dock = DockStyle.Bottom;
-			PanelBottom.Location = new Point(0, 560);
+			PanelBottom.Location = new Point(0, 355);
 			PanelBottom.Name = "PanelBottom";
-			PanelBottom.Size = new Size(534, 51);
+			PanelBottom.Size = new Size(439, 51);
 			PanelBottom.TabIndex = 1;
 			// 
 			// BottomTablePanel
@@ -91,7 +106,7 @@
 			BottomTablePanel.Name = "BottomTablePanel";
 			BottomTablePanel.RowCount = 1;
 			BottomTablePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-			BottomTablePanel.Size = new Size(534, 51);
+			BottomTablePanel.Size = new Size(439, 51);
 			BottomTablePanel.TabIndex = 0;
 			// 
 			// FlowPanelButtons
@@ -103,9 +118,10 @@
 			FlowPanelButtons.Controls.Add(Button2);
 			FlowPanelButtons.Controls.Add(CheckboxWrapText);
 			FlowPanelButtons.Controls.Add(PictureBoxIcon);
-			FlowPanelButtons.Location = new Point(78, 3);
+			FlowPanelButtons.Location = new Point(30, 3);
+			FlowPanelButtons.Margin = new Padding(20, 0, 0, 0);
 			FlowPanelButtons.Name = "FlowPanelButtons";
-			FlowPanelButtons.Size = new Size(377, 45);
+			FlowPanelButtons.Size = new Size(398, 45);
 			FlowPanelButtons.TabIndex = 0;
 			FlowPanelButtons.WrapContents = false;
 			// 
@@ -138,10 +154,13 @@
 			// CheckboxWrapText
 			// 
 			CheckboxWrapText.BackColor = Color.FromArgb(224, 224, 224);
-			CheckboxWrapText.Location = new Point(209, 0);
-			CheckboxWrapText.Margin = new Padding(3, 0, 0, 0);
+			CheckboxWrapText.FlatStyle = FlatStyle.Popup;
+			FlowPanelButtons.SetFlowBreak(CheckboxWrapText, true);
+			CheckboxWrapText.Location = new Point(256, 0);
+			CheckboxWrapText.Margin = new Padding(50, 0, 0, 0);
 			CheckboxWrapText.Name = "CheckboxWrapText";
-			CheckboxWrapText.Size = new Size(100, 45);
+			CheckboxWrapText.Padding = new Padding(2);
+			CheckboxWrapText.Size = new Size(89, 45);
 			CheckboxWrapText.TabIndex = 3;
 			CheckboxWrapText.Text = "Wrap Text";
 			CheckboxWrapText.TextAlign = ContentAlignment.MiddleCenter;
@@ -152,8 +171,8 @@
 			// 
 			PictureBoxIcon.BackColor = Color.Transparent;
 			PictureBoxIcon.BackgroundImageLayout = ImageLayout.Center;
-			PictureBoxIcon.Location = new Point(329, 0);
-			PictureBoxIcon.Margin = new Padding(20, 0, 3, 0);
+			PictureBoxIcon.Location = new Point(350, 0);
+			PictureBoxIcon.Margin = new Padding(5, 0, 3, 0);
 			PictureBoxIcon.Name = "PictureBoxIcon";
 			PictureBoxIcon.Size = new Size(45, 45);
 			PictureBoxIcon.SizeMode = PictureBoxSizeMode.CenterImage;
@@ -164,10 +183,11 @@
 			// 
 			AutoScaleDimensions = new SizeF(96F, 96F);
 			AutoScaleMode = AutoScaleMode.Dpi;
-			ClientSize = new Size(534, 611);
+			ClientSize = new Size(439, 406);
 			Controls.Add(MainPanel);
 			Controls.Add(PanelBottom);
 			DoubleBuffered = true;
+			Font = new Font("Nirmala UI", 9F);
 			FormBorderStyle = FormBorderStyle.FixedSingle;
 			MaximizeBox = false;
 			MinimizeBox = false;
@@ -177,7 +197,8 @@
 			TopMost = true;
 			Load += CustomMessageBox_Load;
 			MainPanel.ResumeLayout(false);
-			MainPanel.PerformLayout();
+			BorderPanel.ResumeLayout(false);
+			BorderPanel.PerformLayout();
 			PanelBottom.ResumeLayout(false);
 			BottomTablePanel.ResumeLayout(false);
 			BottomTablePanel.PerformLayout();
@@ -197,5 +218,6 @@
 		private TableLayoutPanel BottomTablePanel;
 		private FlowLayoutPanel FlowPanelButtons;
 		private CheckBox CheckboxWrapText;
+		private Panel BorderPanel;
 	}
 }

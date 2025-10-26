@@ -27,17 +27,17 @@
 			TextboxDisplay = new TextBox();
 			ButtonManageCustomValidator = new Button();
 			PanelButtons = new Panel();
+			ShowScoredCombinationsButton = new Button();
 			GroupBoxStrategy = new GroupBox();
 			RadioStrict = new RadioButton();
 			RadioBalanced = new RadioButton();
 			RadioComprehensive = new RadioButton();
 			PanelConfig = new Panel();
 			NumericBestCombinationsCount = new NumericUpDown();
-			label1 = new Label();
+			LabelBestCombinationsCount = new Label();
 			MenuStrip = new MenuStrip();
 			LoadConfigMenuButton = new ToolStripMenuItem();
 			SaveConfigMenuButton = new ToolStripMenuItem();
-			ShowScoredCombinationsButton = new Button();
 			StatusBar.SuspendLayout();
 			PanelButtons.SuspendLayout();
 			GroupBoxStrategy.SuspendLayout();
@@ -158,6 +158,16 @@
 			PanelButtons.Size = new Size(296, 314);
 			PanelButtons.TabIndex = 9;
 			// 
+			// ShowScoredCombinationsButton
+			// 
+			ShowScoredCombinationsButton.Location = new Point(14, 205);
+			ShowScoredCombinationsButton.Name = "ShowScoredCombinationsButton";
+			ShowScoredCombinationsButton.Size = new Size(126, 58);
+			ShowScoredCombinationsButton.TabIndex = 8;
+			ShowScoredCombinationsButton.Text = "Display scored combinations";
+			ShowScoredCombinationsButton.UseVisualStyleBackColor = true;
+			ShowScoredCombinationsButton.Click += ShowScoredCombinationsButton_Click;
+			// 
 			// GroupBoxStrategy
 			// 
 			GroupBoxStrategy.Controls.Add(RadioStrict);
@@ -210,7 +220,7 @@
 			PanelConfig.BorderStyle = BorderStyle.FixedSingle;
 			PanelConfig.Controls.Add(NumericBestCombinationsCount);
 			PanelConfig.Controls.Add(GroupBoxStrategy);
-			PanelConfig.Controls.Add(label1);
+			PanelConfig.Controls.Add(LabelBestCombinationsCount);
 			PanelConfig.Dock = DockStyle.Top;
 			PanelConfig.Location = new Point(0, 24);
 			PanelConfig.Name = "PanelConfig";
@@ -227,14 +237,15 @@
 			NumericBestCombinationsCount.TextAlign = HorizontalAlignment.Center;
 			NumericBestCombinationsCount.ValueChanged += NumericBestCombinationsCount_ValueChanged;
 			// 
-			// label1
+			// LabelBestCombinationsCount
 			// 
-			label1.BorderStyle = BorderStyle.FixedSingle;
-			label1.Location = new Point(302, 11);
-			label1.Name = "label1";
-			label1.Size = new Size(155, 21);
-			label1.TabIndex = 1;
-			label1.Text = "Best combinations count";
+			LabelBestCombinationsCount.BorderStyle = BorderStyle.FixedSingle;
+			LabelBestCombinationsCount.Location = new Point(302, 11);
+			LabelBestCombinationsCount.Name = "LabelBestCombinationsCount";
+			LabelBestCombinationsCount.Size = new Size(155, 21);
+			LabelBestCombinationsCount.TabStop = false;
+			LabelBestCombinationsCount.Text = "Best combinations count:";
+			LabelBestCombinationsCount.TextAlign = ContentAlignment.MiddleLeft;
 			// 
 			// MenuStrip
 			// 
@@ -264,16 +275,6 @@
 			SaveConfigMenuButton.Text = "Save config";
 			SaveConfigMenuButton.ToolTipText = "Save the configured tiers and validation groups/operations";
 			SaveConfigMenuButton.Click += SaveConfigMenuButton_Click;
-			// 
-			// ShowScoredCombinationsButton
-			// 
-			ShowScoredCombinationsButton.Location = new Point(14, 205);
-			ShowScoredCombinationsButton.Name = "ShowScoredCombinationsButton";
-			ShowScoredCombinationsButton.Size = new Size(126, 58);
-			ShowScoredCombinationsButton.TabIndex = 8;
-			ShowScoredCombinationsButton.Text = "Display scored combinations";
-			ShowScoredCombinationsButton.UseVisualStyleBackColor = true;
-			ShowScoredCombinationsButton.Click += ShowScoredCombinationsButton_Click;
 			// 
 			// MainForm
 			// 
@@ -325,7 +326,7 @@
 		private RadioButton RadioStrict;
 		private Panel PanelConfig;
 		private NumericUpDown NumericBestCombinationsCount;
-		private Label label1;
+		private Label LabelBestCombinationsCount;
 		private MenuStrip MenuStrip;
 		private ToolStripMenuItem LoadConfigMenuButton;
 		private ToolStripMenuItem SaveConfigMenuButton;

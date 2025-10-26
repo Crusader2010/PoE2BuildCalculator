@@ -129,7 +129,7 @@ namespace Domain.UserControls
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				ErrorHelper.ShowError(ex.ToString(), "Error");
 			}
 		}
 
@@ -153,7 +153,7 @@ namespace Domain.UserControls
 		{
 			if (ComboboxItemStats.SelectedItem is null)
 			{
-				MessageBox.Show("Please select a stat.", "Missing item stat", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				ErrorHelper.ShowError("Please select a stat.", "Missing item stat");
 				return;
 			}
 
@@ -231,7 +231,7 @@ namespace Domain.UserControls
 			}
 			catch (Exception ex)
 			{
-				MessageBox.Show(ex.ToString(), "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				ErrorHelper.ShowError(ex, "Error");
 			}
 		}
 
@@ -250,7 +250,7 @@ namespace Domain.UserControls
 			var control = FlowPanelStats.Controls[index];
 			if (control is not ItemStatRow)
 			{
-				MessageBox.Show($"Control at FlowPanel's index {index} is not an ItemStatRow.", "Invalid item", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				ErrorHelper.ShowError($"Control at FlowPanel's index {index} is not an ItemStatRow.", "Invalid item");
 				return;
 			}
 
@@ -278,7 +278,7 @@ namespace Domain.UserControls
 		{
 			if (_group == null)
 			{
-				MessageBox.Show("Group is not initialized.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				ErrorHelper.ShowError("Group is not initialized.", "Error");
 				return;
 			}
 

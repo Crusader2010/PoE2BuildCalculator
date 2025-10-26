@@ -1,9 +1,11 @@
 ﻿using System.Text.Json;
 
 using Domain.Enums;
+using Domain.Main;
+using Domain.Serialization;
 using Domain.Validation;
 
-namespace Domain.Serialization
+namespace Manager
 {
 	/// <summary>
 	/// Manages configuration in memory with async persistence to disk.
@@ -53,7 +55,7 @@ namespace Domain.Serialization
 			switch (section)
 			{
 				case ConfigSections.Tiers:
-					_configData.Tiers = data as List<Main.Tier> ?? [];
+					_configData.Tiers = data as List<Tier> ?? [];
 					break;
 				case ConfigSections.Validator:
 					if (data is ValueTuple<List<GroupDto>, List<ValidationModel>> validatorData)
@@ -158,7 +160,7 @@ namespace Domain.Serialization
 				{
 					case VersionComparison.IncompatibleMajor:
 						return (false,
-							$"Configuration file version {fileVersion} is incompatible with current version {_currentVersion}.\n\n" +
+							$"Configuration file version {fileVersion} is incompatible with current version {_currentVersion}.\r\n\r\n" +
 							"This file was created with a newer/older major version and cannot be loaded.\n" +
 							"Please export your data from the original version before upgrading.",
 							null);
@@ -166,7 +168,7 @@ namespace Domain.Serialization
 					case VersionComparison.MinorNewer:
 						// File is from newer minor version - warn but allow
 						var result = await Task.Run(() => MessageBox.Show(
-							$"Configuration file is from a newer version ({fileVersion} vs {_currentVersion}).\n\n" +
+							$"Configuration file is from a newer version ({fileVersion} vs {_currentVersion}).\r\n\r\n" +
 							"Some features may not load correctly. Continue?",
 							"Version Warning",
 							MessageBoxButtons.YesNo,

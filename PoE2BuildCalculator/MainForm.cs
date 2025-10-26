@@ -3,13 +3,11 @@ using System.Numerics;
 
 using Domain.Combinations;
 using Domain.Enums;
+using Domain.HelperForms;
 using Domain.Helpers;
 using Domain.Main;
-using Domain.Serialization;
 
 using Manager;
-
-using PoE2BuildCalculator.Helpers;
 
 namespace PoE2BuildCalculator
 {
@@ -75,7 +73,7 @@ namespace PoE2BuildCalculator
 			// ✅ Validate controls were created
 			if (_statusProgressBar == null || _cancelButton == null)
 			{
-				MessageBox.Show(
+				CustomMessageBox.Show(
 					"Failed to initialize progress controls. Some features may not work correctly.",
 					"Initialization Warning",
 					MessageBoxButtons.OK,
@@ -165,6 +163,7 @@ namespace PoE2BuildCalculator
 			_progressHelper.Cancel();
 		}
 
+
 		#region Saving and loading
 
 		private async void SaveConfig()
@@ -224,11 +223,29 @@ namespace PoE2BuildCalculator
 				if (migratedFrom != null)
 				{
 					CustomMessageBox.Show(
-						$"Configuration migrated from version {migratedFrom} to current version.\n\n" +
+						$"Configuration migrated from version {migratedFrom} to current version.\r\n\r\n" +
 						"Please verify your settings and save to persist the migration.",
 						"Configuration Migrated",
 						MessageBoxButtons.OK,
 						MessageBoxIcon.Information);
+				}
+
+				// Ask user if they want to apply config to forms immediately
+				bool hasData = _configManager.HasConfigData(ConfigSections.Tiers) || _configManager.HasConfigData(ConfigSections.Validator);
+				if (hasData)
+				{
+					var result = CustomMessageBox.Show(
+						"Configuration loaded successfully.\r\n\r\n" +
+						"Do you want to insert the saved config data into Tier Manager and Custom Validator windows?\r\n\r\n" +
+						"Choose 'No' to keep them empty. You can load the data manually, using the 'Load from JSON' buttons.",
+						"Apply Configuration",
+						MessageBoxButtons.YesNo,
+						MessageBoxIcon.Question, this, true);
+
+					if (result == DialogResult.Yes)
+					{
+						ApplyConfigToForms();
+					}
 				}
 
 				StatusBarLabel.Text = $"Loaded: {Path.GetFileName(ofd.FileName)}";
@@ -241,6 +258,55 @@ namespace PoE2BuildCalculator
 			finally
 			{
 				PanelButtons.Enabled = true;
+			}
+		}
+
+		private void ApplyConfigToForms()
+		{
+			lock (_lockObject)
+			{
+				// Apply to TierManager
+				if (_configManager.HasConfigData(ConfigSections.Tiers))
+				{
+					if (_tierManager == null || _tierManager.IsDisposed)
+					{
+						_tierManager = new TierManager(_configManager);
+						_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
+						_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
+					}
+
+					try
+					{
+						var tiersConfig = _configManager.GetConfigData(ConfigSections.Tiers);
+						if (tiersConfig != null)
+						{
+							_tierManager.ImportConfig(tiersConfig);
+							UpdatePanelConfigState();
+						}
+					}
+					catch (Exception ex)
+					{
+						ErrorHelper.ShowError(ex, "Apply Tiers Configuration");
+					}
+				}
+
+				// Apply to CustomValidator
+				if (_configManager.HasConfigData(ConfigSections.Validator))
+				{
+					if (_customValidator == null || _customValidator.IsDisposed)
+						_customValidator = new CustomValidator(this, _configManager);
+
+					try
+					{
+						var validatorConfig = _configManager.GetConfigData(ConfigSections.Validator);
+						if (validatorConfig != null)
+							_customValidator.ImportConfig(validatorConfig);
+					}
+					catch (Exception ex)
+					{
+						ErrorHelper.ShowError(ex, "Apply Validator Configuration");
+					}
+				}
 			}
 		}
 
@@ -438,7 +504,7 @@ namespace PoE2BuildCalculator
 		{
 			if (_scoredCombinations == null || _scoredCombinations.Count == 0)
 			{
-				MessageBox.Show(
+				CustomMessageBox.Show(
 					"No scored combinations available. Please compute combinations with tiers configured first.",
 					"No Data",
 					MessageBoxButtons.OK,
@@ -637,7 +703,7 @@ namespace PoE2BuildCalculator
 			var prepared = ItemPreparationHelper.PrepareItemsForCombinations(_parsedItems);
 			if (!prepared.HasItems && !prepared.HasRings)
 			{
-				MessageBox.Show("No items found in any category. Cannot generate combinations.",
+				CustomMessageBox.Show("No items found in any category. Cannot generate combinations.",
 					"Missing Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
 				return;
 			}
@@ -645,16 +711,16 @@ namespace PoE2BuildCalculator
 			var totalCount = CombinationGenerator.ComputeTotalCombinations(prepared.ItemsWithoutRings, prepared.Rings);
 			if (totalCount == 0)
 			{
-				MessageBox.Show("No combinations possible. All item class lists are empty.", "Unavailable combinations", MessageBoxButtons.OK, MessageBoxIcon.Information);
+				CustomMessageBox.Show("No combinations possible. All item class lists are empty.", "Unavailable combinations", MessageBoxButtons.OK, MessageBoxIcon.Information);
 				return;
 			}
 
 			// Confirm with user
-			string countMessage = $"Total combinations to process: {totalCount}\n\n" +
-				$"This is approximately {CommonHelper.GetBigIntegerApproximation(totalCount)} combinations.\n\n" +
+			string countMessage = $"Total combinations to process: {totalCount}\r\n\r\n" +
+				$"This is approximately {CommonHelper.GetBigIntegerApproximation(totalCount)} combinations.\r\n\r\n" +
 				"Do you want to proceed?";
 
-			if (MessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+			if (CustomMessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
 			{
 				StatusBarLabel.Text = "Operation cancelled by user.";
 				return;
@@ -740,16 +806,21 @@ namespace PoE2BuildCalculator
 			try
 			{
 				var result = await Task.Run(() =>
-					CombinationGenerator.GenerateCombinationsParallel(
+				{
+					// When using tiers and we only need top N, we could potentially stop early
+					// However, this requires ALL combinations to be scored to find true top N
+					return CombinationGenerator.GenerateCombinationsParallel(
 						prepared.ItemsWithoutRings,
 						prepared.Rings,
 						_itemValidatorFunction,
 						progress,
-						maxValidToStore: _maxCombinationsToStore,
+						maxValidToStore: tiers?.Count > 0
+							? long.MaxValue  // Process all when scoring (need complete data for top N)
+							: _maxCombinationsToStore,  // Use hard limit when not scoring
 						filterStrategy: _filterStrategy,
 						tieredItemIds: tieredItemIds,
-						_progressHelper.Token),
-					_progressHelper.Token);
+						_progressHelper.Token);
+				}, _progressHelper.Token);
 
 				if (tiers != null && tiers.Count > 0 && result.ValidCombinationsCollection.Count > 0)
 				{
@@ -858,7 +929,7 @@ namespace PoE2BuildCalculator
 			{
 				TextboxDisplay.Text = $"Error: {ex.Message}";
 				StatusBarLabel.Text = "Error during processing.";
-				MessageBox.Show($"An error occurred:\n\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				CustomMessageBox.Show($"An error occurred:\r\n\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
 			}
 			finally
 			{
@@ -872,6 +943,18 @@ namespace PoE2BuildCalculator
 		{
 			bool hasTiers = _tierManager?.GetTiers()?.Count > 0;
 			PanelConfig.Enabled = hasTiers;
+
+			// Update label to reflect when control is active
+			if (hasTiers)
+			{
+				LabelBestCombinationsCount.Text = "Best combinations count";
+				LabelBestCombinationsCount.ForeColor = SystemColors.ControlText;
+			}
+			else
+			{
+				LabelBestCombinationsCount.Text = "Best combinations count\r\n(Requires tiers)";
+				LabelBestCombinationsCount.ForeColor = Color.Gray;
+			}
 		}
 
 		private void ShowItemsDataButton_Click(object sender, EventArgs e)
@@ -953,7 +1036,7 @@ namespace PoE2BuildCalculator
 			StatusBarLabel.Text = $"Complete! {result.ValidCombinations} valid combinations found.";
 			this.ResumeLayout();
 
-			MessageBox.Show(summary.ToString(), "Generation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+			CustomMessageBox.Show(summary.ToString(), "Generation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 
 		private void RadioComprehensive_CheckedChanged(object sender, EventArgs e)

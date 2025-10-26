@@ -1,21 +1,21 @@
-﻿using PoE2BuildCalculator.Helpers;
-
-namespace PoE2BuildCalculator
+﻿namespace Domain.HelperForms
 {
 	public partial class CustomMessageBox : BaseForm
 	{
 		private string _message;
 		private string _title;
+		private bool _wrapText;
 		private MessageBoxButtons _buttons;
 		private MessageBoxIcon _icon;
 
 		private DialogResult _dialogResult1;
 		private DialogResult _dialogResult2;
 
-		public CustomMessageBox(string message, string title, MessageBoxButtons buttons = MessageBoxButtons.OK, MessageBoxIcon icon = MessageBoxIcon.None)
+		public CustomMessageBox(string message, string title, MessageBoxButtons buttons = MessageBoxButtons.OK, MessageBoxIcon icon = MessageBoxIcon.None, bool wrapText = true)
 		{
 			InitializeComponent();
 
+			_wrapText = wrapText;
 			_message = message;
 			_title = title;
 			_buttons = buttons;
@@ -26,9 +26,9 @@ namespace PoE2BuildCalculator
 		/// Shows a CustomMessageBox as a modal dialog and returns the result.
 		/// Automatically handles initialization and disposal.
 		/// </summary>
-		public static DialogResult Show(string message, string title, MessageBoxButtons buttons = MessageBoxButtons.OK, MessageBoxIcon icon = MessageBoxIcon.None, IWin32Window owner = null)
+		public static DialogResult Show(string message, string title, MessageBoxButtons buttons = MessageBoxButtons.OK, MessageBoxIcon icon = MessageBoxIcon.None, IWin32Window owner = null, bool wrapText = true)
 		{
-			using var dialog = new CustomMessageBox(message, title, buttons, icon);
+			using var dialog = new CustomMessageBox(message, title, buttons, icon, wrapText);
 			return owner != null ? dialog.ShowDialog(owner) : dialog.ShowDialog();
 		}
 
@@ -44,8 +44,22 @@ namespace PoE2BuildCalculator
 			this.Text = _title;
 			TextBoxMessage.Text = _message;
 			TextBoxMessage.Select(0, 0);
-			CheckboxWrapText.Checked = false;
-			TextBoxMessage.WordWrap = CheckboxWrapText.Checked;
+
+			// Add smooth scrolling appearance
+			if (TextBoxMessage.Multiline)
+			{
+				// Remove selection highlight
+				TextBoxMessage.SelectionLength = 0;
+				TextBoxMessage.DeselectAll();
+
+				// Scroll to top
+				TextBoxMessage.SelectionStart = 0;
+				TextBoxMessage.ScrollToCaret();
+			}
+
+			TextBoxMessage.AcceptsReturn = true;
+			CheckboxWrapText.Checked = _wrapText;
+			TextBoxMessage.WordWrap = _wrapText;
 
 			using (var g = TextBoxMessage.CreateGraphics())
 			{

@@ -1,9 +1,8 @@
 ﻿using System.Collections.Immutable;
 
+using Domain.HelperForms;
 using Domain.Helpers;
 using Domain.Main;
-
-using PoE2BuildCalculator.Helpers;
 
 namespace PoE2BuildCalculator
 {
@@ -247,7 +246,7 @@ namespace PoE2BuildCalculator
 		{
 			if (_combinationsToDisplay.Count == 0)
 			{
-				MessageBox.Show("No combinations to display.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+				CustomMessageBox.Show("No combinations to display.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
 				return;
 			}
 
@@ -316,7 +315,7 @@ namespace PoE2BuildCalculator
 
 		private void ButtonExport_Click(object sender, EventArgs e)
 		{
-			MessageBox.Show("Export functionality not yet implemented.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+			CustomMessageBox.Show("Export functionality not yet implemented.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 	}
 }
