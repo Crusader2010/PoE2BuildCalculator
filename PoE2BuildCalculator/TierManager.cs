@@ -859,18 +859,21 @@ namespace PoE2BuildCalculator
 				return;
 			}
 
+			this.SuspendLayout();
 			var tiersConfig = _configManager.GetConfigData(ConfigSections.Tiers);
 			if (tiersConfig == null) return;
 
 			try
 			{
-				this.SuspendLayout();
 				ImportConfig(tiersConfig);
-				this.ResumeLayout(true);
 			}
 			catch (Exception ex)
 			{
 				ErrorHelper.ShowError(ex, "Load Tier Configuration");
+			}
+			finally
+			{
+				this.ResumeLayout(true);
 			}
 		}
 	}

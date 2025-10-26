@@ -986,18 +986,21 @@ namespace PoE2BuildCalculator
 				return;
 			}
 
+			this.SuspendLayout();
 			var validatorConfig = _configManager.GetConfigData(ConfigSections.Validator);
 			if (validatorConfig == null) return;
 
 			try
 			{
-				this.SuspendLayout();
 				ImportConfig(validatorConfig);
-				this.ResumeLayout(true);
 			}
 			catch (Exception ex)
 			{
 				ErrorHelper.ShowError(ex, "Load Validator Configuration");
+			}
+			finally
+			{
+				this.ResumeLayout(true);
 			}
 		}
 	}
