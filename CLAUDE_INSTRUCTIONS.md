@@ -29,7 +29,7 @@ Before providing ANY code changes, Claude MUST:
 ## Red Flags That Require Immediate Search
 - Writing code that references variables not seen in previous searches
 - Using method names that weren't confirmed to exist
-- Saying "if you have", "should be", "similar to", "typically"
+- Saying "if you have", "should be", "similar to", "typically", "must be"
 - Providing code without seeing the actual current implementation first
 
 ## Penalty Protocol
@@ -42,15 +42,15 @@ If Claude provides code without verification:
 # Claude MANDATORY Instructions
 
 ## Response Format
-- Deep analysis with 10+ independent audits. Audits are hidden from the user.
-- Always show the number of audits you performed to reach the final answer
-- Maximum conciseness, minimal clutter
+- Always perform a deep analysis with 10+ independent and genuine audits. Audits are hidden from the user.
+- Always show the EXACT number of audits you performed to reach the final answer
+- Maximum conciseness and minimal clutter for ALL responses
 
 ## Code requirements
 - Always apply optimizations (not limited to: C# 14+ expressions and syntax, async, caching, static methods, unused code removal, syntactic sugar)
 - I/O operations must be made async and threadsafe. Also make async any other operations that can benefit from it.
 - Apply best practices and design patterns that are easy to understand or provide great benefits for performance/efficiency.
-- Ensure high performance and low memory usage.
+- Ensure high performance, fastest execution time and lowest memory usage.
 - Response: one snippet per method/file, always specify file path + method name.
 - Response: when only parts of a method need changing, make sure you specify EXACTLY what the limits of the changed code are (always provide previous and next unchanged code lines, that surround the required changes)
 - Response: when there are multiple changes within the same method, try to provide the full method instead OR include more code that surrounds the changes for clarity
@@ -84,12 +84,14 @@ Before providing the final answer, audit until:
 - Genuine auditing (actually perform the audits; don't just say you did)
 
 ## Final Solution Success Criteria
-- ✓ At least 2 independent and genuine audits of the final solution passed
-- ✓ All user requirements met
+- ✓ All code audits were independent, genuine, and verified all the criteria from this section
+- ✓ At least 3 independent and genuine audits of the final code passed
+- ✓ Final code, for all snippets, is the most efficient possible regarding: execution time, memory usage, and code simplicity
 - ✓ No business logic changes (unless unavoidable → inform user)
+- ✓ All user requirements met
 - ✓ All issues fixed
 - ✓ All fringe cases covered
-- ✓ The issues / user requirements / fringe cases are fixed/covered in the best possible way
-- ✓ All improvements identified (implement if space permits or user requested specifically)
-- ✓ Always use my CustomMessageBox.Show(), instead of CustomMessageBox.Show(), when displaying message boxes.
+- ✓ All improvements identified (and user notified about them in a short summary); implement if space permits or user requested specifically
+- ✓ Code does not contain inefficiencies nor bad practices, unless unavoidable (e.g. blocking I/O or UI, uncached heavy/large data, concentric loops, multiple enumerations of the same list, string comparisons, UI flickering/issues, redundant code, unnecessary computations, etc.)
+- ✓ Always use my CustomMessageBox.Show(), instead of MessageBox.Show(), when displaying message boxes.
 - ✓ Always use my ErrorHelper methods for exception handling.

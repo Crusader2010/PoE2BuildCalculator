@@ -14,14 +14,14 @@
    	- suppose you care about Maximum Amount of Mana  and  Cast Speed => e.g.: this will be "tier 1". Within this "tier 1", you value "Cast Speed" higher than "Max Amount of Mana" => set "Cast Speed"'s weight to 60% and "Max Amount of Mana"'s to 40%.
 	- suppose you also care about Spell Damage% => e.g.: this will be "tier 2". Within this "tier 2", "Spell Damage%"'s weight will be 100% since it's the only one.
  	- suppose you care more about "tier 1" than "tier 2" => set "tier 1"'s weight to 65% and "tier 2"'s weight to 35%.
-7. Choose how many item combinations you want to retrieve (current memory storage hard limit is 10 million combinations but needs to be made configurable). (**WIP**)
-8. Compute and display the item combinations and score for each (based on the tiers you've set before). (**WIP**)
+7. Choose how many item combinations you want to retrieve. Current memory storage hard limit is 10 million for untiered combinations. Tiered combinations can be set in the UI (default = first 100).
+8. Compute and display the item combinations and score for each (based on the tiers you've set before).
 
 **Sample PoE 2 items file:** [poe 2 items v2.txt](https://github.com/user-attachments/files/22846810/poe.2.items.v2.txt)
 
-(**Other WIP**): 
+(**WIP:**): 
 1. Parsing enchant mods (and other similar ones) when computing the item lists, for certain stats (i.e. also account for the "+18% chaos resistance" enchant for body armour and add it to any existing explicit mod).
-2. Add all of the missing item stats in the game and the related stuff. Also add the Quality modifier, likely as strictly informative.
+2. Add all of the missing item stats in the game and the related stuff. Maybe add the Quality modifier (as strictly informative).
 3. Implement proper management of hybrid (abyssal?) modifiers if they are different to the normal mods (e.g. "+X% to lightning and chaos resistance" => needs to be considered for each of the mentioned resistances).
 4. Consider adding special item stats for pseudo mods (probably not needed since you can SUM() over certain stats, and seems basically the same thing, but analysis is required).
 5. Implement flags and tier/validation logic for different item stat types (rune, fractured, desecrated, etc).
@@ -33,5 +33,5 @@
    - Toggle to save configured tiers
    - Toggle to save rag doll configuration for item types
 8. Editing the initial item list within the program itself (add/remove items, adding custom flags, etc).
-9. UI redesign.
+9. UI redesign to improve the general flow (if possible).
 10. Extensive testing.
