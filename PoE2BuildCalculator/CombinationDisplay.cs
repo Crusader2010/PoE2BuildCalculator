@@ -19,15 +19,20 @@ namespace PoE2BuildCalculator
 			public List<ImmutableDictionary<string, object>> ItemStatsDictsCache { get; init; }
 		}
 
-		private ImmutableList<CombinationViewModel> _combinationsToDisplay = [];
-		private readonly HashSet<string> _tieredStats = [];
-		private readonly HashSet<string> _validatorStats = [];
-		private Dictionary<string, ItemStatsHelper.StatDescriptor> _statDescriptorsByName;
 		private readonly List<Tier> _tiers;
 		private readonly List<Group> _validatorGroups;
+		private readonly HashSet<string> _tieredStats = [];
+		private readonly HashSet<string> _validatorStats = [];
 		private readonly Dictionary<string, (double StatWeight, double TierWeight, int TierIndex)> _tieredStatWeights = [];
+		private Dictionary<string, ItemStatsHelper.StatDescriptor> _statDescriptorsByName;
+		private ImmutableList<CombinationViewModel> _combinationsToDisplay = [];
 		private Dictionary<int, CombinationViewModel> _combinationsByRank;
 		private HashSet<string> _relevantStatsCache;
+
+		private List<(List<Item> Combination, double Score)> _pendingCombinations;
+		private ToolStripProgressBar _progressBar;
+		private CancellationTokenSource _cts;
+		private ToolStripButton _cancelButton;
 
 		public CombinationDisplay(
 			List<(List<Item> Combination, double Score)> scoredCombinations,
@@ -35,15 +40,15 @@ namespace PoE2BuildCalculator
 			List<Group> validatorGroups = null)
 		{
 			InitializeComponent();
-			this.Load += CombinationDisplay_Load;
+			this.Shown += CombinationDisplay_Shown;
 
 			_tiers = tiers ?? [];
 			_validatorGroups = validatorGroups ?? [];
 			_statDescriptorsByName = ItemStatsHelper.GetStatDescriptors().ToDictionary(d => d.PropertyName, d => d, StringComparer.OrdinalIgnoreCase);
 
 			ExtractRelevantStats(tiers, validatorGroups);
-			BuildTieredStatWeights(tiers);  // NEW METHOD
-			PrepareCombinationData(scoredCombinations);
+			BuildTieredStatWeights(tiers);
+			_pendingCombinations = scoredCombinations ?? [];
 		}
 
 		private void BuildTieredStatWeights(List<Tier> tiers)
@@ -99,47 +104,6 @@ namespace PoE2BuildCalculator
 			_relevantStatsCache = [.. _tieredStats.Union(_validatorStats)];
 		}
 
-		private void PrepareCombinationData(List<(List<Item> Combination, double Score)> scoredCombinations)
-		{
-			if (scoredCombinations == null || scoredCombinations.Count == 0)
-			{
-				_combinationsToDisplay = [];
-				_combinationsByRank = [];
-				return;
-			}
-
-			var viewModels = new List<CombinationViewModel>(scoredCombinations.Count);
-
-			for (int i = 0; i < scoredCombinations.Count; i++)
-			{
-				var (combination, score) = scoredCombinations[i];
-				var itemStatsDicts = new List<ImmutableDictionary<string, object>>(combination.Count);
-
-				foreach (var item in combination)
-				{
-					itemStatsDicts.Add(ItemStatsHelper.ToDictionary(item.ItemStats));
-				}
-
-				var aggregatedStats = ComputeAggregatedStats(itemStatsDicts);
-				var itemNames = string.Join(", ", combination.Select(item => item.Name));
-
-				var vm = new CombinationViewModel
-				{
-					Rank = i + 1,
-					Score = score,
-					Items = combination,
-					AggregatedStats = aggregatedStats,
-					ItemNamesCache = itemNames,
-					ItemStatsDictsCache = itemStatsDicts
-				};
-
-				viewModels.Add(vm);
-			}
-
-			_combinationsToDisplay = [.. viewModels];
-			_combinationsByRank = _combinationsToDisplay.ToDictionary(vm => vm.Rank, vm => vm);
-		}
-
 		private Dictionary<string, double> ComputeAggregatedStats(List<ImmutableDictionary<string, object>> itemStatsDicts)
 		{
 			var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
@@ -158,12 +122,155 @@ namespace PoE2BuildCalculator
 			return result;
 		}
 
-		private void CombinationDisplay_Load(object sender, EventArgs e)
+		private async void CombinationDisplay_Shown(object sender, EventArgs e)
 		{
+			this.SuspendLayout();
+			SplitContainerMain.SuspendLayout();
+
 			ConfigureForm();
 			SetupMasterGrid();
 			SetupDetailGrid();
-			LoadCombinations();
+
+			this.ResumeLayout(false);
+			SplitContainerMain.ResumeLayout(false);
+
+			SplitContainerMain.Visible = false;
+			StatusBarLabel.Text = "Loading combinations...";
+			this.Update(); // Force UI refresh
+
+			await LoadCombinationsAsync();
+			SplitContainerMain.Visible = true;
+		}
+
+		private async Task LoadCombinationsAsync()
+		{
+			if (_pendingCombinations == null || _pendingCombinations.Count == 0)
+			{
+				StatusBarLabel.Text = "No combinations to display";
+				return;
+			}
+
+			_cts = new CancellationTokenSource();
+			_progressBar = StatusBar.Items.OfType<ToolStripProgressBar>().FirstOrDefault();
+			_cancelButton = StatusBar.Items.OfType<ToolStripButton>().FirstOrDefault();
+
+			StatusBar.SuspendLayout();
+			if (_progressBar != null)
+			{
+				_progressBar.Visible = true;
+				_progressBar.Value = 0;
+				_progressBar.Maximum = 100;
+			}
+
+			if (_cancelButton != null)
+			{
+				_cancelButton.Visible = true;
+				_cancelButton.Enabled = true;
+			}
+
+			StatusBar.ResumeLayout();
+			StatusBar.Refresh();
+
+			try
+			{
+				await Task.Run(() => PrepareCombinationDataAsync(_cts.Token), _cts.Token);
+
+				DataGridViewMaster.RowCount = _combinationsToDisplay.Count;
+				StatusBarLabel.Text = $"Loaded {_combinationsToDisplay.Count:N0} combinations - Select rows to compare";
+			}
+			catch (OperationCanceledException)
+			{
+				StatusBarLabel.Text = "Loading cancelled";
+				this.Close();
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, $"{nameof(CombinationDisplay)} - {nameof(LoadCombinationsAsync)}");
+				StatusBarLabel.Text = "Error loading combinations";
+			}
+			finally
+			{
+				_progressBar?.Visible = false;
+
+				if (_cancelButton != null)
+				{
+					_cancelButton.Visible = false;
+					_cancelButton.Enabled = false;
+				}
+
+				_cts?.Dispose();
+				_cts = null;
+			}
+		}
+
+		private void PrepareCombinationDataAsync(CancellationToken cancellationToken)
+		{
+			var totalCount = _pendingCombinations.Count;
+			var viewModels = new List<CombinationViewModel>(totalCount);
+			const int BATCH_SIZE = 50; // Report progress every 50 combinations
+			int processedCount = 0;
+
+			for (int i = 0; i < totalCount; i++)
+			{
+				if (cancellationToken.IsCancellationRequested)
+					break;
+
+				var (combination, score) = _pendingCombinations[i];
+
+				// ✅ Pre-compute item stat dictionaries ONCE
+				var itemStatsDicts = new List<ImmutableDictionary<string, object>>(combination.Count);
+				foreach (var item in combination)
+					itemStatsDicts.Add(ItemStatsHelper.ToDictionary(item.ItemStats));
+
+				var aggregatedStats = ComputeAggregatedStats(itemStatsDicts);
+				var itemNames = string.Join(", ", combination.Select(item => item.Name));
+
+				var vm = new CombinationViewModel
+				{
+					Rank = i + 1,
+					Score = score,
+					Items = combination,
+					AggregatedStats = aggregatedStats,
+					ItemNamesCache = itemNames,
+					ItemStatsDictsCache = itemStatsDicts
+				};
+
+				viewModels.Add(vm);
+				processedCount++;
+
+				// ✅ Report progress every BATCH_SIZE iterations
+				if (processedCount % BATCH_SIZE == 0 || processedCount == totalCount)
+				{
+					int percentComplete = (int)(processedCount / (double)totalCount * 100);
+
+					if (_progressBar?.GetCurrentParent() != null)
+					{
+						_progressBar.GetCurrentParent().BeginInvoke(() =>
+						{
+							try
+							{
+								if (_progressBar != null && !_progressBar.IsDisposed)
+								{
+									_progressBar.Value = Math.Clamp(percentComplete, 0, 100);
+								}
+
+								if (StatusBarLabel != null && !StatusBarLabel.IsDisposed)
+								{
+									StatusBarLabel.Text = $"Loading: {percentComplete}% ({processedCount:N0}/{totalCount:N0})";
+								}
+
+								// ✅ Force immediate visual update
+								_progressBar?.GetCurrentParent()?.Refresh();
+							}
+							catch { /* Ignore if disposed */ }
+						});
+					}
+				}
+			}
+
+			_combinationsToDisplay = [.. viewModels];
+			_combinationsByRank = _combinationsToDisplay.ToDictionary(vm => vm.Rank, vm => vm);
+			_pendingCombinations = null; // Release memory
 		}
 
 		private void ConfigureForm()
@@ -178,19 +285,6 @@ namespace PoE2BuildCalculator
 			UpdateStyles();
 		}
 
-		private void LoadCombinations()
-		{
-			if (_combinationsToDisplay.Count == 0)
-			{
-				CustomMessageBox.Show("No combinations to display.", "Combinations not loaded",
-					MessageBoxButtons.OK, MessageBoxIcon.Information);
-				return;
-			}
-
-			DataGridViewMaster.RowCount = _combinationsToDisplay.Count;
-			StatusBarLabel.Text = $"Loaded {_combinationsToDisplay.Count:N0} combinations - Select rows to compare";
-		}
-
 		private void ButtonClose_Click(object sender, EventArgs e)
 		{
 			this.Close();
@@ -202,6 +296,42 @@ namespace PoE2BuildCalculator
 			CustomMessageBox.Show("Export functionality not yet implemented.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing)
+			{
+				_cts?.Cancel();
+				_cts?.Dispose();
+				_cts = null;
+				components?.Dispose();
+			}
+			base.Dispose(disposing);
+		}
+
+		protected override void OnFormClosing(FormClosingEventArgs e)
+		{
+			// Cancel loading if form is closed while loading
+			if (_cts != null && !_cts.IsCancellationRequested)
+			{
+				_cts.Cancel();
+				StatusBarLabel.Text = "Cancelling...";
+
+				// Wait briefly for cancellation to complete
+				Thread.Sleep(100);
+			}
+
+			base.OnFormClosing(e);
+		}
+
+		private void StatusBarCancelButton_Click(object sender, EventArgs e)
+		{
+			if (_cancelButton != null)
+			{
+				_cancelButton.Enabled = false;
+				StatusBarLabel.Text = "Cancelling...";
+				_cts?.Cancel();
+			}
+		}
 
 
 

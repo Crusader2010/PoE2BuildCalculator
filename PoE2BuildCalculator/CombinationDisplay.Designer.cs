@@ -7,19 +7,6 @@
 		/// </summary>
 		private System.ComponentModel.IContainer components = null;
 
-		/// <summary>
-		/// Clean up any resources being used.
-		/// </summary>
-		/// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
-		protected override void Dispose(bool disposing)
-		{
-			if (disposing && (components != null))
-			{
-				components.Dispose();
-			}
-			base.Dispose(disposing);
-		}
-
 		#region Windows Form Designer generated code
 
 		/// <summary>
@@ -161,6 +148,25 @@
 			StatusBarLabel.Name = "StatusBarLabel";
 			StatusBarLabel.Size = new Size(23, 23);
 			// 
+			// StatusBarProgressBar
+			// 
+			StatusBarProgressBar = new ToolStripProgressBar();
+			StatusBarProgressBar.Name = "StatusBarProgressBar";
+			StatusBarProgressBar.Size = new Size(150, 16);
+			StatusBarProgressBar.Visible = false;
+			StatusBar.Items.Add(StatusBarProgressBar);
+			// 
+			// StatusBarCancelButton
+			// 
+			StatusBarCancelButton = new ToolStripButton();
+			StatusBarCancelButton.Name = "StatusBarCancelButton";
+			StatusBarCancelButton.Text = "Cancel";
+			StatusBarCancelButton.BackColor = Color.LightPink;
+			StatusBarCancelButton.Alignment = ToolStripItemAlignment.Right;
+			StatusBarCancelButton.Visible = false;
+			StatusBarCancelButton.Click += StatusBarCancelButton_Click;
+			StatusBar.Items.Add(StatusBarCancelButton);
+			// 
 			// CombinationDisplay
 			// 
 			AutoScaleDimensions = new SizeF(96F, 96F);
@@ -192,5 +198,7 @@
 		private Button ButtonExport;
 		private StatusStrip StatusBar;
 		private ToolStripStatusLabel StatusBarLabel;
+		private ToolStripProgressBar StatusBarProgressBar;
+		private ToolStripButton StatusBarCancelButton;
 	}
 }
