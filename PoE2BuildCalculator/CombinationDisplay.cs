@@ -175,6 +175,10 @@ namespace PoE2BuildCalculator
 			{
 				await Task.Run(() => PrepareCombinationDataAsync(_cts.Token), _cts.Token);
 
+				StatusBarLabel.Text = "Rendering grid...";
+				StatusBar.Refresh();
+				await Task.Delay(10);
+
 				DataGridViewMaster.RowCount = _combinationsToDisplay.Count;
 				StatusBarLabel.Text = $"Loaded {_combinationsToDisplay.Count:N0} combinations - Select rows to compare";
 			}
@@ -190,7 +194,11 @@ namespace PoE2BuildCalculator
 			}
 			finally
 			{
-				_progressBar?.Visible = false;
+				if (_progressBar != null)
+				{
+					_progressBar.Value = 0;
+					_progressBar.Visible = false;
+				}
 
 				if (_cancelButton != null)
 				{
@@ -245,7 +253,9 @@ namespace PoE2BuildCalculator
 
 					if (_progressBar?.GetCurrentParent() != null)
 					{
-						_progressBar.GetCurrentParent().BeginInvoke(() =>
+						bool isFinalUpdate = processedCount == totalCount;
+
+						void updateAction()
 						{
 							try
 							{
@@ -259,11 +269,19 @@ namespace PoE2BuildCalculator
 									StatusBarLabel.Text = $"Loading: {percentComplete}% ({processedCount:N0}/{totalCount:N0})";
 								}
 
-								// ✅ Force immediate visual update
 								_progressBar?.GetCurrentParent()?.Refresh();
 							}
 							catch { /* Ignore if disposed */ }
-						});
+						}
+
+						if (isFinalUpdate)
+						{
+							_progressBar.GetCurrentParent().Invoke(updateAction);
+						}
+						else
+						{
+							_progressBar.GetCurrentParent().BeginInvoke(updateAction);
+						}
 					}
 				}
 			}

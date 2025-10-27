@@ -146,7 +146,8 @@
 			// StatusBarLabel
 			// 
 			StatusBarLabel.Name = "StatusBarLabel";
-			StatusBarLabel.Size = new Size(23, 23);
+			StatusBarLabel.Size = new Size(120, 17);
+			StatusBarLabel.Text = "Ready";
 			// 
 			// StatusBarProgressBar
 			// 
@@ -154,7 +155,6 @@
 			StatusBarProgressBar.Name = "StatusBarProgressBar";
 			StatusBarProgressBar.Size = new Size(150, 16);
 			StatusBarProgressBar.Visible = false;
-			StatusBar.Items.Add(StatusBarProgressBar);
 			// 
 			// StatusBarCancelButton
 			// 
@@ -165,7 +165,10 @@
 			StatusBarCancelButton.Alignment = ToolStripItemAlignment.Right;
 			StatusBarCancelButton.Visible = false;
 			StatusBarCancelButton.Click += StatusBarCancelButton_Click;
-			StatusBar.Items.Add(StatusBarCancelButton);
+			// 
+			// Add all items to StatusBar in correct order
+			// 
+			StatusBar.Items.AddRange(new ToolStripItem[] { StatusBarLabel, StatusBarProgressBar, StatusBarCancelButton });
 			// 
 			// CombinationDisplay
 			// 
