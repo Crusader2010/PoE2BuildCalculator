@@ -84,6 +84,12 @@ namespace Domain.Combinations
 			var sw = Stopwatch.StartNew();
 			validator ??= x => true;
 
+			// Clear the cache when filters are applied:
+			if (filterStrategy != CombinationFilterStrategy.Comprehensive && tieredItemIds != null)
+			{
+				_totalCombinationsCache.Clear();
+			}
+
 			// ✅ Pre-filter for Strict mode (most efficient!)
 			if (filterStrategy == CombinationFilterStrategy.Strict && tieredItemIds != null)
 			{

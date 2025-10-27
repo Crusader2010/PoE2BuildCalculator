@@ -15,15 +15,19 @@ namespace PoE2BuildCalculator
 			public double Score { get; init; }
 			public List<Item> Items { get; init; }
 			public Dictionary<string, double> AggregatedStats { get; init; }
+			public string ItemNamesCache { get; init; }
+			public List<ImmutableDictionary<string, object>> ItemStatsDictsCache { get; init; }
 		}
 
 		private ImmutableList<CombinationViewModel> _combinationsToDisplay = [];
 		private readonly HashSet<string> _tieredStats = [];
 		private readonly HashSet<string> _validatorStats = [];
-		private IReadOnlyList<ItemStatsHelper.StatDescriptor> _statDescriptors;
+		private Dictionary<string, ItemStatsHelper.StatDescriptor> _statDescriptorsByName;
 		private readonly List<Tier> _tiers;
 		private readonly List<Group> _validatorGroups;
 		private readonly Dictionary<string, (double StatWeight, double TierWeight, int TierIndex)> _tieredStatWeights = [];
+		private Dictionary<int, CombinationViewModel> _combinationsByRank;
+		private HashSet<string> _relevantStatsCache;
 
 		public CombinationDisplay(
 			List<(List<Item> Combination, double Score)> scoredCombinations,
@@ -35,7 +39,7 @@ namespace PoE2BuildCalculator
 
 			_tiers = tiers ?? [];
 			_validatorGroups = validatorGroups ?? [];
-			_statDescriptors = ItemStatsHelper.GetStatDescriptors();
+			_statDescriptorsByName = ItemStatsHelper.GetStatDescriptors().ToDictionary(d => d.PropertyName, d => d, StringComparer.OrdinalIgnoreCase);
 
 			ExtractRelevantStats(tiers, validatorGroups);
 			BuildTieredStatWeights(tiers);  // NEW METHOD
@@ -91,6 +95,8 @@ namespace PoE2BuildCalculator
 					}
 				}
 			}
+
+			_relevantStatsCache = [.. _tieredStats.Union(_validatorStats)];
 		}
 
 		private void PrepareCombinationData(List<(List<Item> Combination, double Score)> scoredCombinations)
@@ -98,6 +104,7 @@ namespace PoE2BuildCalculator
 			if (scoredCombinations == null || scoredCombinations.Count == 0)
 			{
 				_combinationsToDisplay = [];
+				_combinationsByRank = [];
 				return;
 			}
 
@@ -106,36 +113,45 @@ namespace PoE2BuildCalculator
 			for (int i = 0; i < scoredCombinations.Count; i++)
 			{
 				var (combination, score) = scoredCombinations[i];
-				var aggregatedStats = ComputeAggregatedStats(combination);
+				var itemStatsDicts = new List<ImmutableDictionary<string, object>>(combination.Count);
 
-				viewModels.Add(new CombinationViewModel
+				foreach (var item in combination)
+				{
+					itemStatsDicts.Add(ItemStatsHelper.ToDictionary(item.ItemStats));
+				}
+
+				var aggregatedStats = ComputeAggregatedStats(itemStatsDicts);
+				var itemNames = string.Join(", ", combination.Select(item => item.Name));
+
+				var vm = new CombinationViewModel
 				{
 					Rank = i + 1,
 					Score = score,
 					Items = combination,
-					AggregatedStats = aggregatedStats
-				});
+					AggregatedStats = aggregatedStats,
+					ItemNamesCache = itemNames,
+					ItemStatsDictsCache = itemStatsDicts
+				};
+
+				viewModels.Add(vm);
 			}
 
 			_combinationsToDisplay = [.. viewModels];
+			_combinationsByRank = _combinationsToDisplay.ToDictionary(vm => vm.Rank, vm => vm);
 		}
 
-		private Dictionary<string, double> ComputeAggregatedStats(List<Item> combination)
+		private Dictionary<string, double> ComputeAggregatedStats(List<ImmutableDictionary<string, object>> itemStatsDicts)
 		{
 			var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
-			var relevantStats = _tieredStats.Union(_validatorStats).ToHashSet(StringComparer.OrdinalIgnoreCase);
 
-			foreach (var statName in relevantStats)
+			foreach (var statName in _relevantStatsCache)
 			{
 				double sum = 0;
-				foreach (var item in combination)
+				foreach (var itemStatsDict in itemStatsDicts)
 				{
-					var itemStatsDict = ItemStatsHelper.ToDictionary(item.ItemStats);
-					if (itemStatsDict.TryGetValue(statName, out var value) && value is not string)
-					{
-						sum += Convert.ToDouble(value);
-					}
+					if (itemStatsDict.TryGetValue(statName, out var value) && value is not string) sum += Convert.ToDouble(value);
 				}
+
 				result[statName] = sum;
 			}
 
@@ -205,8 +221,11 @@ namespace PoE2BuildCalculator
 			DataGridViewMaster.RowHeadersVisible = false;
 			DataGridViewMaster.Dock = DockStyle.Fill;
 
+			DataGridViewMaster.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(240, 248, 255);
+			DataGridViewMaster.RowsDefaultCellStyle.BackColor = Color.White;
+
 			DataGridViewMaster.CellValueNeeded += MasterGrid_CellValueNeeded;
-			DataGridViewMaster.SelectionChanged += MasterGrid_SelectionChanged;  // ✅ NEW EVENT
+			DataGridViewMaster.SelectionChanged += MasterGrid_SelectionChanged;
 
 			BuildMasterColumns();
 
@@ -221,7 +240,7 @@ namespace PoE2BuildCalculator
 			{
 				Name = "Rank",
 				HeaderText = "#",
-				Width = 60,
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
 				ValueType = typeof(int),
 				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
 			});
@@ -230,11 +249,11 @@ namespace PoE2BuildCalculator
 			{
 				Name = "Score",
 				HeaderText = "Score",
-				Width = 80,
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
 				ValueType = typeof(double),
 				DefaultCellStyle = new DataGridViewCellStyle
 				{
-					Alignment = DataGridViewContentAlignment.MiddleRight,
+					Alignment = DataGridViewContentAlignment.MiddleCenter,
 					Format = "F2"
 				}
 			});
@@ -245,7 +264,8 @@ namespace PoE2BuildCalculator
 				HeaderText = "Item Names",
 				Width = 600,
 				ValueType = typeof(string),
-				AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleLeft }
 			});
 		}
 
@@ -254,13 +274,12 @@ namespace PoE2BuildCalculator
 			if (e.RowIndex < 0 || e.RowIndex >= _combinationsToDisplay.Count) return;
 
 			var viewModel = _combinationsToDisplay[e.RowIndex];
-			string columnName = DataGridViewMaster.Columns[e.ColumnIndex].Name;
 
-			e.Value = columnName switch
+			e.Value = DataGridViewMaster.Columns[e.ColumnIndex].Name switch
 			{
 				"Rank" => viewModel.Rank,
 				"Score" => viewModel.Score,
-				"Items" => string.Join(", ", viewModel.Items.Select(i => i.Name)),
+				"Items" => viewModel.ItemNamesCache,
 				_ => null
 			};
 		}
@@ -276,12 +295,21 @@ namespace PoE2BuildCalculator
 		{
 			DataGridViewDetail.SuspendLayout();
 
-			var selectedIndices = DataGridViewMaster.SelectedRows
-				.Cast<DataGridViewRow>()
-				.Select(r => r.Index)
-				.Where(i => i >= 0 && i < _combinationsToDisplay.Count)
-				.OrderBy(i => i)
-				.ToList();
+			var selectedRows = DataGridViewMaster.SelectedRows;
+			if (selectedRows.Count == 0)
+			{
+				DataGridViewDetail.Rows.Clear();
+				DataGridViewDetail.Columns.Clear();
+				StatusBarLabel.Text = "Select combinations to compare";
+				DataGridViewDetail.ResumeLayout();
+				return;
+			}
+
+			var selectedIndices = new List<int>(selectedRows.Count);
+			foreach (DataGridViewRow row in selectedRows)
+			{
+				if (row.Index >= 0 && row.Index < _combinationsToDisplay.Count) selectedIndices.Add(row.Index);
+			}
 
 			if (selectedIndices.Count == 0)
 			{
@@ -292,20 +320,18 @@ namespace PoE2BuildCalculator
 				return;
 			}
 
-			// Collect all stats from selected combinations (UNION)
+			selectedIndices.Sort();
+
+			// Collect all stats (UNION)
 			var allStats = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 			foreach (var index in selectedIndices)
 			{
 				allStats.UnionWith(_combinationsToDisplay[index].AggregatedStats.Keys);
 			}
 
-			// Order stats by importance: Tiered (by effective weight DESC), Validator, Others
 			var orderedStats = OrderStatsByImportance(allStats);
 
-			// Build columns
 			BuildDetailColumns(orderedStats);
-
-			// Populate rows
 			PopulateDetailRows(selectedIndices, orderedStats);
 
 			StatusBarLabel.Text = $"Comparing {selectedIndices.Count} combination(s)";
@@ -314,42 +340,51 @@ namespace PoE2BuildCalculator
 
 		private List<string> OrderStatsByImportance(HashSet<string> allStats)
 		{
+			var result = new List<string>(allStats.Count);
 			var tieredStats = new List<(string StatName, double EffectiveWeight, int TierIndex)>();
 			var validatorStats = new List<string>();
 			var otherStats = new List<string>();
 
+			// Single pass categorization
 			foreach (var statName in allStats)
 			{
 				if (_tieredStatWeights.TryGetValue(statName, out var tierInfo))
-				{
 					tieredStats.Add((statName, tierInfo.StatWeight * tierInfo.TierWeight, tierInfo.TierIndex));
-				}
 				else if (_validatorStats.Contains(statName))
-				{
 					validatorStats.Add(statName);
-				}
 				else
-				{
 					otherStats.Add(statName);
+			}
+
+			// Sort and add tiered stats
+			if (tieredStats.Count > 0)
+			{
+				tieredStats.Sort((a, b) =>
+				{
+					int tierCompare = a.TierIndex.CompareTo(b.TierIndex);
+					return tierCompare != 0 ? tierCompare : b.EffectiveWeight.CompareTo(a.EffectiveWeight);
+				});
+
+				result.Capacity = tieredStats.Count + validatorStats.Count + otherStats.Count;
+				foreach (var (statName, _, _) in tieredStats)
+				{
+					result.Add(statName);
 				}
 			}
 
-			// Order tiered stats: by tier index ASC, then by effective weight DESC
-			var orderedTiered = tieredStats
-				.OrderBy(x => x.TierIndex)
-				.ThenByDescending(x => x.EffectiveWeight)
-				.Select(x => x.StatName)
-				.ToList();
+			// Sort and add validator stats
+			if (validatorStats.Count > 0)
+			{
+				validatorStats.Sort(StringComparer.OrdinalIgnoreCase);
+				result.AddRange(validatorStats);
+			}
 
-			// Validator and others: alphabetical
-			validatorStats.Sort(StringComparer.OrdinalIgnoreCase);
-			otherStats.Sort(StringComparer.OrdinalIgnoreCase);
-
-			// Combine: Tiered → Validator → Others
-			var result = new List<string>(orderedTiered.Count + validatorStats.Count + otherStats.Count);
-			result.AddRange(orderedTiered);
-			result.AddRange(validatorStats);
-			result.AddRange(otherStats);
+			// Sort and add other stats
+			if (otherStats.Count > 0)
+			{
+				otherStats.Sort(StringComparer.OrdinalIgnoreCase);
+				result.AddRange(otherStats);
+			}
 
 			return result;
 		}
@@ -378,7 +413,7 @@ namespace PoE2BuildCalculator
 				ValueType = typeof(double),
 				DefaultCellStyle = new DataGridViewCellStyle
 				{
-					Alignment = DataGridViewContentAlignment.MiddleRight,
+					Alignment = DataGridViewContentAlignment.MiddleCenter,
 					Format = "F2"
 				},
 				Frozen = true
@@ -387,7 +422,7 @@ namespace PoE2BuildCalculator
 			// Stat columns (ordered by importance)
 			foreach (var statName in orderedStats)
 			{
-				var descriptor = _statDescriptors.FirstOrDefault(d => d.PropertyName.Equals(statName, StringComparison.OrdinalIgnoreCase));
+				var descriptor = _statDescriptorsByName.TryGetValue(statName, out var dictDescriptor) ? dictDescriptor : null;
 				string headerText = descriptor?.Header ?? statName;
 
 				// Add visual indicator for tiered stats
@@ -404,7 +439,7 @@ namespace PoE2BuildCalculator
 					ValueType = typeof(double),
 					DefaultCellStyle = new DataGridViewCellStyle
 					{
-						Alignment = DataGridViewContentAlignment.MiddleRight,
+						Alignment = DataGridViewContentAlignment.MiddleCenter,
 						Format = "F2"
 					},
 					Tag = statName  // Store original stat name for click event
@@ -424,20 +459,19 @@ namespace PoE2BuildCalculator
 		{
 			DataGridViewDetail.Rows.Clear();
 
+			var columnCount = 2 + orderedStats.Count;
+
 			foreach (var index in selectedIndices)
 			{
 				var vm = _combinationsToDisplay[index];
-				var rowValues = new object[2 + orderedStats.Count];
+				var rowValues = new object[columnCount];
 
 				rowValues[0] = vm.Rank;
 				rowValues[1] = vm.Score;
 
 				for (int i = 0; i < orderedStats.Count; i++)
 				{
-					var statName = orderedStats[i];
-					rowValues[2 + i] = vm.AggregatedStats.TryGetValue(statName, out double value)
-						? value
-						: 0.0;
+					rowValues[2 + i] = vm.AggregatedStats.GetValueOrDefault(orderedStats[i], 0.0);
 				}
 
 				DataGridViewDetail.Rows.Add(rowValues);
@@ -452,10 +486,13 @@ namespace PoE2BuildCalculator
 
 		private void SetupDetailGrid()
 		{
-			DataGridViewDetail.CellClick += DetailGrid_CellClick;
+			DataGridViewDetail.CellDoubleClick += DetailGrid_CellDoubleClick;
+
+			DataGridViewDetail.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(240, 248, 255);
+			DataGridViewDetail.RowsDefaultCellStyle.BackColor = Color.White;
 		}
 
-		private void DetailGrid_CellClick(object sender, DataGridViewCellEventArgs e)
+		private void DetailGrid_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
 		{
 			// Ignore header and non-stat columns
 			if (e.RowIndex < 0 || e.ColumnIndex < 2) return;
@@ -471,38 +508,38 @@ namespace PoE2BuildCalculator
 
 		private void ShowStatBreakdown(int rank, string statName)
 		{
-			var vm = _combinationsToDisplay.FirstOrDefault(c => c.Rank == rank);
-			if (vm == null) return;
+			if (!_combinationsByRank.TryGetValue(rank, out var vm)) return;
 
-			var descriptor = _statDescriptors.FirstOrDefault(d => d.PropertyName.Equals(statName, StringComparison.OrdinalIgnoreCase));
+			var descriptor = _statDescriptorsByName.TryGetValue(statName, out var dictDescriptor) ? dictDescriptor : null;
 			string displayName = descriptor?.Header ?? statName;
 
-			// Build breakdown message
-			var sb = new System.Text.StringBuilder();
-			sb.AppendLine($"Combination #{rank} - {displayName} Breakdown");
-			sb.AppendLine($"Total: {vm.AggregatedStats.GetValueOrDefault(statName, 0):F2}");
-			sb.AppendLine();
-			sb.AppendLine("Item Contributions:");
+			if (!vm.AggregatedStats.TryGetValue(statName, out double totalValue)) return;
+
+			var breakdown = new System.Text.StringBuilder();
+			breakdown.AppendLine($"Combination #{rank} - {displayName} Breakdown");
+			breakdown.AppendLine($"Total: {totalValue:F2}");
+			breakdown.AppendLine();
+			breakdown.AppendLine("Item Contributions:");
 
 			double sum = 0;
-			foreach (var item in vm.Items)
+			for (int i = 0; i < vm.Items.Count; i++)
 			{
-				var itemStatsDict = ItemStatsHelper.ToDictionary(item.ItemStats);
+				var itemStatsDict = vm.ItemStatsDictsCache[i];
 				if (itemStatsDict.TryGetValue(statName, out var value) && value is not string)
 				{
 					double val = Convert.ToDouble(value);
 					if (val != 0)
 					{
-						sb.AppendLine($"  {item.Name}: {val:F2}");
+						breakdown.AppendLine($"  {vm.Items[i].Name}: {val:F2}");
 						sum += val;
 					}
 				}
 			}
 
-			sb.AppendLine();
-			sb.AppendLine($"Computed Total: {sum:F2}");
+			breakdown.AppendLine();
+			breakdown.AppendLine($"Computed Total: {sum:F2}");
 
-			CustomMessageBox.Show(sb.ToString(), "Stat Breakdown", MessageBoxButtons.OK, MessageBoxIcon.Information);
+			CustomMessageBox.Show(breakdown.ToString(), "Stat Breakdown", MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 	}
 }
