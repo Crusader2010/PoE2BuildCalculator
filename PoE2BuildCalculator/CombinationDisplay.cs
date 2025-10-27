@@ -215,8 +215,9 @@ namespace PoE2BuildCalculator
 		{
 			var totalCount = _pendingCombinations.Count;
 			var viewModels = new List<CombinationViewModel>(totalCount);
-			const int BATCH_SIZE = 50; // Report progress every 50 combinations
+			const int BATCH_SIZE = 250; // ✅ Reduced update frequency from 50 to 250
 			int processedCount = 0;
+			var lastUpdateTime = DateTime.UtcNow;
 
 			for (int i = 0; i < totalCount; i++)
 			{
@@ -225,7 +226,6 @@ namespace PoE2BuildCalculator
 
 				var (combination, score) = _pendingCombinations[i];
 
-				// ✅ Pre-compute item stat dictionaries ONCE
 				var itemStatsDicts = new List<ImmutableDictionary<string, object>>(combination.Count);
 				foreach (var item in combination)
 					itemStatsDicts.Add(ItemStatsHelper.ToDictionary(item.ItemStats));
@@ -246,49 +246,50 @@ namespace PoE2BuildCalculator
 				viewModels.Add(vm);
 				processedCount++;
 
-				// ✅ Report progress every BATCH_SIZE iterations
-				if (processedCount % BATCH_SIZE == 0 || processedCount == totalCount)
+				// ✅ Update every BATCH_SIZE OR at end OR every 200ms minimum
+				bool shouldUpdate = (processedCount % BATCH_SIZE == 0) ||
+									(processedCount == totalCount) ||
+									((DateTime.UtcNow - lastUpdateTime).TotalMilliseconds >= 200);
+
+				if (shouldUpdate && _progressBar?.GetCurrentParent() != null)
 				{
 					int percentComplete = (int)(processedCount / (double)totalCount * 100);
+					bool isFinalUpdate = processedCount == totalCount;
+					lastUpdateTime = DateTime.UtcNow;
 
-					if (_progressBar?.GetCurrentParent() != null)
+					void UpdateUI()
 					{
-						bool isFinalUpdate = processedCount == totalCount;
-
-						void updateAction()
+						try
 						{
-							try
+							if (_progressBar != null && !_progressBar.IsDisposed)
 							{
-								if (_progressBar != null && !_progressBar.IsDisposed)
-								{
-									_progressBar.Value = Math.Clamp(percentComplete, 0, 100);
-								}
-
-								if (StatusBarLabel != null && !StatusBarLabel.IsDisposed)
-								{
-									StatusBarLabel.Text = $"Loading: {percentComplete}% ({processedCount:N0}/{totalCount:N0})";
-								}
-
-								_progressBar?.GetCurrentParent()?.Refresh();
+								_progressBar.Value = Math.Clamp(percentComplete, 0, 100);
 							}
-							catch { /* Ignore if disposed */ }
-						}
 
-						if (isFinalUpdate)
-						{
-							_progressBar.GetCurrentParent().Invoke(updateAction);
+							if (StatusBarLabel != null && !StatusBarLabel.IsDisposed)
+							{
+								StatusBarLabel.Text = $"Loading: {percentComplete}% ({processedCount:N0}/{totalCount:N0})";
+							}
+
+							_progressBar?.GetCurrentParent()?.Update(); // ✅ Synchronous paint
 						}
-						else
-						{
-							_progressBar.GetCurrentParent().BeginInvoke(updateAction);
-						}
+						catch { }
+					}
+
+					// ✅ Always use synchronous Invoke for reliable rendering
+					_progressBar.GetCurrentParent().Invoke(UpdateUI);
+
+					// ✅ Brief pause to let UI breathe (only for non-final updates)
+					if (!isFinalUpdate)
+					{
+						Thread.Sleep(15);
 					}
 				}
 			}
 
 			_combinationsToDisplay = [.. viewModels];
 			_combinationsByRank = _combinationsToDisplay.ToDictionary(vm => vm.Rank, vm => vm);
-			_pendingCombinations = null; // Release memory
+			_pendingCombinations = null;
 		}
 
 		private void ConfigureForm()
