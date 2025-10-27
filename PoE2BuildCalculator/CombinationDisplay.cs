@@ -3,6 +3,7 @@
 using Domain.HelperForms;
 using Domain.Helpers;
 using Domain.Main;
+using Domain.Validation;
 
 namespace PoE2BuildCalculator
 {
@@ -20,21 +21,51 @@ namespace PoE2BuildCalculator
 		private readonly HashSet<string> _tieredStats = [];
 		private readonly HashSet<string> _validatorStats = [];
 		private IReadOnlyList<ItemStatsHelper.StatDescriptor> _statDescriptors;
+		private readonly List<Tier> _tiers;
+		private readonly List<Group> _validatorGroups;
+		private readonly Dictionary<string, (double StatWeight, double TierWeight, int TierIndex)> _tieredStatWeights = [];
 
 		public CombinationDisplay(
 			List<(List<Item> Combination, double Score)> scoredCombinations,
 			List<Tier> tiers = null,
-			List<Domain.Validation.Group> validatorGroups = null)
+			List<Group> validatorGroups = null)
 		{
 			InitializeComponent();
 			this.Load += CombinationDisplay_Load;
 
+			_tiers = tiers ?? [];
+			_validatorGroups = validatorGroups ?? [];
 			_statDescriptors = ItemStatsHelper.GetStatDescriptors();
+
 			ExtractRelevantStats(tiers, validatorGroups);
+			BuildTieredStatWeights(tiers);  // NEW METHOD
 			PrepareCombinationData(scoredCombinations);
 		}
 
-		private void ExtractRelevantStats(List<Tier> tiers, List<Domain.Validation.Group> validatorGroups)
+		private void BuildTieredStatWeights(List<Tier> tiers)
+		{
+			if (tiers == null) return;
+
+			for (int tierIndex = 0; tierIndex < tiers.Count; tierIndex++)
+			{
+				var tier = tiers[tierIndex];
+				foreach (var (statName, statWeight) in tier.StatWeights)
+				{
+					if (statWeight > 0)
+					{
+						// Effective weight = (statWeight / totalStatWeight) * (tierWeight / 100)
+						double normalizedStatWeight = tier.TotalStatWeight > 0
+							? statWeight / tier.TotalStatWeight
+							: 0;
+						double effectiveWeight = normalizedStatWeight * (tier.TierWeight / 100.0);
+
+						_tieredStatWeights[statName] = (statWeight, effectiveWeight, tierIndex);
+					}
+				}
+			}
+		}
+
+		private void ExtractRelevantStats(List<Tier> tiers, List<Group> validatorGroups)
 		{
 			if (tiers != null)
 			{
@@ -114,7 +145,8 @@ namespace PoE2BuildCalculator
 		private void CombinationDisplay_Load(object sender, EventArgs e)
 		{
 			ConfigureForm();
-			SetupDataGridView();
+			SetupMasterGrid();
+			SetupDetailGrid();
 			LoadCombinations();
 		}
 
@@ -130,34 +162,62 @@ namespace PoE2BuildCalculator
 			UpdateStyles();
 		}
 
-		private void SetupDataGridView()
+		private void LoadCombinations()
 		{
-			DataGridViewCombinations.SuspendLayout();
+			if (_combinationsToDisplay.Count == 0)
+			{
+				CustomMessageBox.Show("No combinations to display.", "Combinations not loaded",
+					MessageBoxButtons.OK, MessageBoxIcon.Information);
+				return;
+			}
 
-			DataGridViewCombinations.VirtualMode = true;
-			DataGridViewCombinations.ReadOnly = true;
-			DataGridViewCombinations.AllowUserToAddRows = false;
-			DataGridViewCombinations.AllowUserToDeleteRows = false;
-			DataGridViewCombinations.AllowUserToResizeRows = false;
-			DataGridViewCombinations.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-			DataGridViewCombinations.MultiSelect = false;
-			DataGridViewCombinations.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
-			DataGridViewCombinations.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
-			DataGridViewCombinations.RowHeadersVisible = false;
-			DataGridViewCombinations.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-
-			DataGridViewCombinations.CellValueNeeded += DataGridViewCombinations_CellValueNeeded;
-
-			BuildColumns();
-
-			DataGridViewCombinations.ResumeLayout();
+			DataGridViewMaster.RowCount = _combinationsToDisplay.Count;
+			StatusBarLabel.Text = $"Loaded {_combinationsToDisplay.Count:N0} combinations - Select rows to compare";
 		}
 
-		private void BuildColumns()
+		private void ButtonClose_Click(object sender, EventArgs e)
 		{
-			DataGridViewCombinations.Columns.Clear();
+			this.Close();
+			this.Dispose();
+		}
 
-			DataGridViewCombinations.Columns.Add(new DataGridViewTextBoxColumn
+		private void ButtonExport_Click(object sender, EventArgs e)
+		{
+			CustomMessageBox.Show("Export functionality not yet implemented.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+		}
+
+
+
+
+		private void SetupMasterGrid()
+		{
+			DataGridViewMaster.SuspendLayout();
+
+			DataGridViewMaster.VirtualMode = true;
+			DataGridViewMaster.ReadOnly = true;
+			DataGridViewMaster.AllowUserToAddRows = false;
+			DataGridViewMaster.AllowUserToDeleteRows = false;
+			DataGridViewMaster.AllowUserToResizeRows = false;
+			DataGridViewMaster.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+			DataGridViewMaster.MultiSelect = true;
+			DataGridViewMaster.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
+			DataGridViewMaster.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+			DataGridViewMaster.RowHeadersVisible = false;
+			DataGridViewMaster.Dock = DockStyle.Fill;
+
+			DataGridViewMaster.CellValueNeeded += MasterGrid_CellValueNeeded;
+			DataGridViewMaster.SelectionChanged += MasterGrid_SelectionChanged;  // ✅ NEW EVENT
+
+			BuildMasterColumns();
+
+			DataGridViewMaster.ResumeLayout();
+		}
+
+		private void BuildMasterColumns()
+		{
+			DataGridViewMaster.Columns.Clear();
+
+			DataGridViewMaster.Columns.Add(new DataGridViewTextBoxColumn
 			{
 				Name = "Rank",
 				HeaderText = "#",
@@ -166,7 +226,7 @@ namespace PoE2BuildCalculator
 				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
 			});
 
-			DataGridViewCombinations.Columns.Add(new DataGridViewTextBoxColumn
+			DataGridViewMaster.Columns.Add(new DataGridViewTextBoxColumn
 			{
 				Name = "Score",
 				HeaderText = "Score",
@@ -179,143 +239,270 @@ namespace PoE2BuildCalculator
 				}
 			});
 
-			int maxItemsInCombination = _combinationsToDisplay.Count > 0
-				? _combinationsToDisplay.Max(c => c.Items.Count)
-				: 0;
-
-			for (int i = 0; i < maxItemsInCombination; i++)
+			DataGridViewMaster.Columns.Add(new DataGridViewTextBoxColumn
 			{
-				int itemIndex = i;
-				DataGridViewCombinations.Columns.Add(new DataGridViewTextBoxColumn
-				{
-					Name = $"Item{itemIndex}Name",
-					HeaderText = $"Item {itemIndex + 1} Name",
-					Width = 180,
-					ValueType = typeof(string)
-				});
+				Name = "Items",
+				HeaderText = "Item Names",
+				Width = 600,
+				ValueType = typeof(string),
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill
+			});
+		}
 
-				DataGridViewCombinations.Columns.Add(new DataGridViewTextBoxColumn
-				{
-					Name = $"Item{itemIndex}Class",
-					HeaderText = $"Item {itemIndex + 1} Class",
-					Width = 120,
-					ValueType = typeof(string)
-				});
+		private void MasterGrid_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
+		{
+			if (e.RowIndex < 0 || e.RowIndex >= _combinationsToDisplay.Count) return;
 
-				DataGridViewCombinations.Columns.Add(new DataGridViewTextBoxColumn
-				{
-					Name = $"Item{itemIndex}IsMine",
-					HeaderText = $"Item {itemIndex + 1} Mine?",
-					Width = 60,
-					ValueType = typeof(string),
-					DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
-				});
+			var viewModel = _combinationsToDisplay[e.RowIndex];
+			string columnName = DataGridViewMaster.Columns[e.ColumnIndex].Name;
 
-				DataGridViewCombinations.Columns.Add(new DataGridViewTextBoxColumn
-				{
-					Name = $"Item{itemIndex}Potential",
-					HeaderText = $"Item {itemIndex + 1} Potential?",
-					Width = 80,
-					ValueType = typeof(string),
-					DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
-				});
+			e.Value = columnName switch
+			{
+				"Rank" => viewModel.Rank,
+				"Score" => viewModel.Score,
+				"Items" => string.Join(", ", viewModel.Items.Select(i => i.Name)),
+				_ => null
+			};
+		}
+
+		private void MasterGrid_SelectionChanged(object sender, EventArgs e)
+		{
+			DataGridViewDetail.SuspendLayout();
+			RebuildDetailGrid();
+			DataGridViewDetail.ResumeLayout();
+		}
+
+		private void RebuildDetailGrid()
+		{
+			DataGridViewDetail.SuspendLayout();
+
+			var selectedIndices = DataGridViewMaster.SelectedRows
+				.Cast<DataGridViewRow>()
+				.Select(r => r.Index)
+				.Where(i => i >= 0 && i < _combinationsToDisplay.Count)
+				.OrderBy(i => i)
+				.ToList();
+
+			if (selectedIndices.Count == 0)
+			{
+				DataGridViewDetail.Rows.Clear();
+				DataGridViewDetail.Columns.Clear();
+				StatusBarLabel.Text = "Select combinations to compare";
+				DataGridViewDetail.ResumeLayout();
+				return;
 			}
 
-			var relevantStats = _tieredStats.Union(_validatorStats).OrderBy(s => s, StringComparer.OrdinalIgnoreCase).ToList();
-			foreach (var statName in relevantStats)
+			// Collect all stats from selected combinations (UNION)
+			var allStats = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			foreach (var index in selectedIndices)
+			{
+				allStats.UnionWith(_combinationsToDisplay[index].AggregatedStats.Keys);
+			}
+
+			// Order stats by importance: Tiered (by effective weight DESC), Validator, Others
+			var orderedStats = OrderStatsByImportance(allStats);
+
+			// Build columns
+			BuildDetailColumns(orderedStats);
+
+			// Populate rows
+			PopulateDetailRows(selectedIndices, orderedStats);
+
+			StatusBarLabel.Text = $"Comparing {selectedIndices.Count} combination(s)";
+			DataGridViewDetail.ResumeLayout();
+		}
+
+		private List<string> OrderStatsByImportance(HashSet<string> allStats)
+		{
+			var tieredStats = new List<(string StatName, double EffectiveWeight, int TierIndex)>();
+			var validatorStats = new List<string>();
+			var otherStats = new List<string>();
+
+			foreach (var statName in allStats)
+			{
+				if (_tieredStatWeights.TryGetValue(statName, out var tierInfo))
+				{
+					tieredStats.Add((statName, tierInfo.StatWeight * tierInfo.TierWeight, tierInfo.TierIndex));
+				}
+				else if (_validatorStats.Contains(statName))
+				{
+					validatorStats.Add(statName);
+				}
+				else
+				{
+					otherStats.Add(statName);
+				}
+			}
+
+			// Order tiered stats: by tier index ASC, then by effective weight DESC
+			var orderedTiered = tieredStats
+				.OrderBy(x => x.TierIndex)
+				.ThenByDescending(x => x.EffectiveWeight)
+				.Select(x => x.StatName)
+				.ToList();
+
+			// Validator and others: alphabetical
+			validatorStats.Sort(StringComparer.OrdinalIgnoreCase);
+			otherStats.Sort(StringComparer.OrdinalIgnoreCase);
+
+			// Combine: Tiered → Validator → Others
+			var result = new List<string>(orderedTiered.Count + validatorStats.Count + otherStats.Count);
+			result.AddRange(orderedTiered);
+			result.AddRange(validatorStats);
+			result.AddRange(otherStats);
+
+			return result;
+		}
+
+		private void BuildDetailColumns(List<string> orderedStats)
+		{
+			DataGridViewDetail.Columns.Clear();
+
+			// Rank column
+			DataGridViewDetail.Columns.Add(new DataGridViewTextBoxColumn
+			{
+				Name = "Rank",
+				HeaderText = "#",
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+				ValueType = typeof(int),
+				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
+				Frozen = true  // Keep visible while scrolling
+			});
+
+			// Score column (sortable, default sort DESC)
+			DataGridViewDetail.Columns.Add(new DataGridViewTextBoxColumn
+			{
+				Name = "Score",
+				HeaderText = "Score",
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+				ValueType = typeof(double),
+				DefaultCellStyle = new DataGridViewCellStyle
+				{
+					Alignment = DataGridViewContentAlignment.MiddleRight,
+					Format = "F2"
+				},
+				Frozen = true
+			});
+
+			// Stat columns (ordered by importance)
+			foreach (var statName in orderedStats)
 			{
 				var descriptor = _statDescriptors.FirstOrDefault(d => d.PropertyName.Equals(statName, StringComparison.OrdinalIgnoreCase));
 				string headerText = descriptor?.Header ?? statName;
 
-				DataGridViewCombinations.Columns.Add(new DataGridViewTextBoxColumn
+				// Add visual indicator for tiered stats
+				if (_tieredStatWeights.ContainsKey(statName))
+				{
+					headerText = $"★ {headerText}";  // Star for tiered stats
+				}
+
+				DataGridViewDetail.Columns.Add(new DataGridViewTextBoxColumn
 				{
 					Name = $"Stat_{statName}",
-					HeaderText = $"Σ {headerText}",
-					Width = 100,
+					HeaderText = headerText,
+					AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
 					ValueType = typeof(double),
 					DefaultCellStyle = new DataGridViewCellStyle
 					{
 						Alignment = DataGridViewContentAlignment.MiddleRight,
 						Format = "F2"
-					}
+					},
+					Tag = statName  // Store original stat name for click event
 				});
 			}
+
+			// Enable sorting
+			DataGridViewDetail.AllowUserToOrderColumns = false;
+			DataGridViewDetail.AutoGenerateColumns = false;
+			DataGridViewDetail.ReadOnly = true;
+			DataGridViewDetail.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+			DataGridViewDetail.MultiSelect = false;
+			DataGridViewDetail.Dock = DockStyle.Fill;
 		}
 
-		private void LoadCombinations()
+		private void PopulateDetailRows(List<int> selectedIndices, List<string> orderedStats)
 		{
-			if (_combinationsToDisplay.Count == 0)
+			DataGridViewDetail.Rows.Clear();
+
+			foreach (var index in selectedIndices)
 			{
-				CustomMessageBox.Show("No combinations to display.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
-				return;
+				var vm = _combinationsToDisplay[index];
+				var rowValues = new object[2 + orderedStats.Count];
+
+				rowValues[0] = vm.Rank;
+				rowValues[1] = vm.Score;
+
+				for (int i = 0; i < orderedStats.Count; i++)
+				{
+					var statName = orderedStats[i];
+					rowValues[2 + i] = vm.AggregatedStats.TryGetValue(statName, out double value)
+						? value
+						: 0.0;
+				}
+
+				DataGridViewDetail.Rows.Add(rowValues);
 			}
 
-			DataGridViewCombinations.RowCount = _combinationsToDisplay.Count;
-			StatusBarLabel.Text = $"Loaded {_combinationsToDisplay.Count:N0} combinations";
-		}
-
-		private void DataGridViewCombinations_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
-		{
-			if (e.RowIndex < 0 || e.RowIndex >= _combinationsToDisplay.Count) return;
-
-			var viewModel = _combinationsToDisplay[e.RowIndex];
-			string columnName = DataGridViewCombinations.Columns[e.ColumnIndex].Name;
-
-			if (columnName == "Rank")
+			// Default sort by Score DESC
+			if (DataGridViewDetail.Rows.Count > 0)
 			{
-				e.Value = viewModel.Rank;
-			}
-			else if (columnName == "Score")
-			{
-				e.Value = viewModel.Score;
-			}
-			else if (columnName.StartsWith("Item") && columnName.EndsWith("Name"))
-			{
-				int itemIndex = ExtractItemIndex(columnName);
-				e.Value = itemIndex < viewModel.Items.Count ? viewModel.Items[itemIndex].Name : string.Empty;
-			}
-			else if (columnName.StartsWith("Item") && columnName.EndsWith("Class"))
-			{
-				int itemIndex = ExtractItemIndex(columnName);
-				e.Value = itemIndex < viewModel.Items.Count ? viewModel.Items[itemIndex].Class : string.Empty;
-			}
-			else if (columnName.StartsWith("Item") && columnName.EndsWith("IsMine"))
-			{
-				int itemIndex = ExtractItemIndex(columnName);
-				e.Value = itemIndex < viewModel.Items.Count ? (viewModel.Items[itemIndex].IsMine ? "YES" : "NO") : string.Empty;
-			}
-			else if (columnName.StartsWith("Item") && columnName.EndsWith("Potential"))
-			{
-				int itemIndex = ExtractItemIndex(columnName);
-				e.Value = itemIndex < viewModel.Items.Count ? viewModel.Items[itemIndex].ItemStats.Potential : string.Empty;
-			}
-			else if (columnName.StartsWith("Stat_"))
-			{
-				string statName = columnName["Stat_".Length..];
-				e.Value = viewModel.AggregatedStats.TryGetValue(statName, out double value) ? value : 0.0;
+				DataGridViewDetail.Sort(DataGridViewDetail.Columns["Score"], System.ComponentModel.ListSortDirection.Descending);
 			}
 		}
 
-		private static int ExtractItemIndex(string columnName)
+		private void SetupDetailGrid()
 		{
-			int startIndex = "Item".Length;
-			int endIndex = columnName.IndexOfAny(['N', 'C', 'I', 'P'], startIndex);
-			if (endIndex > startIndex && int.TryParse(columnName[startIndex..endIndex], out int index))
+			DataGridViewDetail.CellClick += DetailGrid_CellClick;
+		}
+
+		private void DetailGrid_CellClick(object sender, DataGridViewCellEventArgs e)
+		{
+			// Ignore header and non-stat columns
+			if (e.RowIndex < 0 || e.ColumnIndex < 2) return;
+
+			var column = DataGridViewDetail.Columns[e.ColumnIndex];
+			if (!column.Name.StartsWith("Stat_", StringComparison.OrdinalIgnoreCase)) return;
+
+			var statName = column.Tag as string;
+			var rank = (int)DataGridViewDetail.Rows[e.RowIndex].Cells["Rank"].Value;
+
+			ShowStatBreakdown(rank, statName);
+		}
+
+		private void ShowStatBreakdown(int rank, string statName)
+		{
+			var vm = _combinationsToDisplay.FirstOrDefault(c => c.Rank == rank);
+			if (vm == null) return;
+
+			var descriptor = _statDescriptors.FirstOrDefault(d => d.PropertyName.Equals(statName, StringComparison.OrdinalIgnoreCase));
+			string displayName = descriptor?.Header ?? statName;
+
+			// Build breakdown message
+			var sb = new System.Text.StringBuilder();
+			sb.AppendLine($"Combination #{rank} - {displayName} Breakdown");
+			sb.AppendLine($"Total: {vm.AggregatedStats.GetValueOrDefault(statName, 0):F2}");
+			sb.AppendLine();
+			sb.AppendLine("Item Contributions:");
+
+			double sum = 0;
+			foreach (var item in vm.Items)
 			{
-				return index;
+				var itemStatsDict = ItemStatsHelper.ToDictionary(item.ItemStats);
+				if (itemStatsDict.TryGetValue(statName, out var value) && value is not string)
+				{
+					double val = Convert.ToDouble(value);
+					if (val != 0)
+					{
+						sb.AppendLine($"  {item.Name}: {val:F2}");
+						sum += val;
+					}
+				}
 			}
-			return -1;
-		}
 
-		private void ButtonClose_Click(object sender, EventArgs e)
-		{
-			this.Close();
-			this.Dispose();
-		}
+			sb.AppendLine();
+			sb.AppendLine($"Computed Total: {sum:F2}");
 
-		private void ButtonExport_Click(object sender, EventArgs e)
-		{
-			CustomMessageBox.Show("Export functionality not yet implemented.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+			CustomMessageBox.Show(sb.ToString(), "Stat Breakdown", MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 	}
 }
