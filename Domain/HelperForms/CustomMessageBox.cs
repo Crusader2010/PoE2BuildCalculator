@@ -73,6 +73,9 @@
 			Button2.Visible = true;
 			Button1.Text = "";
 			Button2.Text = "";
+			this.AcceptButton = Button1;
+			this.CancelButton = Button2;
+			Button1.Focus();
 
 			Icon systemIcon = _icon switch
 			{

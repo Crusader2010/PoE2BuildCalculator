@@ -15,30 +15,32 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
-			DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
-			DataGridViewCellStyle dataGridViewCellStyle3 = new DataGridViewCellStyle();
-			DataGridViewCellStyle dataGridViewCellStyle4 = new DataGridViewCellStyle();
-			DataGridViewCellStyle dataGridViewCellStyle5 = new DataGridViewCellStyle();
+			DataGridViewCellStyle dataGridViewCellStyle6 = new DataGridViewCellStyle();
+			DataGridViewCellStyle dataGridViewCellStyle7 = new DataGridViewCellStyle();
+			DataGridViewCellStyle dataGridViewCellStyle8 = new DataGridViewCellStyle();
+			DataGridViewCellStyle dataGridViewCellStyle9 = new DataGridViewCellStyle();
+			DataGridViewCellStyle dataGridViewCellStyle10 = new DataGridViewCellStyle();
 			SplitContainerMain = new SplitContainer();
 			DataGridViewMaster = new DataGridView();
 			DataGridViewDetail = new DataGridView();
-			ButtonClose = new Button();
-			ButtonExport = new Button();
 			StatusBar = new StatusStrip();
 			StatusBarLabel = new ToolStripStatusLabel();
+			PanelButtons = new Panel();
+			ButtonClose = new Button();
+			ButtonHelp = new Button();
 			((System.ComponentModel.ISupportInitialize)SplitContainerMain).BeginInit();
 			SplitContainerMain.Panel1.SuspendLayout();
 			SplitContainerMain.Panel2.SuspendLayout();
 			SplitContainerMain.SuspendLayout();
 			((System.ComponentModel.ISupportInitialize)DataGridViewMaster).BeginInit();
 			((System.ComponentModel.ISupportInitialize)DataGridViewDetail).BeginInit();
+			StatusBar.SuspendLayout();
+			PanelButtons.SuspendLayout();
 			SuspendLayout();
 			// 
 			// SplitContainerMain
 			// 
-			SplitContainerMain.Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right;
-			SplitContainerMain.Location = new Point(12, 12);
+			SplitContainerMain.Location = new Point(12, 48);
 			SplitContainerMain.Name = "SplitContainerMain";
 			SplitContainerMain.Orientation = Orientation.Horizontal;
 			// 
@@ -52,7 +54,7 @@
 			SplitContainerMain.Panel2.Controls.Add(DataGridViewDetail);
 			SplitContainerMain.Panel2MinSize = 35;
 			SplitContainerMain.Size = new Size(1160, 586);
-			SplitContainerMain.SplitterDistance = 434;
+			SplitContainerMain.SplitterDistance = 313;
 			SplitContainerMain.SplitterWidth = 3;
 			SplitContainerMain.TabIndex = 0;
 			// 
@@ -61,36 +63,34 @@
 			DataGridViewMaster.AllowUserToAddRows = false;
 			DataGridViewMaster.AllowUserToDeleteRows = false;
 			DataGridViewMaster.AllowUserToResizeRows = false;
-			dataGridViewCellStyle1.Alignment = DataGridViewContentAlignment.MiddleCenter;
-			dataGridViewCellStyle1.WrapMode = DataGridViewTriState.True;
-			DataGridViewMaster.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
-			DataGridViewMaster.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
-			DataGridViewMaster.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+			dataGridViewCellStyle6.Alignment = DataGridViewContentAlignment.MiddleCenter;
+			dataGridViewCellStyle6.WrapMode = DataGridViewTriState.True;
+			DataGridViewMaster.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle6;
 			DataGridViewMaster.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-			dataGridViewCellStyle2.Alignment = DataGridViewContentAlignment.MiddleLeft;
-			dataGridViewCellStyle2.BackColor = SystemColors.Window;
-			dataGridViewCellStyle2.Font = new Font("Microsoft Sans Serif", 9F);
-			dataGridViewCellStyle2.ForeColor = SystemColors.ControlText;
-			dataGridViewCellStyle2.SelectionBackColor = SystemColors.Highlight;
-			dataGridViewCellStyle2.SelectionForeColor = SystemColors.HighlightText;
-			dataGridViewCellStyle2.WrapMode = DataGridViewTriState.True;
-			DataGridViewMaster.DefaultCellStyle = dataGridViewCellStyle2;
+			dataGridViewCellStyle7.Alignment = DataGridViewContentAlignment.MiddleLeft;
+			dataGridViewCellStyle7.BackColor = SystemColors.Window;
+			dataGridViewCellStyle7.Font = new Font("Microsoft Sans Serif", 9F);
+			dataGridViewCellStyle7.ForeColor = SystemColors.ControlText;
+			dataGridViewCellStyle7.SelectionBackColor = SystemColors.Highlight;
+			dataGridViewCellStyle7.SelectionForeColor = SystemColors.HighlightText;
+			dataGridViewCellStyle7.WrapMode = DataGridViewTriState.True;
+			DataGridViewMaster.DefaultCellStyle = dataGridViewCellStyle7;
 			DataGridViewMaster.Dock = DockStyle.Fill;
 			DataGridViewMaster.Location = new Point(0, 0);
 			DataGridViewMaster.Name = "DataGridViewMaster";
 			DataGridViewMaster.ReadOnly = true;
-			dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
-			dataGridViewCellStyle3.BackColor = SystemColors.Control;
-			dataGridViewCellStyle3.Font = new Font("Nirmala UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			dataGridViewCellStyle3.ForeColor = SystemColors.WindowText;
-			dataGridViewCellStyle3.SelectionBackColor = SystemColors.Highlight;
-			dataGridViewCellStyle3.SelectionForeColor = SystemColors.HighlightText;
-			dataGridViewCellStyle3.WrapMode = DataGridViewTriState.False;
-			DataGridViewMaster.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
+			dataGridViewCellStyle8.Alignment = DataGridViewContentAlignment.MiddleLeft;
+			dataGridViewCellStyle8.BackColor = SystemColors.Control;
+			dataGridViewCellStyle8.Font = new Font("Microsoft Sans Serif", 9F);
+			dataGridViewCellStyle8.ForeColor = SystemColors.WindowText;
+			dataGridViewCellStyle8.SelectionBackColor = SystemColors.Highlight;
+			dataGridViewCellStyle8.SelectionForeColor = SystemColors.HighlightText;
+			dataGridViewCellStyle8.WrapMode = DataGridViewTriState.False;
+			DataGridViewMaster.RowHeadersDefaultCellStyle = dataGridViewCellStyle8;
 			DataGridViewMaster.RowHeadersVisible = false;
 			DataGridViewMaster.RowHeadersWidth = 51;
 			DataGridViewMaster.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-			DataGridViewMaster.Size = new Size(1160, 434);
+			DataGridViewMaster.Size = new Size(1160, 313);
 			DataGridViewMaster.TabIndex = 0;
 			// 
 			// DataGridViewDetail
@@ -98,20 +98,18 @@
 			DataGridViewDetail.AllowUserToAddRows = false;
 			DataGridViewDetail.AllowUserToDeleteRows = false;
 			DataGridViewDetail.AllowUserToResizeRows = false;
-			dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleCenter;
-			dataGridViewCellStyle4.WrapMode = DataGridViewTriState.True;
-			DataGridViewDetail.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle4;
-			DataGridViewDetail.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
-			DataGridViewDetail.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+			dataGridViewCellStyle9.Alignment = DataGridViewContentAlignment.MiddleCenter;
+			dataGridViewCellStyle9.WrapMode = DataGridViewTriState.True;
+			DataGridViewDetail.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle9;
 			DataGridViewDetail.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-			dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleLeft;
-			dataGridViewCellStyle5.BackColor = SystemColors.Window;
-			dataGridViewCellStyle5.Font = new Font("Nirmala UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			dataGridViewCellStyle5.ForeColor = SystemColors.ControlText;
-			dataGridViewCellStyle5.SelectionBackColor = SystemColors.Highlight;
-			dataGridViewCellStyle5.SelectionForeColor = SystemColors.HighlightText;
-			dataGridViewCellStyle5.WrapMode = DataGridViewTriState.True;
-			DataGridViewDetail.DefaultCellStyle = dataGridViewCellStyle5;
+			dataGridViewCellStyle10.Alignment = DataGridViewContentAlignment.MiddleLeft;
+			dataGridViewCellStyle10.BackColor = SystemColors.Window;
+			dataGridViewCellStyle10.Font = new Font("Nirmala UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
+			dataGridViewCellStyle10.ForeColor = SystemColors.ControlText;
+			dataGridViewCellStyle10.SelectionBackColor = SystemColors.Highlight;
+			dataGridViewCellStyle10.SelectionForeColor = SystemColors.HighlightText;
+			dataGridViewCellStyle10.WrapMode = DataGridViewTriState.True;
+			DataGridViewDetail.DefaultCellStyle = dataGridViewCellStyle10;
 			DataGridViewDetail.Dock = DockStyle.Fill;
 			DataGridViewDetail.Location = new Point(0, 0);
 			DataGridViewDetail.Name = "DataGridViewDetail";
@@ -119,62 +117,68 @@
 			DataGridViewDetail.RowHeadersVisible = false;
 			DataGridViewDetail.RowHeadersWidth = 51;
 			DataGridViewDetail.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-			DataGridViewDetail.Size = new Size(1160, 149);
+			DataGridViewDetail.Size = new Size(1160, 270);
 			DataGridViewDetail.TabIndex = 0;
-			// 
-			// ButtonClose
-			// 
-			ButtonClose.Location = new Point(0, 0);
-			ButtonClose.Name = "ButtonClose";
-			ButtonClose.Size = new Size(75, 23);
-			ButtonClose.TabIndex = 0;
-			// 
-			// ButtonExport
-			// 
-			ButtonExport.Location = new Point(0, 0);
-			ButtonExport.Name = "ButtonExport";
-			ButtonExport.Size = new Size(75, 23);
-			ButtonExport.TabIndex = 0;
 			// 
 			// StatusBar
 			// 
-			StatusBar.Location = new Point(0, 601);
+			StatusBar.Items.AddRange(new ToolStripItem[] { StatusBarLabel });
+			StatusBar.Location = new Point(0, 645);
 			StatusBar.Name = "StatusBar";
+			StatusBar.RenderMode = ToolStripRenderMode.Professional;
 			StatusBar.Size = new Size(1184, 22);
 			StatusBar.TabIndex = 1;
 			// 
 			// StatusBarLabel
 			// 
 			StatusBarLabel.Name = "StatusBarLabel";
-			StatusBarLabel.Size = new Size(120, 17);
+			StatusBarLabel.Size = new Size(39, 17);
 			StatusBarLabel.Text = "Ready";
 			// 
-			// StatusBarProgressBar
+			// PanelButtons
 			// 
-			StatusBarProgressBar = new ToolStripProgressBar();
-			StatusBarProgressBar.Name = "StatusBarProgressBar";
-			StatusBarProgressBar.Size = new Size(150, 16);
-			StatusBarProgressBar.Visible = false;
+			PanelButtons.BackColor = Color.Lavender;
+			PanelButtons.BorderStyle = BorderStyle.FixedSingle;
+			PanelButtons.Controls.Add(ButtonHelp);
+			PanelButtons.Controls.Add(ButtonClose);
+			PanelButtons.Dock = DockStyle.Top;
+			PanelButtons.Location = new Point(0, 0);
+			PanelButtons.Name = "PanelButtons";
+			PanelButtons.Size = new Size(1184, 40);
+			PanelButtons.TabIndex = 2;
 			// 
-			// StatusBarCancelButton
+			// ButtonClose
 			// 
-			StatusBarCancelButton = new ToolStripButton();
-			StatusBarCancelButton.Name = "StatusBarCancelButton";
-			StatusBarCancelButton.Text = "Cancel";
-			StatusBarCancelButton.BackColor = Color.LightPink;
-			StatusBarCancelButton.Alignment = ToolStripItemAlignment.Right;
-			StatusBarCancelButton.Visible = false;
-			StatusBarCancelButton.Click += StatusBarCancelButton_Click;
+			ButtonClose.Location = new Point(430, 3);
+			ButtonClose.Name = "ButtonClose";
+			ButtonClose.Size = new Size(75, 32);
+			ButtonClose.TabIndex = 0;
+			ButtonClose.Text = "Close";
+			ButtonClose.UseVisualStyleBackColor = true;
+			ButtonClose.Click += ButtonClose_Click_1;
 			// 
-			// Add all items to StatusBar in correct order
+			// ButtonHelp
 			// 
-			StatusBar.Items.AddRange(new ToolStripItem[] { StatusBarLabel, StatusBarProgressBar, StatusBarCancelButton });
+			ButtonHelp.BackColor = Color.FromArgb(100, 149, 237);
+			ButtonHelp.Cursor = Cursors.Help;
+			ButtonHelp.FlatAppearance.BorderSize = 0;
+			ButtonHelp.FlatStyle = FlatStyle.Flat;
+			ButtonHelp.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
+			ButtonHelp.ForeColor = Color.White;
+			ButtonHelp.Location = new Point(711, 3);
+			ButtonHelp.Name = "ButtonHelp";
+			ButtonHelp.Size = new Size(43, 32);
+			ButtonHelp.TabIndex = 3;
+			ButtonHelp.Text = "?";
+			ButtonHelp.UseVisualStyleBackColor = false;
+			ButtonHelp.Click += ButtonHelp_Click;
 			// 
 			// CombinationDisplay
 			// 
 			AutoScaleDimensions = new SizeF(96F, 96F);
 			AutoScaleMode = AutoScaleMode.Dpi;
-			ClientSize = new Size(1184, 623);
+			ClientSize = new Size(1184, 667);
+			Controls.Add(PanelButtons);
 			Controls.Add(StatusBar);
 			Controls.Add(SplitContainerMain);
 			DoubleBuffered = true;
@@ -188,6 +192,9 @@
 			SplitContainerMain.ResumeLayout(false);
 			((System.ComponentModel.ISupportInitialize)DataGridViewMaster).EndInit();
 			((System.ComponentModel.ISupportInitialize)DataGridViewDetail).EndInit();
+			StatusBar.ResumeLayout(false);
+			StatusBar.PerformLayout();
+			PanelButtons.ResumeLayout(false);
 			ResumeLayout(false);
 			PerformLayout();
 		}
@@ -197,11 +204,10 @@
 		private SplitContainer SplitContainerMain;
 		private DataGridView DataGridViewMaster;
 		private DataGridView DataGridViewDetail;
-		private Button ButtonClose;
-		private Button ButtonExport;
 		private StatusStrip StatusBar;
 		private ToolStripStatusLabel StatusBarLabel;
-		private ToolStripProgressBar StatusBarProgressBar;
-		private ToolStripButton StatusBarCancelButton;
+		private Panel PanelButtons;
+		private Button ButtonClose;
+		private Button ButtonHelp;
 	}
 }

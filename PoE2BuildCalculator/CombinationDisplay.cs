@@ -28,11 +28,7 @@ namespace PoE2BuildCalculator
 		private ImmutableList<CombinationViewModel> _combinationsToDisplay = [];
 		private Dictionary<int, CombinationViewModel> _combinationsByRank;
 		private HashSet<string> _relevantStatsCache;
-
-		private List<(List<Item> Combination, double Score)> _pendingCombinations;
-		private ToolStripProgressBar _progressBar;
-		private CancellationTokenSource _cts;
-		private ToolStripButton _cancelButton;
+		private readonly List<(List<Item> Combination, double Score)> _scoredCombinations;
 
 		public CombinationDisplay(
 			List<(List<Item> Combination, double Score)> scoredCombinations,
@@ -40,15 +36,15 @@ namespace PoE2BuildCalculator
 			List<Group> validatorGroups = null)
 		{
 			InitializeComponent();
-			this.Shown += CombinationDisplay_Shown;
+			this.Load += CombinationDisplay_Load;
 
 			_tiers = tiers ?? [];
 			_validatorGroups = validatorGroups ?? [];
+			_scoredCombinations = scoredCombinations ?? [];
 			_statDescriptorsByName = ItemStatsHelper.GetStatDescriptors().ToDictionary(d => d.PropertyName, d => d, StringComparer.OrdinalIgnoreCase);
 
 			ExtractRelevantStats(tiers, validatorGroups);
 			BuildTieredStatWeights(tiers);
-			_pendingCombinations = scoredCombinations ?? [];
 		}
 
 		private void BuildTieredStatWeights(List<Tier> tiers)
@@ -104,25 +100,39 @@ namespace PoE2BuildCalculator
 			_relevantStatsCache = [.. _tieredStats.Union(_validatorStats)];
 		}
 
-		private Dictionary<string, double> ComputeAggregatedStats(List<ImmutableDictionary<string, object>> itemStatsDicts)
+		private static Dictionary<string, double> ComputeAggregatedStats(List<ImmutableDictionary<string, object>> itemStatsDicts)
 		{
 			var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+			var allStatNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
-			foreach (var statName in _relevantStatsCache)
+			// Collect all stat names from all items
+			foreach (var itemStatsDict in itemStatsDicts)
+			{
+				allStatNames.UnionWith(itemStatsDict.Keys);
+			}
+
+			// Compute sum for each stat
+			foreach (var statName in allStatNames)
 			{
 				double sum = 0;
 				foreach (var itemStatsDict in itemStatsDicts)
 				{
-					if (itemStatsDict.TryGetValue(statName, out var value) && value is not string) sum += Convert.ToDouble(value);
+					if (itemStatsDict.TryGetValue(statName, out var value) && value is not string)
+					{
+						sum += Convert.ToDouble(value);
+					}
 				}
 
-				result[statName] = sum;
+				if (sum != 0.0d) // Only store non-zero stats
+				{
+					result[statName] = sum;
+				}
 			}
 
 			return result;
 		}
 
-		private async void CombinationDisplay_Shown(object sender, EventArgs e)
+		private async void CombinationDisplay_Load(object sender, EventArgs e)
 		{
 			this.SuspendLayout();
 			SplitContainerMain.SuspendLayout();
@@ -131,64 +141,38 @@ namespace PoE2BuildCalculator
 			SetupMasterGrid();
 			SetupDetailGrid();
 
-			this.ResumeLayout(false);
-			SplitContainerMain.ResumeLayout(false);
+			this.ResumeLayout(true);
+			SplitContainerMain.ResumeLayout(true);
 
 			SplitContainerMain.Visible = false;
 			StatusBarLabel.Text = "Loading combinations...";
-			this.Update(); // Force UI refresh
+			StatusBar.Refresh();
 
+			await Task.Yield();
 			await LoadCombinationsAsync();
+
 			SplitContainerMain.Visible = true;
 		}
 
 		private async Task LoadCombinationsAsync()
 		{
-			if (_pendingCombinations == null || _pendingCombinations.Count == 0)
+			if (_scoredCombinations == null || _scoredCombinations.Count == 0)
 			{
 				StatusBarLabel.Text = "No combinations to display";
 				return;
 			}
 
-			_cts = new CancellationTokenSource();
-			_progressBar = StatusBar.Items.OfType<ToolStripProgressBar>().FirstOrDefault();
-			_cancelButton = StatusBar.Items.OfType<ToolStripButton>().FirstOrDefault();
-
-			StatusBar.SuspendLayout();
-			if (_progressBar != null)
-			{
-				_progressBar.Visible = true;
-				_progressBar.Minimum = 0;
-				_progressBar.Maximum = 100;
-				_progressBar.Value = 0;
-				_progressBar.Step = 1;
-				_progressBar.Style = ProgressBarStyle.Continuous;
-			}
-
-			if (_cancelButton != null)
-			{
-				_cancelButton.Visible = true;
-				_cancelButton.Enabled = true;
-			}
-
-			StatusBar.ResumeLayout();
-			StatusBar.Refresh();
+			this.Cursor = Cursors.WaitCursor;
 
 			try
 			{
-				await Task.Run(() => PrepareCombinationDataAsync(_cts.Token), _cts.Token);
-
-				StatusBarLabel.Text = "Rendering grid...";
-				StatusBar.Refresh();
-				await Task.Delay(10);
+				await Task.Run(PrepareCombinationData);
 
 				DataGridViewMaster.RowCount = _combinationsToDisplay.Count;
+				DataGridViewMaster.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
+				DataGridViewMaster.AutoResizeRows(DataGridViewAutoSizeRowsMode.AllCells);
+
 				StatusBarLabel.Text = $"Loaded {_combinationsToDisplay.Count:N0} combinations - Select rows to compare";
-			}
-			catch (OperationCanceledException)
-			{
-				StatusBarLabel.Text = "Loading cancelled";
-				this.Close();
 			}
 			catch (Exception ex)
 			{
@@ -197,47 +181,26 @@ namespace PoE2BuildCalculator
 			}
 			finally
 			{
-				if (_progressBar != null)
-				{
-					_progressBar.Value = 0;
-					_progressBar.Visible = false;
-				}
-
-				if (_cancelButton != null)
-				{
-					_cancelButton.Visible = false;
-					_cancelButton.Enabled = false;
-				}
-
-				_cts?.Dispose();
-				_cts = null;
+				this.Cursor = Cursors.Default;
 			}
 		}
 
-		private void PrepareCombinationDataAsync(CancellationToken cancellationToken)
+		private void PrepareCombinationData()
 		{
-			var totalCount = _pendingCombinations.Count;
+			var totalCount = _scoredCombinations.Count;
 			var viewModels = new List<CombinationViewModel>(totalCount);
-			const int MIN_UPDATE_INTERVAL_MS = 100; // Update max every 100ms
-			int processedCount = 0;
-			var lastUpdateTime = DateTime.UtcNow;
-			int lastReportedPercent = -1;
 
 			for (int i = 0; i < totalCount; i++)
 			{
-				if (cancellationToken.IsCancellationRequested)
-					break;
-
-				var (combination, score) = _pendingCombinations[i];
+				var (combination, score) = _scoredCombinations[i];
 
 				var itemStatsDicts = new List<ImmutableDictionary<string, object>>(combination.Count);
-				foreach (var item in combination)
-					itemStatsDicts.Add(ItemStatsHelper.ToDictionary(item.ItemStats));
+				foreach (var item in combination) itemStatsDicts.Add(ItemStatsHelper.ToDictionary(item.ItemStats));
 
 				var aggregatedStats = ComputeAggregatedStats(itemStatsDicts);
 				var itemNames = string.Join(", ", combination.Select(item => item.Name));
 
-				var vm = new CombinationViewModel
+				viewModels.Add(new CombinationViewModel
 				{
 					Rank = i + 1,
 					Score = score,
@@ -245,46 +208,11 @@ namespace PoE2BuildCalculator
 					AggregatedStats = aggregatedStats,
 					ItemNamesCache = itemNames,
 					ItemStatsDictsCache = itemStatsDicts
-				};
-
-				viewModels.Add(vm);
-				processedCount++;
-
-				int percentComplete = (int)(processedCount / (double)totalCount * 100);
-				bool isFinalUpdate = processedCount == totalCount;
-				var timeSinceLastUpdate = (DateTime.UtcNow - lastUpdateTime).TotalMilliseconds;
-				bool percentChanged = percentComplete != lastReportedPercent;
-
-				bool shouldUpdate = isFinalUpdate ||
-									(percentChanged && timeSinceLastUpdate >= MIN_UPDATE_INTERVAL_MS);
-
-				if (shouldUpdate && _progressBar?.GetCurrentParent() != null)
-				{
-					lastUpdateTime = DateTime.UtcNow;
-					lastReportedPercent = percentComplete;
-
-					_progressBar.GetCurrentParent().Invoke(() =>
-					{
-						try
-						{
-							if (_progressBar != null && !_progressBar.IsDisposed)
-							{
-								_progressBar.Value = Math.Clamp(percentComplete, 0, 100);
-							}
-
-							if (StatusBarLabel != null && !StatusBarLabel.IsDisposed)
-							{
-								StatusBarLabel.Text = $"Loading: {percentComplete}% ({processedCount:N0}/{totalCount:N0})";
-							}
-						}
-						catch { }
-					});
-				}
+				});
 			}
 
 			_combinationsToDisplay = [.. viewModels];
 			_combinationsByRank = _combinationsToDisplay.ToDictionary(vm => vm.Rank, vm => vm);
-			_pendingCombinations = null;
 		}
 
 		private void ConfigureForm()
@@ -314,9 +242,6 @@ namespace PoE2BuildCalculator
 		{
 			if (disposing)
 			{
-				_cts?.Cancel();
-				_cts?.Dispose();
-				_cts = null;
 				components?.Dispose();
 			}
 			base.Dispose(disposing);
@@ -324,27 +249,7 @@ namespace PoE2BuildCalculator
 
 		protected override void OnFormClosing(FormClosingEventArgs e)
 		{
-			// Cancel loading if form is closed while loading
-			if (_cts != null && !_cts.IsCancellationRequested)
-			{
-				_cts.Cancel();
-				StatusBarLabel.Text = "Cancelling...";
-
-				// Wait briefly for cancellation to complete
-				Thread.Sleep(100);
-			}
-
 			base.OnFormClosing(e);
-		}
-
-		private void StatusBarCancelButton_Click(object sender, EventArgs e)
-		{
-			if (_cancelButton != null)
-			{
-				_cancelButton.Enabled = false;
-				StatusBarLabel.Text = "Cancelling...";
-				_cts?.Cancel();
-			}
 		}
 
 
@@ -360,8 +265,8 @@ namespace PoE2BuildCalculator
 			DataGridViewMaster.AllowUserToResizeRows = false;
 			DataGridViewMaster.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
 			DataGridViewMaster.MultiSelect = true;
-			DataGridViewMaster.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.AllCells;
-			DataGridViewMaster.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.AllCells;
+			DataGridViewMaster.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+			DataGridViewMaster.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
 			DataGridViewMaster.RowHeadersVisible = false;
 			DataGridViewMaster.Dock = DockStyle.Fill;
 
@@ -384,7 +289,7 @@ namespace PoE2BuildCalculator
 			{
 				Name = "Rank",
 				HeaderText = "#",
-				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
 				ValueType = typeof(int),
 				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
 			});
@@ -393,7 +298,7 @@ namespace PoE2BuildCalculator
 			{
 				Name = "Score",
 				HeaderText = "Score",
-				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
 				ValueType = typeof(double),
 				DefaultCellStyle = new DataGridViewCellStyle
 				{
@@ -542,7 +447,7 @@ namespace PoE2BuildCalculator
 			{
 				Name = "Rank",
 				HeaderText = "#",
-				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
 				ValueType = typeof(int),
 				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
 				Frozen = true  // Keep visible while scrolling
@@ -553,7 +458,7 @@ namespace PoE2BuildCalculator
 			{
 				Name = "Score",
 				HeaderText = "Score",
-				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
 				ValueType = typeof(double),
 				DefaultCellStyle = new DataGridViewCellStyle
 				{
@@ -579,7 +484,7 @@ namespace PoE2BuildCalculator
 				{
 					Name = $"Stat_{statName}",
 					HeaderText = headerText,
-					AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+					AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
 					ValueType = typeof(double),
 					DefaultCellStyle = new DataGridViewCellStyle
 					{
@@ -684,6 +589,16 @@ namespace PoE2BuildCalculator
 			breakdown.AppendLine($"Computed Total: {sum:F2}");
 
 			CustomMessageBox.Show(breakdown.ToString(), "Stat Breakdown", MessageBoxButtons.OK, MessageBoxIcon.Information);
+		}
+
+		private void ButtonClose_Click_1(object sender, EventArgs e)
+		{
+
+		}
+
+		private void ButtonHelp_Click(object sender, EventArgs e)
+		{
+
 		}
 	}
 }
