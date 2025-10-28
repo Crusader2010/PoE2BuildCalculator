@@ -161,7 +161,7 @@ namespace Manager
 					case VersionComparison.IncompatibleMajor:
 						return (false,
 							$"Configuration file version {fileVersion} is incompatible with current version {_currentVersion}.\r\n\r\n" +
-							"This file was created with a newer/older major version and cannot be loaded.\n" +
+							"This file was created with a newer/older major version and cannot be loaded.\r\n" +
 							"Please export your data from the original version before upgrading.",
 							null);
 

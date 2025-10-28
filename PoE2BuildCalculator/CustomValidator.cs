@@ -986,7 +986,7 @@ namespace PoE2BuildCalculator
 			if (!_configManager.HasConfigData(ConfigSections.Validator))
 			{
 				CustomMessageBox.Show(
-					"No validator configuration data available in memory.\r\n\r\nPlease load a configuration file from MainForm first.",
+					"No validator configuration data available in memory.\r\n\r\nPlease load a configuration file from the main window first.",
 					"No Data",
 					MessageBoxButtons.OK,
 					MessageBoxIcon.Information);

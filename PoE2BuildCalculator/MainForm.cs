@@ -896,7 +896,7 @@ namespace PoE2BuildCalculator
 
 					// Show summary in textbox
 					var scoredSummary = new System.Text.StringBuilder();
-					scoredSummary.AppendLine($"=== TOP {scoredCombinations.Count} COMBINATIONS (by score) ===\n");
+					scoredSummary.AppendLine($"=== TOP {scoredCombinations.Count} COMBINATIONS (by score) ===\r\n");
 
 					for (int i = 0; i < Math.Min(10, scoredCombinations.Count); i++)
 					{
@@ -959,17 +959,13 @@ namespace PoE2BuildCalculator
 
 		private void ShowItemsDataButton_Click(object sender, EventArgs e)
 		{
-			bool haveComputedCombinations = _combinations != null && _combinations.Count > 0;
-			if (!haveComputedCombinations && (_fileParser == null || _fileParser.GetParsedItems().Count == 0))
+			if (_fileParser == null || _fileParser.GetParsedItems().Count == 0)
 			{
 				StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
 				return;
 			}
 
-			var computedItems = haveComputedCombinations
-									? [.. _combinations.SelectMany(list => list)]
-									: _fileParser?.GetParsedItems() ?? [];
-
+			var computedItems = _fileParser?.GetParsedItems() ?? [];
 			var display = new DataDisplay(computedItems);
 
 			// show modal so caller waits for the user to close it

@@ -53,11 +53,11 @@
 			// 
 			// ButtonOpenItemListFile
 			// 
-			ButtonOpenItemListFile.Location = new Point(14, 13);
+			ButtonOpenItemListFile.Location = new Point(12, 77);
 			ButtonOpenItemListFile.Name = "ButtonOpenItemListFile";
 			ButtonOpenItemListFile.Size = new Size(126, 58);
 			ButtonOpenItemListFile.TabIndex = 0;
-			ButtonOpenItemListFile.Text = "Choose File";
+			ButtonOpenItemListFile.Text = "(1) Choose File";
 			ButtonOpenItemListFile.UseVisualStyleBackColor = true;
 			ButtonOpenItemListFile.Click += ButtonOpenItemListFile_Click;
 			// 
@@ -81,27 +81,27 @@
 			// 
 			// ButtonParseItemListFile
 			// 
-			ButtonParseItemListFile.Location = new Point(158, 13);
+			ButtonParseItemListFile.Location = new Point(144, 77);
 			ButtonParseItemListFile.Name = "ButtonParseItemListFile";
 			ButtonParseItemListFile.Size = new Size(126, 58);
 			ButtonParseItemListFile.TabIndex = 2;
-			ButtonParseItemListFile.Text = "Begin Parsing File";
+			ButtonParseItemListFile.Text = "(2) Parse File";
 			ButtonParseItemListFile.UseVisualStyleBackColor = true;
 			ButtonParseItemListFile.Click += ButtonParseItemListFile_Click;
 			// 
 			// TierManagerButton
 			// 
-			TierManagerButton.Location = new Point(158, 77);
+			TierManagerButton.Location = new Point(144, 141);
 			TierManagerButton.Name = "TierManagerButton";
 			TierManagerButton.Size = new Size(126, 58);
 			TierManagerButton.TabIndex = 3;
-			TierManagerButton.Text = "Manage tiers and weights";
+			TierManagerButton.Text = "(4) Manage tiers and weights";
 			TierManagerButton.UseVisualStyleBackColor = true;
 			TierManagerButton.Click += TierManagerButton_Click;
 			// 
 			// ShowItemsDataButton
 			// 
-			ShowItemsDataButton.Location = new Point(14, 141);
+			ShowItemsDataButton.Location = new Point(78, 13);
 			ShowItemsDataButton.Name = "ShowItemsDataButton";
 			ShowItemsDataButton.Size = new Size(126, 58);
 			ShowItemsDataButton.TabIndex = 4;
@@ -111,11 +111,11 @@
 			// 
 			// ButtonComputeCombinations
 			// 
-			ButtonComputeCombinations.Location = new Point(158, 141);
+			ButtonComputeCombinations.Location = new Point(12, 205);
 			ButtonComputeCombinations.Name = "ButtonComputeCombinations";
 			ButtonComputeCombinations.Size = new Size(126, 58);
 			ButtonComputeCombinations.TabIndex = 5;
-			ButtonComputeCombinations.Text = "Compute combinations";
+			ButtonComputeCombinations.Text = "(5) Compute combinations";
 			ButtonComputeCombinations.UseVisualStyleBackColor = true;
 			ButtonComputeCombinations.Click += ButtonComputeCombinations_Click;
 			// 
@@ -134,11 +134,11 @@
 			// 
 			// ButtonManageCustomValidator
 			// 
-			ButtonManageCustomValidator.Location = new Point(14, 77);
+			ButtonManageCustomValidator.Location = new Point(12, 141);
 			ButtonManageCustomValidator.Name = "ButtonManageCustomValidator";
 			ButtonManageCustomValidator.Size = new Size(126, 58);
 			ButtonManageCustomValidator.TabIndex = 7;
-			ButtonManageCustomValidator.Text = "Manage custom validator";
+			ButtonManageCustomValidator.Text = "(3) Manage custom validator";
 			ButtonManageCustomValidator.UseVisualStyleBackColor = true;
 			ButtonManageCustomValidator.Click += ButtonManageCustomValidator_Click;
 			// 
@@ -160,11 +160,11 @@
 			// 
 			// ShowScoredCombinationsButton
 			// 
-			ShowScoredCombinationsButton.Location = new Point(14, 205);
+			ShowScoredCombinationsButton.Location = new Point(144, 205);
 			ShowScoredCombinationsButton.Name = "ShowScoredCombinationsButton";
 			ShowScoredCombinationsButton.Size = new Size(126, 58);
 			ShowScoredCombinationsButton.TabIndex = 8;
-			ShowScoredCombinationsButton.Text = "Display scored combinations";
+			ShowScoredCombinationsButton.Text = "(6) Display scored combinations";
 			ShowScoredCombinationsButton.UseVisualStyleBackColor = true;
 			ShowScoredCombinationsButton.Click += ShowScoredCombinationsButton_Click;
 			// 
@@ -243,7 +243,7 @@
 			LabelBestCombinationsCount.Location = new Point(302, 11);
 			LabelBestCombinationsCount.Name = "LabelBestCombinationsCount";
 			LabelBestCombinationsCount.Size = new Size(155, 21);
-			LabelBestCombinationsCount.TabStop = false;
+			LabelBestCombinationsCount.TabIndex = 11;
 			LabelBestCombinationsCount.Text = "Best combinations count:";
 			LabelBestCombinationsCount.TextAlign = ContentAlignment.MiddleLeft;
 			// 

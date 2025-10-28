@@ -40,7 +40,8 @@
 			// 
 			// SplitContainerMain
 			// 
-			SplitContainerMain.Location = new Point(12, 48);
+			SplitContainerMain.Dock = DockStyle.Fill;
+			SplitContainerMain.Location = new Point(0, 40);
 			SplitContainerMain.Name = "SplitContainerMain";
 			SplitContainerMain.Orientation = Orientation.Horizontal;
 			// 
@@ -53,8 +54,8 @@
 			// 
 			SplitContainerMain.Panel2.Controls.Add(DataGridViewDetail);
 			SplitContainerMain.Panel2MinSize = 35;
-			SplitContainerMain.Size = new Size(1160, 586);
-			SplitContainerMain.SplitterDistance = 313;
+			SplitContainerMain.Size = new Size(1184, 605);
+			SplitContainerMain.SplitterDistance = 323;
 			SplitContainerMain.SplitterWidth = 3;
 			SplitContainerMain.TabIndex = 0;
 			// 
@@ -90,7 +91,7 @@
 			DataGridViewMaster.RowHeadersVisible = false;
 			DataGridViewMaster.RowHeadersWidth = 51;
 			DataGridViewMaster.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-			DataGridViewMaster.Size = new Size(1160, 313);
+			DataGridViewMaster.Size = new Size(1184, 323);
 			DataGridViewMaster.TabIndex = 0;
 			// 
 			// DataGridViewDetail
@@ -117,7 +118,7 @@
 			DataGridViewDetail.RowHeadersVisible = false;
 			DataGridViewDetail.RowHeadersWidth = 51;
 			DataGridViewDetail.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
-			DataGridViewDetail.Size = new Size(1160, 270);
+			DataGridViewDetail.Size = new Size(1184, 279);
 			DataGridViewDetail.TabIndex = 0;
 			// 
 			// StatusBar
@@ -178,9 +179,9 @@
 			AutoScaleDimensions = new SizeF(96F, 96F);
 			AutoScaleMode = AutoScaleMode.Dpi;
 			ClientSize = new Size(1184, 667);
+			Controls.Add(SplitContainerMain);
 			Controls.Add(PanelButtons);
 			Controls.Add(StatusBar);
-			Controls.Add(SplitContainerMain);
 			DoubleBuffered = true;
 			MinimumSize = new Size(800, 400);
 			Name = "CombinationDisplay";
