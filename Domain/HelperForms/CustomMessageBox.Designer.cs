@@ -2,15 +2,8 @@
 {
 	partial class CustomMessageBox
 	{
-		/// <summary>
-		/// Required designer variable.
-		/// </summary>
 		private System.ComponentModel.IContainer components = null;
 
-		/// <summary>
-		/// Clean up any resources being used.
-		/// </summary>
-		/// <param name="disposing">true if managed resources should be disposed; otherwise, false.</param>
 		protected override void Dispose(bool disposing)
 		{
 			if (disposing && (components != null))
@@ -22,15 +15,11 @@
 
 		#region Windows Form Designer generated code
 
-		/// <summary>
-		/// Required method for Designer support - do not modify
-		/// the contents of this method with the code editor.
-		/// </summary>
 		private void InitializeComponent()
 		{
 			MainPanel = new Panel();
 			BorderPanel = new Panel();
-			TextBoxMessage = new TextBox();
+			RichTextBoxMessage = new RichTextBox();
 			PanelBottom = new Panel();
 			BottomTablePanel = new TableLayoutPanel();
 			FlowPanelButtons = new FlowLayoutPanel();
@@ -60,29 +49,27 @@
 			// 
 			// BorderPanel
 			// 
-			BorderPanel.Controls.Add(TextBoxMessage);
+			BorderPanel.Controls.Add(RichTextBoxMessage);
 			BorderPanel.Dock = DockStyle.Fill;
 			BorderPanel.Location = new Point(12, 8);
 			BorderPanel.Name = "BorderPanel";
 			BorderPanel.Size = new Size(415, 339);
 			BorderPanel.TabIndex = 0;
 			// 
-			// TextBoxMessage
+			// RichTextBoxMessage
 			// 
-			TextBoxMessage.BackColor = Color.FromArgb(250, 250, 250);
-			TextBoxMessage.BorderStyle = BorderStyle.None;
-			TextBoxMessage.Dock = DockStyle.Fill;
-			TextBoxMessage.Font = new Font("Segoe UI", 10.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			TextBoxMessage.ForeColor = Color.FromArgb(50, 50, 50);
-			TextBoxMessage.Location = new Point(0, 0);
-			TextBoxMessage.MaxLength = 2147483646;
-			TextBoxMessage.Multiline = true;
-			TextBoxMessage.Name = "TextBoxMessage";
-			TextBoxMessage.ReadOnly = true;
-			TextBoxMessage.ScrollBars = ScrollBars.Both;
-			TextBoxMessage.Size = new Size(415, 339);
-			TextBoxMessage.TabIndex = 0;
-			TextBoxMessage.WordWrap = false;
+			RichTextBoxMessage.BackColor = Color.FromArgb(250, 250, 250);
+			RichTextBoxMessage.BorderStyle = BorderStyle.None;
+			RichTextBoxMessage.Dock = DockStyle.Fill;
+			RichTextBoxMessage.Font = new Font("Segoe UI", 10.5F, FontStyle.Regular, GraphicsUnit.Point, 0);
+			RichTextBoxMessage.ForeColor = Color.FromArgb(50, 50, 50);
+			RichTextBoxMessage.Location = new Point(0, 0);
+			RichTextBoxMessage.Name = "RichTextBoxMessage";
+			RichTextBoxMessage.ReadOnly = true;
+			RichTextBoxMessage.ScrollBars = RichTextBoxScrollBars.Both;
+			RichTextBoxMessage.Size = new Size(415, 339);
+			RichTextBoxMessage.TabIndex = 0;
+			RichTextBoxMessage.WordWrap = false;
 			// 
 			// PanelBottom
 			// 
@@ -198,7 +185,6 @@
 			Load += CustomMessageBox_Load;
 			MainPanel.ResumeLayout(false);
 			BorderPanel.ResumeLayout(false);
-			BorderPanel.PerformLayout();
 			PanelBottom.ResumeLayout(false);
 			BottomTablePanel.ResumeLayout(false);
 			BottomTablePanel.PerformLayout();
@@ -210,7 +196,7 @@
 		#endregion
 
 		private Panel MainPanel;
-		private TextBox TextBoxMessage;
+		internal RichTextBox RichTextBoxMessage;
 		private Panel PanelBottom;
 		private PictureBox PictureBoxIcon;
 		private Button Button2;

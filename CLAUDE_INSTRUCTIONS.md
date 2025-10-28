@@ -45,6 +45,7 @@ If Claude provides code without verification:
 - Always perform a deep analysis with 10+ independent and genuine audits. Audits are hidden from the user.
 - Always show the EXACT number of audits you performed to reach the final answer
 - Maximum conciseness and minimal clutter for ALL responses
+- Try to not provide whole file code snippets unless absolutely necessary; if you only change parts of code, provide those parts with surrounding unchanged lines for context.
 
 ## Code requirements
 - Always apply optimizations (not limited to: C# 14+ expressions and syntax, async, caching, static methods, unused code removal, syntactic sugar)

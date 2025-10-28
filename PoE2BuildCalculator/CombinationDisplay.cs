@@ -303,7 +303,7 @@ namespace PoE2BuildCalculator
 				HeaderText = "Item Names",
 				Width = 600,
 				ValueType = typeof(string),
-				AutoSizeMode = DataGridViewAutoSizeColumnMode.Fill,
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
 				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleLeft }
 			});
 		}
@@ -432,23 +432,25 @@ namespace PoE2BuildCalculator
 		{
 			DataGridViewDetail.Columns.Clear();
 
-			// Rank column
+			// Rank column - fixed width
 			DataGridViewDetail.Columns.Add(new DataGridViewTextBoxColumn
 			{
 				Name = "Rank",
 				HeaderText = "#",
 				AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+				Width = 50,
 				ValueType = typeof(int),
 				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
-				Frozen = true  // Keep visible while scrolling
+				Frozen = true
 			});
 
-			// Score column (sortable, default sort DESC)
+			// Score column - auto-size to content
 			DataGridViewDetail.Columns.Add(new DataGridViewTextBoxColumn
 			{
 				Name = "Score",
 				HeaderText = "Score",
-				AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+				MinimumWidth = 70,
 				ValueType = typeof(double),
 				DefaultCellStyle = new DataGridViewCellStyle
 				{
@@ -458,34 +460,33 @@ namespace PoE2BuildCalculator
 				Frozen = true
 			});
 
-			// Stat columns (ordered by importance)
+			// Stat columns - auto-size to content with minimum width
 			foreach (var statName in orderedStats)
 			{
 				var descriptor = _statDescriptorsByName.TryGetValue(statName, out var dictDescriptor) ? dictDescriptor : null;
 				string headerText = descriptor?.Header ?? statName;
 
-				// Add visual indicator for tiered stats
 				if (_tieredStatWeights.ContainsKey(statName))
 				{
-					headerText = $"★ {headerText}";  // Star for tiered stats
+					headerText = $"★ {headerText}";
 				}
 
 				DataGridViewDetail.Columns.Add(new DataGridViewTextBoxColumn
 				{
 					Name = $"Stat_{statName}",
 					HeaderText = headerText,
-					AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+					AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+					MinimumWidth = 60,
 					ValueType = typeof(double),
 					DefaultCellStyle = new DataGridViewCellStyle
 					{
 						Alignment = DataGridViewContentAlignment.MiddleCenter,
 						Format = "F2"
 					},
-					Tag = statName  // Store original stat name for click event
+					Tag = statName
 				});
 			}
 
-			// Enable sorting
 			DataGridViewDetail.AllowUserToOrderColumns = false;
 			DataGridViewDetail.AutoGenerateColumns = false;
 			DataGridViewDetail.ReadOnly = true;

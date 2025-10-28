@@ -16,7 +16,7 @@ namespace PoE2BuildCalculator
 		// Field for thread synchronization
 		private readonly object _lockObject = new();
 		private readonly long _maxCombinationsToStore = 10000000;
-		private int _bestCombinationCount = 100;
+		private int _bestCombinationCount = 3000;
 
 		internal Func<List<Item>, bool> _itemValidatorFunction { get; set; } = x => true;
 		internal ImmutableList<Item> _parsedItems { get; private set; } = [];
@@ -715,16 +715,16 @@ namespace PoE2BuildCalculator
 				return;
 			}
 
-			// Confirm with user
-			string countMessage = $"Total combinations to process: {totalCount}\r\n\r\n" +
-				$"This is approximately {CommonHelper.GetBigIntegerApproximation(totalCount)} combinations.\r\n\r\n" +
-				"Do you want to proceed?";
+			//// Confirm with user
+			//string countMessage = $"Total combinations to process: {totalCount}\r\n\r\n" +
+			//	$"This is approximately {CommonHelper.GetBigIntegerApproximation(totalCount)} combinations.\r\n\r\n" +
+			//	"Do you want to proceed?";
 
-			if (CustomMessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
-			{
-				StatusBarLabel.Text = "Operation cancelled by user.";
-				return;
-			}
+			//if (CustomMessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+			//{
+			//	StatusBarLabel.Text = "Operation cancelled by user.";
+			//	return;
+			//}
 
 			HashSet<int> tieredItemIds = null;
 			List<Tier> tiers = null;
@@ -1032,7 +1032,7 @@ namespace PoE2BuildCalculator
 			StatusBarLabel.Text = $"Complete! {result.ValidCombinations} valid combinations found.";
 			this.ResumeLayout();
 
-			CustomMessageBox.Show(summary.ToString(), "Generation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+			//CustomMessageBox.Show(summary.ToString(), "Generation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 
 		private void RadioComprehensive_CheckedChanged(object sender, EventArgs e)
