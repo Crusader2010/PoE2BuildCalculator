@@ -123,13 +123,13 @@
 			// 
 			TextboxDisplay.BorderStyle = BorderStyle.FixedSingle;
 			TextboxDisplay.Dock = DockStyle.Fill;
-			TextboxDisplay.Location = new Point(296, 162);
+			TextboxDisplay.Location = new Point(296, 165);
 			TextboxDisplay.MaxLength = int.MaxValue;
 			TextboxDisplay.Multiline = true;
 			TextboxDisplay.Name = "TextboxDisplay";
 			TextboxDisplay.ReadOnly = true;
 			TextboxDisplay.ScrollBars = ScrollBars.Both;
-			TextboxDisplay.Size = new Size(445, 314);
+			TextboxDisplay.Size = new Size(445, 311);
 			TextboxDisplay.TabIndex = 6;
 			// 
 			// ButtonManageCustomValidator
@@ -153,9 +153,9 @@
 			PanelButtons.Controls.Add(TierManagerButton);
 			PanelButtons.Controls.Add(ButtonComputeCombinations);
 			PanelButtons.Dock = DockStyle.Left;
-			PanelButtons.Location = new Point(0, 162);
+			PanelButtons.Location = new Point(0, 165);
 			PanelButtons.Name = "PanelButtons";
-			PanelButtons.Size = new Size(296, 314);
+			PanelButtons.Size = new Size(296, 311);
 			PanelButtons.TabIndex = 9;
 			// 
 			// ShowScoredCombinationsButton
@@ -222,7 +222,7 @@
 			PanelConfig.Controls.Add(GroupBoxStrategy);
 			PanelConfig.Controls.Add(LabelBestCombinationsCount);
 			PanelConfig.Dock = DockStyle.Top;
-			PanelConfig.Location = new Point(0, 24);
+			PanelConfig.Location = new Point(0, 27);
 			PanelConfig.Name = "PanelConfig";
 			PanelConfig.Size = new Size(741, 138);
 			PanelConfig.TabIndex = 11;
@@ -253,15 +253,17 @@
 			MenuStrip.Items.AddRange(new ToolStripItem[] { LoadConfigMenuButton, SaveConfigMenuButton });
 			MenuStrip.Location = new Point(0, 0);
 			MenuStrip.Name = "MenuStrip";
-			MenuStrip.Size = new Size(741, 24);
+			MenuStrip.Size = new Size(741, 27);
 			MenuStrip.TabIndex = 12;
 			// 
 			// LoadConfigMenuButton
 			// 
 			LoadConfigMenuButton.AutoToolTip = true;
 			LoadConfigMenuButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+			LoadConfigMenuButton.Font = new Font("Nirmala UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
+			LoadConfigMenuButton.ForeColor = Color.FromArgb(192, 0, 0);
 			LoadConfigMenuButton.Name = "LoadConfigMenuButton";
-			LoadConfigMenuButton.Size = new Size(82, 20);
+			LoadConfigMenuButton.Size = new Size(100, 23);
 			LoadConfigMenuButton.Text = "Load config";
 			LoadConfigMenuButton.ToolTipText = "Load the configured tiers and validation groups/operations";
 			LoadConfigMenuButton.Click += LoadConfigMenuButton_Click;
@@ -270,8 +272,10 @@
 			// 
 			SaveConfigMenuButton.AutoToolTip = true;
 			SaveConfigMenuButton.DisplayStyle = ToolStripItemDisplayStyle.Text;
+			SaveConfigMenuButton.Font = new Font("Nirmala UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
+			SaveConfigMenuButton.ForeColor = Color.FromArgb(192, 0, 0);
 			SaveConfigMenuButton.Name = "SaveConfigMenuButton";
-			SaveConfigMenuButton.Size = new Size(80, 20);
+			SaveConfigMenuButton.Size = new Size(99, 23);
 			SaveConfigMenuButton.Text = "Save config";
 			SaveConfigMenuButton.ToolTipText = "Save the configured tiers and validation groups/operations";
 			SaveConfigMenuButton.Click += SaveConfigMenuButton_Click;
