@@ -15,19 +15,19 @@
 		/// </summary>
 		private void InitializeComponent()
 		{
-			DataGridViewCellStyle dataGridViewCellStyle6 = new DataGridViewCellStyle();
-			DataGridViewCellStyle dataGridViewCellStyle7 = new DataGridViewCellStyle();
-			DataGridViewCellStyle dataGridViewCellStyle8 = new DataGridViewCellStyle();
-			DataGridViewCellStyle dataGridViewCellStyle9 = new DataGridViewCellStyle();
-			DataGridViewCellStyle dataGridViewCellStyle10 = new DataGridViewCellStyle();
+			DataGridViewCellStyle dataGridViewCellStyle1 = new DataGridViewCellStyle();
+			DataGridViewCellStyle dataGridViewCellStyle2 = new DataGridViewCellStyle();
+			DataGridViewCellStyle dataGridViewCellStyle3 = new DataGridViewCellStyle();
+			DataGridViewCellStyle dataGridViewCellStyle4 = new DataGridViewCellStyle();
+			DataGridViewCellStyle dataGridViewCellStyle5 = new DataGridViewCellStyle();
 			SplitContainerMain = new SplitContainer();
 			DataGridViewMaster = new DataGridView();
 			DataGridViewDetail = new DataGridView();
 			StatusBar = new StatusStrip();
 			StatusBarLabel = new ToolStripStatusLabel();
 			PanelButtons = new Panel();
-			ButtonClose = new Button();
 			ButtonHelp = new Button();
+			ButtonClose = new Button();
 			((System.ComponentModel.ISupportInitialize)SplitContainerMain).BeginInit();
 			SplitContainerMain.Panel1.SuspendLayout();
 			SplitContainerMain.Panel2.SuspendLayout();
@@ -63,30 +63,30 @@
 			DataGridViewMaster.AllowUserToAddRows = false;
 			DataGridViewMaster.AllowUserToDeleteRows = false;
 			DataGridViewMaster.AllowUserToResizeRows = false;
-			dataGridViewCellStyle6.Alignment = DataGridViewContentAlignment.MiddleCenter;
-			dataGridViewCellStyle6.WrapMode = DataGridViewTriState.True;
-			DataGridViewMaster.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle6;
+			dataGridViewCellStyle1.Alignment = DataGridViewContentAlignment.MiddleCenter;
+			dataGridViewCellStyle1.WrapMode = DataGridViewTriState.True;
+			DataGridViewMaster.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle1;
 			DataGridViewMaster.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-			dataGridViewCellStyle7.Alignment = DataGridViewContentAlignment.MiddleLeft;
-			dataGridViewCellStyle7.BackColor = SystemColors.Window;
-			dataGridViewCellStyle7.Font = new Font("Microsoft Sans Serif", 9F);
-			dataGridViewCellStyle7.ForeColor = SystemColors.ControlText;
-			dataGridViewCellStyle7.SelectionBackColor = SystemColors.Highlight;
-			dataGridViewCellStyle7.SelectionForeColor = SystemColors.HighlightText;
-			dataGridViewCellStyle7.WrapMode = DataGridViewTriState.True;
-			DataGridViewMaster.DefaultCellStyle = dataGridViewCellStyle7;
+			dataGridViewCellStyle2.Alignment = DataGridViewContentAlignment.MiddleLeft;
+			dataGridViewCellStyle2.BackColor = SystemColors.Window;
+			dataGridViewCellStyle2.Font = new Font("Microsoft Sans Serif", 9F);
+			dataGridViewCellStyle2.ForeColor = SystemColors.ControlText;
+			dataGridViewCellStyle2.SelectionBackColor = SystemColors.Highlight;
+			dataGridViewCellStyle2.SelectionForeColor = SystemColors.HighlightText;
+			dataGridViewCellStyle2.WrapMode = DataGridViewTriState.True;
+			DataGridViewMaster.DefaultCellStyle = dataGridViewCellStyle2;
 			DataGridViewMaster.Dock = DockStyle.Fill;
 			DataGridViewMaster.Location = new Point(0, 0);
 			DataGridViewMaster.Name = "DataGridViewMaster";
 			DataGridViewMaster.ReadOnly = true;
-			dataGridViewCellStyle8.Alignment = DataGridViewContentAlignment.MiddleLeft;
-			dataGridViewCellStyle8.BackColor = SystemColors.Control;
-			dataGridViewCellStyle8.Font = new Font("Microsoft Sans Serif", 9F);
-			dataGridViewCellStyle8.ForeColor = SystemColors.WindowText;
-			dataGridViewCellStyle8.SelectionBackColor = SystemColors.Highlight;
-			dataGridViewCellStyle8.SelectionForeColor = SystemColors.HighlightText;
-			dataGridViewCellStyle8.WrapMode = DataGridViewTriState.False;
-			DataGridViewMaster.RowHeadersDefaultCellStyle = dataGridViewCellStyle8;
+			dataGridViewCellStyle3.Alignment = DataGridViewContentAlignment.MiddleLeft;
+			dataGridViewCellStyle3.BackColor = SystemColors.Control;
+			dataGridViewCellStyle3.Font = new Font("Microsoft Sans Serif", 9F);
+			dataGridViewCellStyle3.ForeColor = SystemColors.WindowText;
+			dataGridViewCellStyle3.SelectionBackColor = SystemColors.Highlight;
+			dataGridViewCellStyle3.SelectionForeColor = SystemColors.HighlightText;
+			dataGridViewCellStyle3.WrapMode = DataGridViewTriState.False;
+			DataGridViewMaster.RowHeadersDefaultCellStyle = dataGridViewCellStyle3;
 			DataGridViewMaster.RowHeadersVisible = false;
 			DataGridViewMaster.RowHeadersWidth = 51;
 			DataGridViewMaster.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
@@ -98,18 +98,18 @@
 			DataGridViewDetail.AllowUserToAddRows = false;
 			DataGridViewDetail.AllowUserToDeleteRows = false;
 			DataGridViewDetail.AllowUserToResizeRows = false;
-			dataGridViewCellStyle9.Alignment = DataGridViewContentAlignment.MiddleCenter;
-			dataGridViewCellStyle9.WrapMode = DataGridViewTriState.True;
-			DataGridViewDetail.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle9;
+			dataGridViewCellStyle4.Alignment = DataGridViewContentAlignment.MiddleCenter;
+			dataGridViewCellStyle4.WrapMode = DataGridViewTriState.True;
+			DataGridViewDetail.AlternatingRowsDefaultCellStyle = dataGridViewCellStyle4;
 			DataGridViewDetail.ColumnHeadersHeightSizeMode = DataGridViewColumnHeadersHeightSizeMode.AutoSize;
-			dataGridViewCellStyle10.Alignment = DataGridViewContentAlignment.MiddleLeft;
-			dataGridViewCellStyle10.BackColor = SystemColors.Window;
-			dataGridViewCellStyle10.Font = new Font("Nirmala UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
-			dataGridViewCellStyle10.ForeColor = SystemColors.ControlText;
-			dataGridViewCellStyle10.SelectionBackColor = SystemColors.Highlight;
-			dataGridViewCellStyle10.SelectionForeColor = SystemColors.HighlightText;
-			dataGridViewCellStyle10.WrapMode = DataGridViewTriState.True;
-			DataGridViewDetail.DefaultCellStyle = dataGridViewCellStyle10;
+			dataGridViewCellStyle5.Alignment = DataGridViewContentAlignment.MiddleLeft;
+			dataGridViewCellStyle5.BackColor = SystemColors.Window;
+			dataGridViewCellStyle5.Font = new Font("Nirmala UI", 9F, FontStyle.Regular, GraphicsUnit.Point, 0);
+			dataGridViewCellStyle5.ForeColor = SystemColors.ControlText;
+			dataGridViewCellStyle5.SelectionBackColor = SystemColors.Highlight;
+			dataGridViewCellStyle5.SelectionForeColor = SystemColors.HighlightText;
+			dataGridViewCellStyle5.WrapMode = DataGridViewTriState.True;
+			DataGridViewDetail.DefaultCellStyle = dataGridViewCellStyle5;
 			DataGridViewDetail.Dock = DockStyle.Fill;
 			DataGridViewDetail.Location = new Point(0, 0);
 			DataGridViewDetail.Name = "DataGridViewDetail";
@@ -147,16 +147,6 @@
 			PanelButtons.Size = new Size(1184, 40);
 			PanelButtons.TabIndex = 2;
 			// 
-			// ButtonClose
-			// 
-			ButtonClose.Location = new Point(430, 3);
-			ButtonClose.Name = "ButtonClose";
-			ButtonClose.Size = new Size(75, 32);
-			ButtonClose.TabIndex = 0;
-			ButtonClose.Text = "Close";
-			ButtonClose.UseVisualStyleBackColor = true;
-			ButtonClose.Click += ButtonClose_Click_1;
-			// 
 			// ButtonHelp
 			// 
 			ButtonHelp.BackColor = Color.FromArgb(100, 149, 237);
@@ -172,6 +162,16 @@
 			ButtonHelp.Text = "?";
 			ButtonHelp.UseVisualStyleBackColor = false;
 			ButtonHelp.Click += ButtonHelp_Click;
+			// 
+			// ButtonClose
+			// 
+			ButtonClose.Location = new Point(363, 3);
+			ButtonClose.Name = "ButtonClose";
+			ButtonClose.Size = new Size(150, 32);
+			ButtonClose.TabIndex = 0;
+			ButtonClose.Text = "Close";
+			ButtonClose.UseVisualStyleBackColor = true;
+			ButtonClose.Click += ButtonClose_Click;
 			// 
 			// CombinationDisplay
 			// 

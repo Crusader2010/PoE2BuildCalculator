@@ -3,6 +3,7 @@
 using Domain.HelperForms;
 using Domain.Helpers;
 using Domain.Main;
+using Domain.Static;
 using Domain.Validation;
 
 namespace PoE2BuildCalculator
@@ -225,17 +226,6 @@ namespace PoE2BuildCalculator
 					 ControlStyles.AllPaintingInWmPaint |
 					 ControlStyles.UserPaint, true);
 			UpdateStyles();
-		}
-
-		private void ButtonClose_Click(object sender, EventArgs e)
-		{
-			this.Close();
-			this.Dispose();
-		}
-
-		private void ButtonExport_Click(object sender, EventArgs e)
-		{
-			CustomMessageBox.Show("Export functionality not yet implemented.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 
 		protected override void Dispose(bool disposing)
@@ -591,14 +581,15 @@ namespace PoE2BuildCalculator
 			CustomMessageBox.Show(breakdown.ToString(), "Stat Breakdown", MessageBoxButtons.OK, MessageBoxIcon.Information);
 		}
 
-		private void ButtonClose_Click_1(object sender, EventArgs e)
+		private void ButtonClose_Click(object sender, EventArgs e)
 		{
-
+			this.Close();
+			this.Dispose();
 		}
 
 		private void ButtonHelp_Click(object sender, EventArgs e)
 		{
-
+			CustomMessageBox.Show(Constants.COMBINATIONS_DISPLAY_HELP_TEXT, "Combinations Display Help", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
 		}
 	}
 }
