@@ -1,15 +1,17 @@
-﻿using Domain.Main;
-using Domain.Static;
-
+﻿using System.Collections.Immutable;
 using System.ComponentModel;
 using System.Linq.Expressions;
 using System.Reflection;
+using System.Runtime.CompilerServices;
+
+using Domain.Main;
+using Domain.Static;
 
 namespace Domain.Helpers
 {
 	/// <summary>
 	/// Helper that exposes ItemStats property metadata (description + accessor) in a cached,
-	/// efficient form suitable for building UI columns or mapping to dictionaries.
+	/// efficient form, suitable for building UI columns or mapping to dictionaries.
 	/// Also declares <see cref="StatColumnAttribute"/> which can be applied to properties
 	/// in <see cref="ItemStats"/> to control ordering (optional).
 	/// </summary>
@@ -35,25 +37,24 @@ namespace Domain.Helpers
 
 		// Cached descriptors for ItemStats properties (built once).
 		private static readonly IReadOnlyList<StatDescriptor> s_descriptors = BuildDescriptors();
+		private static readonly ConditionalWeakTable<ItemStats, ImmutableDictionary<string, object>> _dictionaryCache = [];
 
 		public static IReadOnlyList<StatDescriptor> GetStatDescriptors() => s_descriptors;
 
-		/// <summary>
-		/// Build a dictionary mapping property name -> value, for the provided ItemStats.
-		/// Keys are the names of the properties from descriptors.
-		/// </summary>
-		public static IReadOnlyDictionary<string, object> ToDictionary(ItemStats stats)
+		public static ImmutableDictionary<string, object> ToDictionary(ItemStats stats)
 		{
-			ArgumentNullException.ThrowIfNull(stats);
+			if (stats == null) return ImmutableDictionary<string, object>.Empty;
 
-			var dict = new Dictionary<string, object>(StringComparer.OrdinalIgnoreCase);
-			foreach (var d in s_descriptors)
+			return _dictionaryCache.GetValue(stats, s =>
 			{
-				var val = d.Getter(stats);
-				dict[d.PropertyName] = ConvertToType(d.PropertyType, val);
-			}
-
-			return dict;
+				var dict = ImmutableDictionary.CreateBuilder<string, object>(StringComparer.OrdinalIgnoreCase);
+				foreach (var d in s_descriptors)
+				{
+					var val = d.Getter(s);
+					dict[d.PropertyName] = ConvertToType(d.PropertyType, val);
+				}
+				return dict.ToImmutableDictionary();
+			});
 		}
 
 		public static object ConvertToType(Type propertyType, object value)
@@ -64,7 +65,10 @@ namespace Domain.Helpers
 				TypeCode.Int32 => Convert.ChangeType(value, typeof(int)) ?? 0,
 				TypeCode.Int64 => Convert.ChangeType(value, typeof(long)) ?? 0,
 				TypeCode.String => Convert.ChangeType(value, typeof(string)) ?? string.Empty,
-				_ => value,
+				TypeCode.Decimal => Convert.ChangeType(value, typeof(double)) ?? 0.0d,
+				TypeCode.Single => Convert.ChangeType(value, typeof(double)) ?? 0.0d,
+				TypeCode.Boolean => Convert.ChangeType(value, typeof(bool)) ?? false,
+				_ => value ?? (propertyType.IsValueType ? Activator.CreateInstance(propertyType) : null)
 			};
 		}
 

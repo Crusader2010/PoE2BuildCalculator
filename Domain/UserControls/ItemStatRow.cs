@@ -1,0 +1,159 @@
+﻿using Domain.Enums;
+using Domain.Events;
+using Domain.Helpers;
+using Domain.Static;
+
+namespace Domain.UserControls
+{
+	public partial class ItemStatRow : UserControl
+	{
+		public int _currentRowIndex { get; private set; }
+		public string _selectedStatName { get; private set; }
+		private ToolTip _tooltip;
+
+		public event EventHandler ItemStatRowDeleted;
+		public event EventHandler ItemStatRowSwapped;
+		public event EventHandler OperatorChanged;
+
+		public ArithmeticOperationsEnum _selectedOperator
+		{
+			get
+			{
+				if (ComboboxOperator.SelectedItem == null) return ArithmeticOperationsEnum.Sum;
+
+				string selected = ComboboxOperator.SelectedItem.ToString();
+				bool found = EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionToEnum.TryGetValue(selected, out var op);
+
+				return found ? op : ArithmeticOperationsEnum.Sum;
+			}
+		}
+
+		public ItemStatRow(int currentRowIndex, string statName)
+		{
+			_currentRowIndex = currentRowIndex;
+			_selectedStatName = statName ?? string.Empty;
+
+			// required in constructor
+			InitializeComponent();
+			InitializeOperatorCombobox();
+
+			this.Padding = new Padding(0);
+			this.Margin = new Padding(0);
+		}
+
+		public void SetupStatOperatorSelection(bool isEnabled)
+		{
+			ComboboxOperator.Enabled = isEnabled;
+		}
+
+		public void ChangeCurrentRowIndex(int newRowIndex)
+		{
+			_currentRowIndex = newRowIndex;
+		}
+
+		public void SetOperator(ArithmeticOperationsEnum operatorValue)
+		{
+			ComboboxOperator.SelectedItem = operatorValue.GetDescription();
+		}
+
+
+		private void ItemStatRow_Load(object sender, EventArgs e)
+		{
+			components ??= new System.ComponentModel.Container();
+			_tooltip = new(components) { AutoPopDelay = 6000, InitialDelay = 100, ReshowDelay = 50, ToolTipIcon = ToolTipIcon.Info };
+
+			TextboxItemStat.Text = _selectedStatName;
+			SetTextboxWithEllipsis(TextboxItemStat, _selectedStatName);
+
+			//ComboboxOperator.Enabled = false; - commented to allow loading from json
+		}
+
+		private void InitializeOperatorCombobox()
+		{
+			ComboboxOperator.SuspendLayout();
+			ComboboxOperator.Items.Clear();
+
+			ComboboxOperator.BeginUpdate();
+			ComboboxOperator.Items.AddRange(EnumDescriptionCache<ArithmeticOperationsEnum>.DescriptionsArray);
+			ComboboxOperator.EndUpdate();
+
+			if (ComboboxOperator.Items.Count > 0) ComboboxOperator.SelectedIndex = 0;
+			ComboboxOperator.DropDownWidth = ComboboxOperator.Width;
+			ComboboxOperator.ResumeLayout();
+
+			ComboboxOperator.MouseWheel += ComboBox_MouseWheel;
+		}
+
+		private void ButtonRemove_Click(object sender, EventArgs e)
+		{
+			ItemStatRowDeleted?.Invoke(this, new ItemStatRowDeletingEventArgs() { IsDeleting = true });
+			Dispose();
+		}
+
+		private void ButtonMoveUp_Click(object sender, EventArgs e)
+		{
+			ItemStatRowSwapped?.Invoke(this, new ItemStatRowSwapEventArgs() { SourceIndex = _currentRowIndex, TargetIndex = _currentRowIndex - 1 });
+		}
+
+		private void ButtonMoveDown_Click(object sender, EventArgs e)
+		{
+			ItemStatRowSwapped?.Invoke(this, new ItemStatRowSwapEventArgs() { SourceIndex = _currentRowIndex, TargetIndex = _currentRowIndex + 1 });
+		}
+
+		private void ComboBox_MouseWheel(object sender, MouseEventArgs e)
+		{
+			if (e is HandledMouseEventArgs handledE)
+			{
+				handledE.Handled = true;
+			}
+		}
+
+		private void SetTextboxWithEllipsis(TextBox textBox, string fullText)
+		{
+			textBox.Text = fullText;
+
+			var textSize = TextRenderer.MeasureText(fullText, textBox.Font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding);
+			if (textSize.Width > textBox.ClientSize.Width - 4)
+			{
+				// Text too long - truncate and add "..."
+				string truncated = fullText;
+				while (truncated.Length > 0)
+				{
+					var testSize = TextRenderer.MeasureText(truncated + "...", textBox.Font, new Size(int.MaxValue, int.MaxValue), TextFormatFlags.NoPadding);
+					if (testSize.Width <= textBox.ClientSize.Width - 4)
+					{
+						textBox.Text = truncated + "...";
+						break;
+					}
+					truncated = truncated[..^1];
+				}
+
+				// Show tooltip
+				_tooltip.SetToolTip(textBox, fullText);
+				_tooltip.SetToolTip(PanelStatText, fullText);
+			}
+			else
+			{
+				// Text fits - no tooltip needed
+				_tooltip.SetToolTip(textBox, null);
+				_tooltip.SetToolTip(PanelStatText, null);
+			}
+		}
+
+		private void ComboboxOperator_SelectedIndexChanged(object sender, EventArgs e)
+		{
+			// Notify parent that operator changed
+			OperatorChanged?.Invoke(this, EventArgs.Empty);
+		}
+
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing)
+			{
+				_tooltip?.Dispose();
+				components?.Dispose();
+			}
+			base.Dispose(disposing);
+		}
+	}
+}

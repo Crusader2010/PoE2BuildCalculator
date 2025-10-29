@@ -1,6 +1,9 @@
 ﻿using System.Collections.Immutable;
+using System.Numerics;
 
 using Domain.Combinations;
+using Domain.Enums;
+using Domain.HelperForms;
 using Domain.Helpers;
 using Domain.Main;
 
@@ -8,506 +11,1098 @@ using Manager;
 
 namespace PoE2BuildCalculator
 {
-    public partial class MainForm : Form, IDisposable
-    {
-        // Field for thread synchronization
-        private readonly object _validatorLock = new();
-        private readonly long _maxCombinationsToStore = 10000000;
-        private readonly long _safeBenchmarkSampleSize = 500000;
-
-        // Class references
-        private FileParser _fileParser { get; set; }
-        private TierManager _formTierManager { get; set; }
-        private CustomValidator _customValidator { get; set; }
-        internal Func<List<Item>, bool> _itemValidatorFunction { get; set; } = x => true;
-        private ImmutableList<Item> _parsedItems { get; set; } = [];
-
-        private ProgressReportingHelper _progressHelper;
-
-        private List<List<Item>> _combinations { get; set; } = [];
-        private List<List<Item>> _benchmarkSampledItems;
-        private List<Item> _benchmarkSampledRings;
-        private ToolStripProgressBar _statusProgressBar;
-        private ToolStripButton _cancelButton;
-        private readonly object _benchmarkSampleLock = new();
-
-        public MainForm()
-        {
-            InitializeComponent();
-        }
-
-        private void MainForm_Load(object sender, EventArgs e)
-        {
-            ConfigureOpenFileDialog();
-            ConfigureParserControls();
-
-            // ✅ Validate controls were created
-            if (_statusProgressBar == null || _cancelButton == null)
-            {
-                MessageBox.Show(
-                    "Failed to initialize progress controls. Some features may not work correctly.",
-                    "Initialization Warning",
-                    MessageBoxButtons.OK,
-                    MessageBoxIcon.Warning);
-                // Continue anyway - operations will work, just without progress UI
-            }
-            else
-            {
-                _progressHelper = new ProgressReportingHelper(
-                    _statusProgressBar,
-                    _cancelButton,
-                    StatusBarLabel,
-                    PanelButtons);
-            }
-
-            this.FormClosing += MainForm_FormClosing;
-        }
-        private void ButtonOpenItemListFile_Click(object sender, EventArgs e)
-        {
-            var dialogResult = OpenPoE2ItemList.ShowDialog(this);
-            if (dialogResult == DialogResult.OK && !string.IsNullOrWhiteSpace(OpenPoE2ItemList.FileName) && File.Exists(OpenPoE2ItemList.FileName))
-            {
-                _fileParser = new FileParser(OpenPoE2ItemList.FileName);
-                StatusBarLabel.Text = $"Loaded file: {OpenPoE2ItemList.FileName}";
-            }
-            else
-            {
-                StatusBarLabel.Text = "No file selected or file does not exist.";
-            }
-        }
-
-        private async void ButtonParseItemListFile_Click(object sender, EventArgs e)
-        {
-            if (_fileParser is null)
-            {
-                StatusBarLabel.Text = "No file loaded. Please choose a file first.";
-                return;
-            }
-
-            TextboxDisplay.Text = string.Empty;
-            _progressHelper.Start();  // This disables PanelButtons
-            StatusBarLabel.Text = "Parsing... 0%";
-
-            var progress = new Progress<int>(p =>
-            {
-                _progressHelper.UpdateProgress(p, $"Parsing file... {p}%");
-            });
-
-            try
-            {
-                await _fileParser.ParseFileAsync(progress, _progressHelper.Token).ConfigureAwait(true);
-                StatusBarLabel.Text = "Parsing completed.";
-
-                lock (_benchmarkSampleLock)
-                {
-                    _benchmarkSampledItems = null;
-                    _benchmarkSampledRings = null;
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                StatusBarLabel.Text = "Parsing cancelled.";
-            }
-            catch (Exception ex)
-            {
-                StatusBarLabel.Text = $"Error: {ex.Message}";
-                ErrorHelper.ShowError(ex, "Parsing Error");
-            }
-            finally
-            {
-                _progressHelper.Stop();  // ✅ This re-enables PanelButtons (which includes parse button)
-            }
-        }
-
-        private void ButtonCancelParse_Click(object sender, EventArgs e)
-        {
-            _progressHelper.Cancel();
-        }
-
-        #region Prepare controls
-
-        private void ConfigureOpenFileDialog()
-        {
-            OpenPoE2ItemList.Multiselect = false;
-            OpenPoE2ItemList.Title = "Select the PoE2 Item List File";
-            OpenPoE2ItemList.AddToRecent = true;
-            OpenPoE2ItemList.Filter = "Text Files|*.txt|All Files|*.*";
-            OpenPoE2ItemList.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
-        }
-
-        private void ConfigureParserControls()
-        {
-            var parent = StatusBarLabel?.GetCurrentParent() ?? throw new InvalidOperationException("StatusBar not properly initialized. Cannot create progress controls.");
-
-            _statusProgressBar = new ToolStripProgressBar
-            {
-                Name = "StatusBarProgressBar",
-                Minimum = 0,
-                Maximum = 100,
-                Value = 0,
-                Visible = false,
-                Size = new Size(150, 16)
-            };
-            parent.Items.Add(_statusProgressBar);
-
-            _cancelButton = new ToolStripButton
-            {
-                Name = "ButtonCancelParse",
-                Text = "Cancel",
-                BackColor = Color.LightPink,
-                Enabled = false,
-                Visible = false,
-                Alignment = ToolStripItemAlignment.Right
-            };
-            _cancelButton.Click += ButtonCancelParse_Click;
-            parent.Items.Add(_cancelButton);
-        }
-
-        #endregion
-
-        private void TierManagerButton_Click(object sender, EventArgs e)
-        {
-            var tierManager = new TierManager();
-            _formTierManager = tierManager;
-
-            tierManager.Show(this);
-        }
-
-        private void ShowItemsDataButton_Click(object sender, EventArgs e)
-        {
-            if (_fileParser == null || _fileParser.GetParsedItems().Count == 0)
-            {
-                StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
-                return;
-            }
-
-            var display = new DataDisplay
-            {
-                // pass parser to the dialog before showing it
-                _fileParser = _fileParser
-            };
-
-            // show modal so caller waits for the user to close it
-            display.Show(this);
-        }
-
-        private async void ButtonComputeCombinations_Click(object sender, EventArgs e)
-        {
-            if (_fileParser == null)
-            {
-                StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
-                return;
-            }
-
-            _parsedItems = _fileParser.GetParsedItems();
-            var prepared = ItemPreparationHelper.PrepareItemsForCombinations(_parsedItems);
-
-            if (!prepared.HasItems && !prepared.HasRings)
-            {
-                MessageBox.Show("No items found in any category. Cannot generate combinations.",
-                    "No Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            var totalCount = CombinationGenerator.ComputeTotalCombinations(
-                prepared.ItemsWithoutRings, prepared.Rings);
-
-            if (totalCount == 0)
-            {
-                MessageBox.Show("No combinations possible. All item class lists are empty.",
-                    "No Combinations", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                return;
-            }
-
-            // Confirm with user
-            string countMessage = $"Total combinations to process: {totalCount}\n\n" +
-                $"This is approximately {CommonHelper.GetBigIntegerApproximation(totalCount)} combinations.\n\n" +
-                "Consider using the Benchmark feature first to estimate how much time this will take.\n\n" +
-                "Do you want to proceed?";
-
-            if (MessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo,
-                MessageBoxIcon.Warning) != DialogResult.Yes)
-            {
-                StatusBarLabel.Text = "Operation cancelled by user.";
-                return;
-            }
-
-            TextboxDisplay.Text = "Processing combinations...\r\n\r\n";
-            _progressHelper.Start();
-
-            var progress = new Progress<CombinationProgress>(p =>
-            {
-                string statusText = $"Processing: {p.PercentComplete:F2}% | " +
-                                  $"Processed: {p.ProcessedCombinations} | " +
-                                  $"Valid: {p.ValidCombinations} | " +
-                                  $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
-
-                _progressHelper.UpdateProgress((int)p.PercentComplete, statusText);
-
-                TextboxDisplay.Text = $"Progress: {p.PercentComplete:F2}%\r\n" +
-                                     $"Processed: {p.ProcessedCombinations}\r\n" +
-                                     $"Valid: {p.ValidCombinations}\r\n" +
-                                     $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
-            });
-
-            try
-            {
-                var result = await Task.Run(() =>
-                    CombinationGenerator.GenerateCombinationsParallel(
-                        prepared.ItemsWithoutRings,
-                        prepared.Rings,
-                        _itemValidatorFunction,
-                        progress,
-                        maxValidToStore: _maxCombinationsToStore,
-                        _progressHelper.Token),
-                    _progressHelper.Token);
-
-                DisplayCombinationResults(result);
-                _combinations = result.ValidCombinationsCollection;
-            }
-            catch (OperationCanceledException)
-            {
-                TextboxDisplay.Text = "Operation cancelled by user.";
-                StatusBarLabel.Text = "Cancelled.";
-            }
-            catch (Exception ex)
-            {
-                TextboxDisplay.Text = $"Error: {ex.Message}";
-                StatusBarLabel.Text = "Error during processing.";
-                MessageBox.Show($"An error occurred:\n\n{ex.Message}", "Error",
-                    MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _progressHelper.Stop();
-            }
-        }
-
-        private void ButtonManageCustomValidator_Click(object sender, EventArgs e)
-        {
-            lock (_validatorLock)
-            {
-                if (_customValidator == null || _customValidator.IsDisposed)
-                {
-                    _customValidator = new CustomValidator(this);
-                }
-
-                _customValidator.Show(this);
-                _customValidator.Activate();
-            }
-        }
-
-        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
-        {
-            _progressHelper?.Dispose();
-
-            lock (_validatorLock)
-            {
-                try
-                {
-                    if (_customValidator != null && !_customValidator.IsDisposed)
-                    {
-                        _customValidator.Dispose();
-                    }
-                    _customValidator = null;
-                }
-                catch { }
-            }
-        }
-
-        private async void ButtonBenchmark_Click(object sender, EventArgs e)
-        {
-            if (_fileParser == null)
-            {
-                MessageBox.Show("No parsed data available. Please load and parse a file first.",
-                    "No Data", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            _parsedItems = _fileParser.GetParsedItems();
-            var prepared = ItemPreparationHelper.PrepareItemsForCombinations(_parsedItems);
-
-            if (!prepared.HasItems && !prepared.HasRings)
-            {
-                MessageBox.Show("No items found in any category. Cannot benchmark.",
-                    "No Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                return;
-            }
-
-            const int totalIterations = 25;
-            const int maxListSampleSize = 100;
-
-            StatusBarLabel.Text = "Preparing benchmark...";
-            TextboxDisplay.Text = "Preparing benchmark...\r\n";
-
-            try
-            {
-                _progressHelper.Start();
-
-                // Pre-sample ONCE (lazy initialization)
-                List<List<Item>> sampledItems;
-                List<Item> sampledRings;
-
-                lock (_benchmarkSampleLock)
-                {
-                    if (_benchmarkSampledItems == null || _benchmarkSampledRings == null)
-                    {
-                        (_benchmarkSampledItems, _benchmarkSampledRings) =
-                            ItemPreparationHelper.CreateSamples(
-                                prepared.ItemsWithoutRings,
-                                prepared.Rings,
-                                maxListSampleSize);
-
-                        TextboxDisplay.AppendText("✓ Samples created\r\n");
-                    }
-                    else
-                    {
-                        TextboxDisplay.AppendText("✓ Using cached samples\r\n");
-                    }
-
-                    // Create local copies to avoid locking during async operation
-                    sampledItems = _benchmarkSampledItems;
-                    sampledRings = _benchmarkSampledRings;
-                }
-
-                _progressHelper.Token.ThrowIfCancellationRequested();
-
-                // Warmup and GC (quick, can stay on UI thread)
-                StatusBarLabel.Text = "Warming up...";
-                TextboxDisplay.AppendText("Warming up and collecting garbage...\r\n");
-
-                PerformWarmupGarbageCollection();
-
-                TextboxDisplay.AppendText($"✓ Ready\r\n\r\nRunning {totalIterations} benchmark iterations...\r\n");
-
-                // Progress callback for UI updates
-                var progress = new Progress<BenchmarkProgress>(p =>
-                {
-                    _progressHelper.UpdateProgress(p.PercentComplete, p.StatusMessage);
-
-                    // Update display every 5 iterations to reduce UI churn
-                    if (p.CurrentIteration % 5 == 0 || p.CurrentIteration == totalIterations)
-                    {
-                        TextboxDisplay.AppendText($"  Iteration {p.CurrentIteration}/{totalIterations} complete\r\n");
-                    }
-                });
-
-                // Run benchmark on background thread
-                ExecutionEstimate estimate = await Task.Run(() =>
-                    RunBenchmarkIterations(
-                        totalIterations,
-                        sampledItems,
-                        sampledRings,
-                        progress),
-                    _progressHelper.Token);
-
-                DisplayBenchmarkResults(estimate);
-            }
-            catch (OperationCanceledException)
-            {
-                TextboxDisplay.AppendText("\r\nBenchmark cancelled by user.\r\n");
-                StatusBarLabel.Text = "Benchmark cancelled.";
-            }
-            catch (Exception ex)
-            {
-                string errorMsg = $"Error during benchmark:\n\n{ex.Message}";
-                TextboxDisplay.Text = errorMsg;
-                StatusBarLabel.Text = "Benchmark failed.";
-                MessageBox.Show(errorMsg, "Benchmark Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-            finally
-            {
-                _progressHelper.Stop();
-            }
-        }
-
-        protected override void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _progressHelper?.Dispose();
-                components?.Dispose();
-            }
-            base.Dispose(disposing);
-        }
-
-        private ExecutionEstimate RunBenchmarkIterations(int totalIterations, List<List<Item>> sampledItems, List<Item> sampledRings, IProgress<BenchmarkProgress> progress)
-        {
-            ExecutionEstimate estimate = null;
-
-            for (int i = 0; i < totalIterations; i++)
-            {
-                _progressHelper.Token.ThrowIfCancellationRequested();
-
-                estimate = CombinationGenerator.EstimateExecutionTime(
-                    sampledItems,
-                    sampledRings,
-                    _itemValidatorFunction,
-                    safeSampleSize: _safeBenchmarkSampleSize,
-                    skipGarbageCollection: true);
-
-                int currentIteration = i + 1;
-                int percentComplete = currentIteration * 100 / totalIterations;
-
-                progress?.Report(new BenchmarkProgress
-                {
-                    CurrentIteration = currentIteration,
-                    TotalIterations = totalIterations,
-                    PercentComplete = percentComplete,
-                    StatusMessage = $"Benchmark: {currentIteration}/{totalIterations} iterations ({percentComplete}%)"
-                });
-            }
-
-            return estimate;
-        }
-
-        private static void PerformWarmupGarbageCollection()
-        {
-            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-            GC.WaitForPendingFinalizers();
-            GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, true, true);
-        }
-
-        private void DisplayBenchmarkResults(ExecutionEstimate estimate)
-        {
-            string summary = estimate.GetFormattedSummary();
-
-            // ✅ RESTORE THESE
-            TextboxDisplay.Text = summary;
-            StatusBarLabel.Text = "Benchmark complete.";
-
-            MessageBox.Show(summary, "Benchmark Results",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-
-        private void DisplayCombinationResults(CombinationResult<Item> result)
-        {
-            double speed = result.ElapsedTime.TotalSeconds > 0
-                ? result.ProcessedCombinations / result.ElapsedTime.TotalSeconds
-                : 0;
-
-            var summary = new System.Text.StringBuilder();
-            summary.AppendLine("=== COMBINATION GENERATION COMPLETE ===");
-            summary.AppendLine();
-            summary.AppendLine($"Total Combinations: {result.TotalCombinations}");
-            summary.AppendLine($"Processed: {result.ProcessedCombinations}");
-            summary.AppendLine($"Valid Combinations: {result.ValidCombinations}");
-            summary.AppendLine($"Rejection Rate: {(1 - (double)result.ValidCombinations / result.ProcessedCombinations) * 100:F2}%");
-            summary.AppendLine($"Elapsed Time: {result.ElapsedTime:hh\\:mm\\:ss\\.fff}");
-            summary.AppendLine($"Speed: {speed:F2} combinations/second");
-
-            if (result.ValidCombinations > _maxCombinationsToStore)
-            {
-                summary.AppendLine();
-                summary.AppendLine($"NOTE: Only the first {_maxCombinationsToStore:N0} valid combinations were stored.");
-            }
-
-            // ✅ RESTORE THESE
-            TextboxDisplay.Text = summary.ToString();
-            StatusBarLabel.Text = $"Complete! {result.ValidCombinations} valid combinations found.";
-
-            MessageBox.Show(summary.ToString(), "Generation Complete",
-                MessageBoxButtons.OK, MessageBoxIcon.Information);
-        }
-    }
+	public partial class MainForm : BaseForm, IDisposable
+	{
+		// Field for thread synchronization
+		private readonly object _lockObject = new();
+		private readonly long _maxCombinationsToStore = 10000000;
+		private int _bestCombinationCount = 3000;
+
+		internal Func<List<Item>, bool> _itemValidatorFunction { get; set; } = x => true;
+		internal ImmutableList<Item> _parsedItems { get; private set; } = [];
+
+		// Class references
+		private FileParser _fileParser { get; set; }
+		private TierManager _tierManager { get; set; }
+		private CustomValidator _customValidator { get; set; }
+		private ConfigurationManager _configManager;
+		private ProgressReportingHelper _progressHelper;
+
+		private List<List<Item>> _combinations { get; set; } = [];
+		private List<(List<Item> Combination, double Score)> _scoredCombinations { get; set; } = [];
+
+		private ToolStripProgressBar _statusProgressBar;
+		private ToolStripStatusLabel StatusBarEstimate;
+		private ToolStripButton _cancelButton;
+		private CombinationFilterStrategy _filterStrategy = CombinationFilterStrategy.Balanced;
+		private Dictionary<string, (double Min, double Max)> _statNormalization;
+
+		// Speed estimation fields for combinations
+		private double _smoothedSpeed = 0;
+		private long _lastProcessedCount = 0;
+		private DateTime _lastProgressTime = DateTime.MinValue;
+		private int _progressReportCount = 0;
+		private const int MIN_REPORTS_FOR_ESTIMATE = 3;  // Wait for 3 reports before showing estimate
+		private const double SMOOTHING_FACTOR = 0.3;  // Weight for new speed (0.7 for old speed)
+
+		private struct ScoredCombination
+		{
+			public List<Item> Combination;
+			public double Score;
+
+			public ScoredCombination(List<Item> combination, double score)
+			{
+				Combination = combination;
+				Score = score;
+			}
+		}
+
+		public MainForm()
+		{
+			InitializeComponent();
+		}
+
+		private void MainForm_Load(object sender, EventArgs e)
+		{
+			ConfigureOpenFileDialog();
+			ConfigureParserControls();
+
+			// Initialize ConfigurationManager
+			_configManager = new ConfigurationManager();
+
+			// ✅ Validate controls were created
+			if (_statusProgressBar == null || _cancelButton == null)
+			{
+				CustomMessageBox.Show(
+					"Failed to initialize progress controls. Some features may not work correctly.",
+					"Initialization Warning",
+					MessageBoxButtons.OK,
+					MessageBoxIcon.Warning);
+				// Continue anyway - operations will work, just without progress UI
+			}
+			else
+			{
+				_progressHelper = new ProgressReportingHelper(
+					_statusProgressBar,
+					_cancelButton,
+					StatusBarLabel,
+					[PanelButtons]);
+			}
+
+			this.FormClosing += MainForm_FormClosing;
+			NumericBestCombinationsCount.Value = _bestCombinationCount;
+
+			PanelConfig.Enabled = false;
+
+			MenuStrip.Renderer = new ToolStripProfessionalRenderer(new CustomColorTable());
+			MenuStrip.Items.Insert(0, new ToolStripSeparator());
+			MenuStrip.Items.Insert(2, new ToolStripSeparator());
+			MenuStrip.Items.Insert(4, new ToolStripSeparator());
+			MenuStrip.Items.Insert(6, new ToolStripSeparator());
+
+			SetupTextBoxJSONConfigLoading(false, string.Empty);
+
+			// Enable double buffering for smoother rendering
+			SetStyle(ControlStyles.OptimizedDoubleBuffer |
+					 ControlStyles.AllPaintingInWmPaint |
+					 ControlStyles.UserPaint, true);
+			UpdateStyles();
+		}
+
+		private void ButtonOpenItemListFile_Click(object sender, EventArgs e)
+		{
+			var dialogResult = OpenPoE2ItemList.ShowDialog(this);
+			if (dialogResult == DialogResult.OK && !string.IsNullOrWhiteSpace(OpenPoE2ItemList.FileName) && File.Exists(OpenPoE2ItemList.FileName))
+			{
+				_fileParser = new FileParser(OpenPoE2ItemList.FileName);
+				StatusBarLabel.Text = $"Loaded file: {OpenPoE2ItemList.FileName}";
+			}
+			else
+			{
+				StatusBarLabel.Text = "No file selected or file does not exist.";
+			}
+		}
+
+		private async void ButtonParseItemListFile_Click(object sender, EventArgs e)
+		{
+			if (_fileParser is null)
+			{
+				StatusBarLabel.Text = "No file loaded. Please choose a file first.";
+				return;
+			}
+
+			TextboxDisplay.Text = string.Empty;
+			_progressHelper.Start();  // This disables PanelButtons
+			StatusBarLabel.Text = "Parsing... 0%";
+
+			var progress = new Progress<int>(p =>
+			{
+				_progressHelper.UpdateProgress(p, $"Parsing file... {p}%");
+			});
+
+			try
+			{
+				await _fileParser.ParseFileAsync(progress, _progressHelper.Token).ConfigureAwait(true);
+				StatusBarLabel.Text = "Parsing completed.";
+			}
+			catch (OperationCanceledException)
+			{
+				StatusBarLabel.Text = "Parsing cancelled.";
+			}
+			catch (Exception ex)
+			{
+				StatusBarLabel.Text = $"Error: {ex.Message}";
+				ErrorHelper.ShowError(ex, $"{nameof(MainForm)} - {nameof(ButtonParseItemListFile_Click)}");
+			}
+			finally
+			{
+				_progressHelper.Stop();  // ✅ This re-enables PanelButtons (which includes parse button)
+				_parsedItems = _fileParser?.GetParsedItems() ?? [];
+			}
+		}
+
+		private void ButtonCancelParse_Click(object sender, EventArgs e)
+		{
+			_progressHelper.Cancel();
+		}
+
+
+		#region Saving and loading
+
+		private async void SaveConfig()
+		{
+			using var sfd = new SaveFileDialog { Filter = "JSON|*.json", DefaultExt = "json" };
+			if (sfd.ShowDialog() != DialogResult.OK) return;
+
+			try
+			{
+				PanelButtons.Enabled = false;
+				StatusBarLabel.Text = "Saving configuration...";
+
+				// Update memory from active forms
+				if (_tierManager is { IsDisposed: false, HasData: true })
+					_configManager.SetConfigData(ConfigSections.Tiers, _tierManager.ExportConfig());
+
+				if (_customValidator is { IsDisposed: false, HasData: true })
+					_configManager.SetConfigData(ConfigSections.Validator, _customValidator.ExportConfig());
+
+				// Persist to disk
+				await _configManager.SaveAllAsync(sfd.FileName, CancellationToken.None).ConfigureAwait(true);
+
+				StatusBarLabel.Text = $"Saved: {Path.GetFileName(sfd.FileName)}";
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, "Save Configuration");
+				StatusBarLabel.Text = "Save failed.";
+			}
+			finally
+			{
+				PanelButtons.Enabled = true;
+			}
+		}
+
+		private async void LoadConfig()
+		{
+			using var ofd = new OpenFileDialog { Filter = "JSON|*.json" };
+			if (ofd.ShowDialog() != DialogResult.OK) return;
+
+			try
+			{
+				PanelButtons.Enabled = false;
+				StatusBarLabel.Text = "Loading configuration...";
+
+				// Load into memory
+				var (success, errorMessage, _) = await _configManager.LoadAllAsync(ofd.FileName, CancellationToken.None).ConfigureAwait(true);
+				if (!success)
+				{
+					StatusBarLabel.Text = "Load failed.";
+					ErrorHelper.ShowError(errorMessage, "JSON Loading Failed");
+					return;
+				}
+
+				// Ask user if they want to apply config to forms immediately
+				bool hasData = _configManager.JSONHasConfigData(ConfigSections.Tiers) || _configManager.JSONHasConfigData(ConfigSections.Validator);
+				if (hasData)
+				{
+					var result = CustomMessageBox.Show(
+						"Configuration loaded successfully.\r\n\r\n" +
+						"Do you want to insert the saved config data into Tier Manager and Custom Validator windows?\r\n\r\n" +
+						"Choose 'No' to keep them empty. You can load the data manually, using the 'Load from JSON' buttons.",
+						"Apply Configuration",
+						MessageBoxButtons.YesNo,
+						MessageBoxIcon.Question, this, true);
+
+					if (result == DialogResult.Yes)
+					{
+						ApplyConfigToForms();
+					}
+				}
+
+				string fileName = Path.GetFileName(ofd.FileName) + (hasData ? @"" : string.Empty);
+				SetupTextBoxJSONConfigLoading(true, fileName);
+				StatusBarLabel.Text = $"Loaded: {fileName}";
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, "Load Configuration");
+				StatusBarLabel.Text = "Load failed.";
+			}
+			finally
+			{
+				PanelButtons.Enabled = true;
+			}
+		}
+
+		private void ApplyConfigToForms()
+		{
+			lock (_lockObject)
+			{
+				// Apply to TierManager
+				if (_configManager.JSONHasConfigData(ConfigSections.Tiers))
+				{
+					if (_tierManager == null || _tierManager.IsDisposed)
+					{
+						_tierManager = new TierManager(_configManager);
+						_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
+						_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
+					}
+
+					try
+					{
+						var tiersConfig = _configManager.GetConfigData(ConfigSections.Tiers);
+						if (tiersConfig != null)
+						{
+							_tierManager.ImportConfig(tiersConfig);
+							UpdatePanelConfigState();
+						}
+					}
+					catch (Exception ex)
+					{
+						ErrorHelper.ShowError(ex, "Apply Tiers Configuration");
+					}
+				}
+
+				// Apply to CustomValidator
+				if (_configManager.JSONHasConfigData(ConfigSections.Validator))
+				{
+					if (_customValidator == null || _customValidator.IsDisposed)
+						_customValidator = new CustomValidator(this, _configManager);
+
+					try
+					{
+						var validatorConfig = _configManager.GetConfigData(ConfigSections.Validator);
+						if (validatorConfig != null)
+							_customValidator.ImportConfig(validatorConfig);
+					}
+					catch (Exception ex)
+					{
+						ErrorHelper.ShowError(ex, "Apply Validator Configuration");
+					}
+				}
+			}
+		}
+
+		#endregion
+
+		#region Prepare controls
+
+		private void ConfigureOpenFileDialog()
+		{
+			OpenPoE2ItemList.Multiselect = false;
+			OpenPoE2ItemList.Title = "Select the PoE2 Item List File";
+			OpenPoE2ItemList.AddToRecent = true;
+			OpenPoE2ItemList.Filter = "Text Files|*.txt|All Files|*.*";
+			OpenPoE2ItemList.InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.DesktopDirectory);
+		}
+
+		private void ConfigureParserControls()
+		{
+			var parent = StatusBarLabel?.GetCurrentParent() ?? throw new InvalidOperationException("StatusBar not properly initialized. Cannot create progress controls.");
+
+			_statusProgressBar = new ToolStripProgressBar
+			{
+				Name = "StatusBarProgressBar",
+				Minimum = 0,
+				Maximum = 100,
+				Value = 0,
+				Visible = false,
+				Size = new Size(150, 16)
+			};
+			parent.Items.Add(_statusProgressBar);
+
+			_cancelButton = new ToolStripButton
+			{
+				Name = "ButtonCancelParse",
+				Text = "Cancel",
+				BackColor = Color.LightPink,
+				Enabled = false,
+				Visible = false,
+				Alignment = ToolStripItemAlignment.Right
+			};
+			_cancelButton.Click += ButtonCancelParse_Click;
+			parent.Items.Add(_cancelButton);
+		}
+
+		#endregion
+
+		#region Scoring
+
+		private static HashSet<int> BuildTieredItemIds(ImmutableList<Item> items, List<Tier> tiers)
+		{
+			if (tiers == null || tiers.Count == 0)
+				return null;
+
+			var tieredStatNames = tiers
+				.SelectMany(t => t.StatWeights.Keys)
+				.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+			var tieredIds = new HashSet<int>();
+
+			foreach (var item in items)
+			{
+				if (ItemHasAnyTieredStat(item, tieredStatNames))
+				{
+					tieredIds.Add(item.Id);
+				}
+			}
+
+			return tieredIds;
+		}
+
+		private static bool ItemHasAnyTieredStat(Item item, HashSet<string> tieredStatNames)
+		{
+			var itemStatsDict = ItemStatsHelper.ToDictionary(item.ItemStats);
+
+			foreach (var statName in tieredStatNames)
+			{
+				if (itemStatsDict.TryGetValue(statName, out var value))
+				{
+					double numValue = Convert.ToDouble(value);
+					if (numValue != 0) // Has non-zero value for this tiered stat
+						return true;
+				}
+			}
+
+			return false;
+		}
+
+		private static Dictionary<string, (double Min, double Max)> ComputeStatNormalization(ImmutableList<Item> items, List<Tier> tiers)
+		{
+			var result = new Dictionary<string, (double, double)>(StringComparer.OrdinalIgnoreCase);
+
+			if (tiers == null || tiers.Count == 0)
+				return result;
+
+			var tieredStatNames = tiers
+				.SelectMany(t => t.StatWeights.Keys)
+				.ToHashSet(StringComparer.OrdinalIgnoreCase);
+
+			foreach (var statName in tieredStatNames)
+			{
+				var values = new List<double>();
+
+				foreach (var item in items)
+				{
+					var itemStatsDict = ItemStatsHelper.ToDictionary(item.ItemStats);
+					if (itemStatsDict.TryGetValue(statName, out var value) && value is not string)
+					{
+						values.Add(Convert.ToDouble(value));
+					}
+				}
+
+				if (values.Count == 0)
+				{
+					result[statName] = (0, 0);
+					continue;
+				}
+
+				double min = values.Min();
+				double max = values.Max();
+				result[statName] = (min, max);
+			}
+
+			return result;
+		}
+
+		private static double NormalizeStat(double value, double min, double max)
+		{
+			if (Math.Abs(max - min) < 0.000001) // Essentially equal
+				return 0.5; // All values same, use middle
+
+			return (value - min) / (max - min); // Maps to [0, 1]
+		}
+
+		/// <summary>
+		/// ✅ Cache tier weights to avoid repeated Sum() calls
+		/// </summary>
+		private static double ScoreCombination(List<Item> combination, List<Tier> tiers, Dictionary<string, (double Min, double Max)> normalization)
+		{
+			if (tiers == null || tiers.Count == 0)
+				return 0;
+
+			// ✅ Pre-compute ONCE per combination
+			var itemStatsDicts = combination
+				.Select(item => ItemStatsHelper.ToDictionary(item.ItemStats))
+				.ToList();
+
+			double totalScore = 0;
+			double totalTierWeight = tiers.Sum(t => t.TierWeight);
+
+			if (totalTierWeight == 0)
+				return 0;
+
+			foreach (var tier in tiers)
+			{
+				double tierScore = 0;
+				double totalStatWeight = tier.TotalStatWeight;
+
+				if (totalStatWeight == 0)
+					continue;
+
+				foreach (var (statName, statWeight) in tier.StatWeights)
+				{
+					if (statWeight == 0)
+						continue;
+
+					// Sum stat across all items in combination
+					double rawSum = 0;
+					foreach (var itemStatsDict in itemStatsDicts) // ✅ Use pre-computed dicts
+					{
+						if (itemStatsDict.TryGetValue(statName, out var value) && value is not string)
+						{
+							rawSum += Convert.ToDouble(value);
+						}
+					}
+
+					// Normalize the sum
+					double normalizedSum = 0;
+					if (normalization.TryGetValue(statName, out var range))
+					{
+						normalizedSum = NormalizeStat(rawSum, range.Min, range.Max);
+					}
+
+					// Weight the stat within the tier
+					tierScore += normalizedSum * (statWeight / totalStatWeight);
+				}
+
+				// Weight the tier
+				totalScore += tierScore * (tier.TierWeight / totalTierWeight);
+			}
+
+			return totalScore;
+		}
+
+		private void ShowCombinationDisplay()
+		{
+			if (_scoredCombinations == null || _scoredCombinations.Count == 0)
+			{
+				CustomMessageBox.Show(
+					"No scored combinations available. Please compute combinations with tiers configured first.",
+					"No Data",
+					MessageBoxButtons.OK,
+					MessageBoxIcon.Information);
+				return;
+			}
+
+			try
+			{
+				// Get tiers from TierManager
+				List<Tier> tiers = null;
+				if (_tierManager != null && !_tierManager.IsDisposed)
+				{
+					tiers = _tierManager.GetTiers();
+				}
+
+				// Get validator groups from CustomValidator
+				List<Domain.Validation.Group> validatorGroups = null;
+				if (_customValidator != null && !_customValidator.IsDisposed)
+				{
+					validatorGroups = _customValidator.GetGroups();
+				}
+
+				// Create and show the CombinationDisplay form
+				var combinationDisplay = new CombinationDisplay(
+					_scoredCombinations,
+					tiers,
+					validatorGroups);
+
+				combinationDisplay.Show(this);
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, $"{nameof(MainForm)} - {nameof(ShowCombinationDisplay)}");
+			}
+		}
+
+		#endregion
+
+		#region Combination computation estimate
+
+		// Add this method to MainForm class:
+		private string CalculateEstimatedTime(long processedCombinations, BigInteger totalCombinations, DateTime now)
+		{
+			// Too early - not enough data
+			if (_progressReportCount < MIN_REPORTS_FOR_ESTIMATE)
+			{
+				return "Calculating...";
+			}
+
+			// Calculate time since last report
+			if (_lastProgressTime == DateTime.MinValue)
+			{
+				_lastProgressTime = now;
+				_lastProcessedCount = processedCombinations;
+				return "Calculating...";
+			}
+
+			double elapsedSeconds = (now - _lastProgressTime).TotalSeconds;
+
+			// Avoid division by zero
+			if (elapsedSeconds < 0.001)
+			{
+				return _smoothedSpeed > 0 ? FormatEstimate(processedCombinations, totalCombinations) : "Calculating...";
+			}
+
+			// Calculate current speed (combinations per second)
+			long combinationsProcessed = processedCombinations - _lastProcessedCount;
+			double currentSpeed = combinationsProcessed / elapsedSeconds;
+			double adaptiveFactor = _progressReportCount < 10 ? 0.5 : SMOOTHING_FACTOR;
+
+			// Update smoothed speed (exponential moving average)
+			if (_smoothedSpeed == 0)
+			{
+				_smoothedSpeed = currentSpeed;  // First time - just use current
+			}
+			else
+			{
+				_smoothedSpeed = (1 - adaptiveFactor) * _smoothedSpeed + adaptiveFactor * currentSpeed;
+			}
+
+			// Update tracking variables
+			_lastProgressTime = now;
+			_lastProcessedCount = processedCombinations;
+
+			// Calculate estimate
+			return FormatEstimate(processedCombinations, totalCombinations);
+		}
+
+		private string FormatEstimate(long processedCombinations, BigInteger totalCombinations)
+		{
+			if (_smoothedSpeed <= 0)
+			{
+				return "Calculating...";
+			}
+
+			// Calculate remaining combinations
+			BigInteger remaining = totalCombinations - processedCombinations;
+
+			if (remaining <= 0)
+			{
+				return "Finishing...";
+			}
+
+			// Calculate estimated seconds remaining
+			double remainingSeconds = CombinationGenerator.GetBigNumberRatio(remaining, new BigInteger((long)_smoothedSpeed));
+
+			// Handle edge cases
+			if (double.IsInfinity(remainingSeconds) || double.IsNaN(remainingSeconds) || remainingSeconds < 0)
+			{
+				return "Calculating...";
+			}
+
+			// Cap at reasonable maximum (10 years)
+			if (remainingSeconds > TimeSpan.FromDays(3650).TotalSeconds)
+			{
+				return "Estimate time: >10 years";
+			}
+
+			// Convert to TimeSpan and format
+			TimeSpan estimatedTime = TimeSpan.FromSeconds(remainingSeconds);
+
+			// Use existing FormatTimeSpan method from ExecutionEstimate
+			string formattedTime = FormatTimeSpanCompact(estimatedTime);
+
+			return $"Est: {formattedTime}";
+		}
+
+		private static string FormatTimeSpanCompact(TimeSpan ts)
+		{
+			if (ts.TotalSeconds < 1)
+				return "<1s";
+			if (ts.TotalSeconds < 60)
+				return $"{ts.TotalSeconds:F0} seconds";
+			if (ts.TotalMinutes < 60)
+				return $"{ts.TotalMinutes:F1} minutes";
+			if (ts.TotalHours < 24)
+				return $"{ts.TotalHours:F1} hours";
+			if (ts.TotalDays < 365)
+				return $"{ts.TotalDays:F1} days";
+			return $"{ts.TotalDays / 365:F1} years";
+		}
+
+		private void ResetEstimationTracking()
+		{
+			_smoothedSpeed = 0;
+			_lastProcessedCount = 0;
+			_lastProgressTime = DateTime.MinValue;
+			_progressReportCount = 0;
+
+			if (StatusBarEstimate != null)
+			{
+				StatusBarEstimate.Visible = false;
+				StatusBarEstimate.Text = "";
+			}
+		}
+
+		#endregion
+
+		private void TierManagerButton_Click(object sender, EventArgs e)
+		{
+			lock (_lockObject)
+			{
+				if (_tierManager == null || _tierManager.IsDisposed)
+				{
+					_tierManager = new TierManager(_configManager);
+					_tierManager.TiersChanged += (s, args) => UpdatePanelConfigState();
+					_tierManager.FormClosed += (s, args) => UpdatePanelConfigState();
+				}
+
+				_tierManager.Show(this);
+				_tierManager.Activate();
+			}
+		}
+
+		private void ButtonManageCustomValidator_Click(object sender, EventArgs e)
+		{
+			lock (_lockObject)
+			{
+				if (_customValidator == null || _customValidator.IsDisposed)
+					_customValidator = new CustomValidator(this, _configManager);
+
+				_customValidator.Show(this);
+				_customValidator.Activate();
+			}
+		}
+
+		private async void ButtonComputeCombinations_Click(object sender, EventArgs e)
+		{
+			if (_fileParser == null)
+			{
+				StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
+				return;
+			}
+
+			var prepared = ItemPreparationHelper.PrepareItemsForCombinations(_parsedItems);
+			if (!prepared.HasItems && !prepared.HasRings)
+			{
+				CustomMessageBox.Show("No items found in any category. Cannot generate combinations.",
+					"Missing Items", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+				return;
+			}
+
+			var totalCount = CombinationGenerator.ComputeTotalCombinations(prepared.ItemsWithoutRings, prepared.Rings);
+			if (totalCount == 0)
+			{
+				CustomMessageBox.Show("No combinations possible. All item class lists are empty.", "Unavailable combinations", MessageBoxButtons.OK, MessageBoxIcon.Information);
+				return;
+			}
+
+			//// Confirm with user
+			//string countMessage = $"Total combinations to process: {totalCount}\r\n\r\n" +
+			//	$"This is approximately {CommonHelper.GetBigIntegerApproximation(totalCount)} combinations.\r\n\r\n" +
+			//	"Do you want to proceed?";
+
+			//if (CustomMessageBox.Show(countMessage, "Combination Count", MessageBoxButtons.YesNo, MessageBoxIcon.Warning) != DialogResult.Yes)
+			//{
+			//	StatusBarLabel.Text = "Operation cancelled by user.";
+			//	return;
+			//}
+
+			HashSet<int> tieredItemIds = null;
+			List<Tier> tiers = null;
+
+			// ✅ Build tiered item IDs if strategy requires it
+			if (_filterStrategy != CombinationFilterStrategy.Comprehensive)
+			{
+				// Get tiers from TierManager
+				if (_tierManager != null && !_tierManager.IsDisposed)
+				{
+					tiers = _tierManager.GetTiers();
+					if (tiers != null && tiers.Count > 0)
+					{
+						tieredItemIds = BuildTieredItemIds(_parsedItems, tiers);
+					}
+				}
+			}
+
+			// ✅ Compute normalization if tiers exist
+			if (tiers != null && tiers.Count > 0)
+			{
+				_statNormalization = ComputeStatNormalization(_parsedItems, tiers);
+			}
+
+			TextboxDisplay.Text = "Processing combinations...\r\n\r\n";
+			_progressHelper.Start();
+
+			ResetEstimationTracking();
+			StatusBarEstimate.Visible = false;
+			StatusBarEstimate.Text = "";
+
+			// ✅ CLIENT-SIDE THROTTLING: Process every 5th progress report (500k combinations)
+			long progressReportCounter = 0;
+			var lastProcessedForUI = 0L;
+			const long UI_UPDATE_INTERVAL = 3; // Update UI every 5 reports = 500k combinations
+
+			var progress = new Progress<CombinationProgress>(p =>
+			{
+				// ✅ Increment counter and check if we should update UI
+				long currentCounter = Interlocked.Increment(ref progressReportCounter);
+
+				// ✅ Always update on first report and every Nth report
+				bool shouldUpdateUI = (currentCounter == 1) || (currentCounter % UI_UPDATE_INTERVAL == 0);
+
+				// ✅ Always update on final report (100% complete)
+				if (p.PercentComplete >= 99.99) shouldUpdateUI = true;
+
+				if (!shouldUpdateUI) return;
+
+				// ✅ Track that we processed this update
+				Interlocked.Exchange(ref lastProcessedForUI, p.ProcessedCombinations);
+
+				_progressReportCount++;
+
+				// Calculate estimated time remaining
+				string estimate = CalculateEstimatedTime(p.ProcessedCombinations, p.TotalCombinations, DateTime.Now);
+
+				// Update StatusBar estimate (show after enough data collected)
+				if (_progressReportCount >= MIN_REPORTS_FOR_ESTIMATE)
+				{
+					StatusBarEstimate.Visible = true;
+					StatusBarEstimate.Text = estimate;
+				}
+
+				string statusText = $"Processing: {p.PercentComplete:F2}% | " +
+									  $"Processed: {p.ProcessedCombinations} | " +
+									  $"Valid: {p.ValidCombinations} | " +
+									  $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}";
+
+				_progressHelper.UpdateProgress((int)p.PercentComplete, statusText);
+
+				TextboxDisplay.Text = $"Progress: {p.PercentComplete:F2}%\r\n" +
+									 $"Processed: {p.ProcessedCombinations}\r\n" +
+									 $"Valid: {p.ValidCombinations}\r\n" +
+									 $"Elapsed: {p.ElapsedTime:hh\\:mm\\:ss}\r\n" +
+									 $"{estimate}";
+			});
+
+			try
+			{
+				var result = await Task.Run(() =>
+				{
+					// When using tiers and we only need top N, we could potentially stop early
+					// However, this requires ALL combinations to be scored to find true top N
+					return CombinationGenerator.GenerateCombinationsParallel(
+						prepared.ItemsWithoutRings,
+						prepared.Rings,
+						_itemValidatorFunction,
+						progress,
+						maxValidToStore: tiers?.Count > 0
+							? long.MaxValue  // Process all when scoring (need complete data for top N)
+							: _maxCombinationsToStore,  // Use hard limit when not scoring
+						filterStrategy: _filterStrategy,
+						tieredItemIds: tieredItemIds,
+						_progressHelper.Token);
+				}, _progressHelper.Token);
+
+				if (tiers != null && tiers.Count > 0 && result.ValidCombinationsCollection.Count > 0)
+				{
+					StatusBarLabel.Text = "Scoring combinations...";
+
+					// ✅ Use min-heap for top-N selection (O(n log k) instead of O(n log n))
+					var globalTopN = new PriorityQueue<ScoredCombination, double>();
+					var lockObj = new object();
+
+					Parallel.ForEach(
+						result.ValidCombinationsCollection,
+									new ParallelOptions
+									{
+										MaxDegreeOfParallelism = Environment.ProcessorCount
+									},
+									() => new PriorityQueue<ScoredCombination, double>(), // Thread-local min-heap
+									(combo, state, localQueue) =>
+									{
+										double score = ScoreCombination(combo, tiers, _statNormalization);
+										var scored = new ScoredCombination(combo, score);
+
+										if (localQueue.Count < _bestCombinationCount)
+										{
+											localQueue.Enqueue(scored, score); // Min-heap
+										}
+										else
+										{
+											var minInQueue = localQueue.Peek();
+											if (score > minInQueue.Score)
+											{
+												localQueue.Dequeue();
+												localQueue.Enqueue(scored, score);
+											}
+										}
+
+										return localQueue;
+									},
+									localQueue =>
+									{
+										lock (lockObj)
+										{
+											while (localQueue.Count > 0)
+											{
+												var item = localQueue.Dequeue();
+
+												if (globalTopN.Count < _bestCombinationCount)
+												{
+													globalTopN.Enqueue(item, item.Score);
+												}
+												else
+												{
+													var minInGlobal = globalTopN.Peek();
+													if (item.Score > minInGlobal.Score)
+													{
+														globalTopN.Dequeue();
+														globalTopN.Enqueue(item, item.Score);
+													}
+												}
+											}
+										}
+									});
+
+					// Extract and sort results (only sorting top N items)
+					var scoredCombinations = new List<ScoredCombination>(_bestCombinationCount);
+					while (globalTopN.Count > 0)
+					{
+						scoredCombinations.Add(globalTopN.Dequeue());
+					}
+					scoredCombinations.Reverse(); // Dequeued in ascending order, reverse for descending
+
+					// Store scored combinations for later display
+					_scoredCombinations = [.. scoredCombinations.Select(sc => (sc.Combination, sc.Score))];
+
+					// Show summary in textbox
+					var scoredSummary = new System.Text.StringBuilder();
+					scoredSummary.AppendLine($"=== TOP {scoredCombinations.Count} COMBINATIONS (by score) ===\r\n");
+
+					for (int i = 0; i < Math.Min(10, scoredCombinations.Count); i++)
+					{
+						scoredSummary.AppendLine($"#{i + 1} - Score: {scoredCombinations[i].Score:F2}");
+						scoredSummary.AppendLine($"  Items: {string.Join(", ", scoredCombinations[i].Combination.Select(item => item.Name))}");
+						scoredSummary.AppendLine();
+					}
+
+					if (scoredCombinations.Count > 10)
+					{
+						scoredSummary.AppendLine($"... and {scoredCombinations.Count - 10} more combinations.");
+						scoredSummary.AppendLine("\nClick 'Display Combinations' to view all results in detail.");
+					}
+
+					TextboxDisplay.Text = scoredSummary.ToString();
+				}
+				else
+				{
+					DisplayCombinationResults(result);
+				}
+
+				_combinations = result.ValidCombinationsCollection;
+			}
+			catch (OperationCanceledException)
+			{
+				TextboxDisplay.Text = "Operation cancelled by user.";
+				StatusBarLabel.Text = "Cancelled.";
+			}
+			catch (Exception ex)
+			{
+				TextboxDisplay.Text = $"Error: {ex.Message}";
+				StatusBarLabel.Text = "Error during processing.";
+				CustomMessageBox.Show($"An error occurred:\r\n\r\n{ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+			finally
+			{
+				_progressHelper.Stop();
+				StatusBarEstimate.Visible = false;
+				StatusBarEstimate.Text = "";
+			}
+		}
+
+		private void UpdatePanelConfigState()
+		{
+			bool hasTiers = _tierManager?.GetTiers()?.Count > 0;
+			PanelConfig.Enabled = hasTiers;
+
+			// Update label to reflect when control is active
+			if (hasTiers)
+			{
+				LabelBestCombinationsCount.Text = "Best combinations count";
+				LabelBestCombinationsCount.ForeColor = SystemColors.ControlText;
+			}
+			else
+			{
+				LabelBestCombinationsCount.Text = "Best combinations count\r\n(Requires tiers)";
+				LabelBestCombinationsCount.ForeColor = Color.Gray;
+			}
+		}
+
+		private void SetupTextBoxJSONConfigLoading(bool visible, string finalText)
+		{
+			TextBoxLoadedJsonMenuItem.Visible = visible;
+			TextBoxLoadedJsonMenuItem.AutoSize = false;
+			TextBoxLoadedJsonMenuItem.Text = @"Last loaded JSON config: " + finalText;
+
+			Size textSize = TextRenderer.MeasureText(
+				TextBoxLoadedJsonMenuItem.Text,
+				TextBoxLoadedJsonMenuItem.Font
+			);
+
+			TextBoxLoadedJsonMenuItem.Width = Math.Min(textSize.Width, MenuStrip.Width / 2 - 5);
+			TextBoxLoadedJsonMenuItem.Height = MenuStrip.Height;
+		}
+
+		private void ShowItemsDataButton_Click(object sender, EventArgs e)
+		{
+			if (_fileParser == null || _fileParser.GetParsedItems().Count == 0)
+			{
+				StatusBarLabel.Text = "No parsed data available. Please load and parse a file first.";
+				return;
+			}
+
+			var computedItems = _fileParser?.GetParsedItems() ?? [];
+			var display = new DataDisplay(computedItems);
+
+			// show modal so caller waits for the user to close it
+			display.Show(this);
+		}
+
+		private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+		{
+			_progressHelper?.Dispose();
+			_configManager = null; // Allow GC
+
+			lock (_lockObject)
+			{
+				try
+				{
+					if (_customValidator != null && !_customValidator.IsDisposed) _customValidator.Dispose();
+					if (_tierManager != null && !_tierManager.IsDisposed) _tierManager.Dispose();
+
+					_customValidator = null;
+					_tierManager = null;
+				}
+				catch { }
+			}
+		}
+
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing)
+			{
+				_progressHelper?.Dispose();
+				components?.Dispose();
+			}
+			base.Dispose(disposing);
+		}
+
+		private void DisplayCombinationResults(CombinationResult<Item> result)
+		{
+			this.SuspendLayout();
+			StatusBarEstimate.Visible = false;
+			StatusBarEstimate.Text = "";
+
+			double speed = result.ElapsedTime.TotalSeconds > 0
+				? result.ProcessedCombinations / result.ElapsedTime.TotalSeconds
+				: 0;
+
+			var summary = new System.Text.StringBuilder();
+			summary.AppendLine("=== COMBINATION GENERATION COMPLETE ===");
+			summary.AppendLine();
+			summary.AppendLine($"Total Combinations: {result.TotalCombinations}");
+			summary.AppendLine($"Processed: {result.ProcessedCombinations}");
+			summary.AppendLine($"Valid Combinations: {result.ValidCombinations}");
+			summary.AppendLine($"Rejection Rate: {(1 - (double)result.ValidCombinations / result.ProcessedCombinations) * 100:F2}%");
+			summary.AppendLine($"Elapsed Time: {result.ElapsedTime:hh\\:mm\\:ss\\.fff}");
+			summary.AppendLine($"Speed: {speed:F2} combinations/second");
+
+			if (result.ValidCombinations > _maxCombinationsToStore)
+			{
+				summary.AppendLine();
+				summary.AppendLine($"NOTE: Only the first {_maxCombinationsToStore:N0} valid combinations were stored.");
+			}
+
+			// ✅ RESTORE THESE
+			TextboxDisplay.Text = summary.ToString();
+			StatusBarLabel.Text = $"Complete! {result.ValidCombinations} valid combinations found.";
+			this.ResumeLayout();
+
+			//CustomMessageBox.Show(summary.ToString(), "Generation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
+		}
+
+		private void RadioComprehensive_CheckedChanged(object sender, EventArgs e)
+		{
+			if (RadioComprehensive.Checked) _filterStrategy = CombinationFilterStrategy.Comprehensive;
+		}
+
+		private void RadioBalanced_CheckedChanged(object sender, EventArgs e)
+		{
+			if (RadioBalanced.Checked) _filterStrategy = CombinationFilterStrategy.Balanced;
+		}
+
+		private void RadioStrict_CheckedChanged(object sender, EventArgs e)
+		{
+			if (RadioStrict.Checked) _filterStrategy = CombinationFilterStrategy.Strict;
+		}
+
+		private void NumericBestCombinationsCount_ValueChanged(object sender, EventArgs e)
+		{
+			_bestCombinationCount = (int)NumericBestCombinationsCount.Value;
+		}
+
+		private async void LoadConfigMenuButton_Click(object sender, EventArgs e)
+		{
+			LoadConfig();
+		}
+
+		private async void SaveConfigMenuButton_Click(object sender, EventArgs e)
+		{
+			SaveConfig();
+		}
+
+		private void ShowScoredCombinationsButton_Click(object sender, EventArgs e)
+		{
+			ShowCombinationDisplay();
+		}
+
+		private void HelpMenuButton_Click(object sender, EventArgs e)
+		{
+			CustomMessageBox.ShowFormatted(x =>
+			{
+				x.AppendColored(@"=== HOW TO USE ===", Color.Blue, true, true);
+				x.AppendSeparator(Color.Blue, null, '=', 25);
+				x.AppendNewLine();
+				x.AppendColored(@"1. Load and parse a file containing PoE2 items. Use buttons (1) and (2).", Color.DarkGreen, false, true);
+				x.AppendNewLine();
+				x.AppendColored(@"2. Create custom validation rules and item stats tiers. Use buttons (3) and (4).", Color.DarkGreen, false, true);
+				x.AppendColored(@"- After setting up your desired rules, minimize or hide the configuration windows and use the ", Color.DarkGreen, false, false);
+				x.AppendColored(@"Save config ", Color.DarkRed, true, false);
+				x.AppendColored(@"menu item on the main window. ", Color.DarkGreen, false, true);
+				x.AppendColored(@"- After this, you will be able to load them into the configuration windows by using the ", Color.DarkGreen, false, false);
+				x.AppendColored(@"Load config ", Color.DarkRed, true, false);
+				x.AppendColored(@"menu item from the main window, or the ", Color.DarkGreen, false, false);
+				x.AppendColored(@"Load from JSON ", Color.Green, true, false);
+				x.AppendColored(@"button from each of the configuration windows.", Color.DarkGreen, false, true);
+				x.AppendNewLine();
+				x.AppendColored(@"3. Press the (5) button to compute all the combinations that pass the validation rules, and their score based on the defined tiers and weights.", Color.DarkGreen, false, true);
+				x.AppendColored(@"- If you make any changes in the configuration windows, you will need to recompute the combinations.", Color.DarkGreen, false, true);
+				x.AppendNewLine();
+				x.AppendColored(@"4. Press the (6) button to display the scored combinations and compare them.", Color.DarkGreen, false, true);
+
+			}, @"Help & Info", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
+		}
+	}
 }
