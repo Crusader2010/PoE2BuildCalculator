@@ -1,5 +1,89 @@
-﻿namespace Domain.HelperForms
+﻿using Font = System.Drawing.Font;
+
+namespace Domain.HelperForms
 {
+	/*
+	═══════════════════════════════════════════════════════════════════
+	HELPER METHODS REFERENCE
+	═══════════════════════════════════════════════════════════════════
+
+	AppendColored(text, color, bold, newLine)
+	  - Appends colored text
+	  - Optional: bold formatting
+	  - Optional: automatic newline
+
+	AppendBold(text, newLine)
+	  - Appends bold text
+
+	AppendStyled(text, FontStyle, newLine)
+	  - Appends text with any FontStyle
+	  - FontStyle: Bold, Italic, Underline, Strikeout, or combinations
+
+	AppendFormatted(text, color, style, newLine)
+	  - Most flexible - combines color and style
+	  - All parameters optional
+
+	AppendHeader(text, newLine)
+	  - Large, bold text for headers
+	  - Automatically increases font size by 2pt
+
+	AppendSeparator(character, length)
+	  - Draws a line separator
+	  - Default: 50 '─' characters
+	  - Useful for visual separation 
+	
+	────────────────────────────────────────────────────────────────────
+	EXAMPLE: AppendFormatted with Multiple Options
+	────────────────────────────────────────────────────────────────────
+
+	CustomMessageBox.ShowFormatted(rtb =>
+	{
+		// Regular text
+		rtb.AppendFormatted("Normal text\n");
+
+		// Bold red text
+		rtb.AppendFormatted(
+			"Bold red text\n",
+			color: Color.Red,
+			style: FontStyle.Bold
+		);
+
+		// Italic blue text
+		rtb.AppendFormatted(
+			"Italic blue text\n",
+			color: Color.Blue,
+			style: FontStyle.Italic
+		);
+
+		// Bold italic green text
+		rtb.AppendFormatted(
+			"Bold italic green\n",
+			color: Color.Green,
+			style: FontStyle.Bold | FontStyle.Italic
+		);
+
+		// Underlined text
+		rtb.AppendFormatted(
+			"Underlined text",
+			style: FontStyle.Underline
+		);
+
+	}, "Formatting Examples", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+	────────────────────────────────────────────────────────────────────
+	If you already have RTF content:
+	────────────────────────────────────────────────────────────────────
+	
+	string rtfContent = @"{\rtf1\ansi {\colortbl;\red255\green0\blue0;\red0\green128\blue0;} \b Error:\b0  \cf1 File not found! \cf0\line\line Please check the path and try again.}";
+
+	CustomMessageBox.ShowRtf(
+		rtfContent,
+		"Error",
+		MessageBoxButtons.OK,
+		MessageBoxIcon.Error
+	);
+	*/
+
 	public partial class CustomMessageBox : BaseForm
 	{
 		private string _message;
@@ -96,6 +180,9 @@
 					this.Width = Math.Min(minTextWidth, Screen.PrimaryScreen.WorkingArea.Width - 100);
 			}
 
+			this.MaximumSize = new Size(850, 700);
+			this.MinimumSize = new Size(250, 200);
+
 			Button1.Visible = true;
 			Button2.Visible = true;
 			Button1.Text = "";
@@ -191,8 +278,17 @@
 			rtb.AppendText(text + (newLine ? Environment.NewLine : ""));
 			rtb.Select(start, text.Length);
 			rtb.SelectionColor = color;
-			if (bold) rtb.SelectionFont = new Font(rtb.Font, FontStyle.Bold);
+			rtb.SelectionFont = bold ? new Font(rtb.Font, FontStyle.Bold) : new Font(rtb.Font, rtb.Font.Style);
+
 			rtb.Select(rtb.TextLength, 0);
+		}
+
+		/// <summary>
+		/// Appends bold text.
+		/// </summary>
+		public static void AppendNewLine(this RichTextBox rtb)
+		{
+			rtb.AppendText(Environment.NewLine);
 		}
 
 		/// <summary>
@@ -247,9 +343,16 @@
 		/// <summary>
 		/// Appends a section separator.
 		/// </summary>
-		public static void AppendSeparator(this RichTextBox rtb, char character = '─', int length = 50)
+		public static void AppendSeparator(this RichTextBox rtb, Color? color, FontStyle? style, char character = '─', int length = 50)
 		{
-			rtb.AppendText(new string(character, length) + Environment.NewLine);
+			string text = new string(character, length) + Environment.NewLine;
+
+			int start = rtb.TextLength;
+			rtb.AppendText(text);
+			rtb.Select(start, text.Length);
+			if (color.HasValue) rtb.SelectionColor = color.Value;
+			if (style.HasValue) rtb.SelectionFont = new Font(rtb.Font, style.Value);
+			rtb.Select(rtb.TextLength, 0);
 		}
 	}
 }

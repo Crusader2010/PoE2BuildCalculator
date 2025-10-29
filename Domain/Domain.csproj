@@ -28,9 +28,7 @@
 	  <Compile Update="HelperForms\BaseForm.cs">
 	    <SubType>Form</SubType>
 	  </Compile>
-	  <Compile Update="HelperForms\CustomMessageBox.cs">
-	    <SubType>Form</SubType>
-	  </Compile>
+	  <Compile Update="HelperForms\CustomMessageBox.cs" />
 	</ItemGroup>
 
 </Project>

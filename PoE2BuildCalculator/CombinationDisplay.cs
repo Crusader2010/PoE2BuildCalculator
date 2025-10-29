@@ -3,7 +3,6 @@
 using Domain.HelperForms;
 using Domain.Helpers;
 using Domain.Main;
-using Domain.Static;
 using Domain.Validation;
 
 namespace PoE2BuildCalculator
@@ -590,7 +589,20 @@ namespace PoE2BuildCalculator
 
 		private void ButtonHelp_Click(object sender, EventArgs e)
 		{
-			CustomMessageBox.Show(Constants.COMBINATIONS_DISPLAY_HELP_TEXT, "Combinations Display Help", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
+			CustomMessageBox.ShowFormatted(x =>
+			{
+				x.AppendColored(@"=== COMBINATIONS DISPLAY INFORMATION ===", Color.Blue, true, true);
+				x.AppendNewLine();
+				x.AppendColored(@"- Press CTRL+Click on a combination row (upper table) to compare it with other selected ones (lower table).", Color.DarkGreen, false, true);
+				x.AppendNewLine();
+				x.AppendColored(@"- Double click an item stat value, in the lower table, to open the breakdown of that stat for that combination.", Color.DarkGreen, false, true);
+				x.AppendNewLine();
+				x.AppendColored(@"- Item stats are ordered like this:", Color.DarkGreen, false, true);
+				x.AppendColored("\t\tFIRST: stats that were chosen in the custom tiers, then ordered by their total weight contribution (highest to lowest).", Color.DarkGreen, false, true);
+				x.AppendColored("\t\tSECOND: stats chosen in the custom validator.", Color.DarkGreen, false, true);
+				x.AppendColored("\t\tTHIRD: all other stats present on any item in the combination, that are not already in the other two categories.", Color.DarkGreen, false, false);
+
+			}, "Combinations Display Help", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
 		}
 	}
 }

@@ -24,14 +24,15 @@
 2. Add all of the missing item stats in the game and the related stuff. Maybe add the Quality modifier (as strictly informative).
 3. Implement proper management of hybrid (abyssal?) modifiers if they are different to the normal mods (e.g. "+X% to lightning and chaos resistance" => needs to be considered for each of the mentioned resistances).
 4. Consider adding special item stats for pseudo mods (probably not needed since you can SUM() over certain stats, and seems basically the same thing, but analysis is required).
-5. Implement flags and tier/validation logic for different item stat types (rune, fractured, desecrated, etc).
-6. Differentiate item classes per character item slots (i.e. you can only have one weapon and one shield, or two weapons of the same class if dual wielding, etc).
+5. Differentiate item classes per character item slots (i.e. you can only have one weapon and one shield, or two weapons of the same class if dual wielding, etc).
     - Implement the restrictions from https://www.poe2wiki.net/wiki/Dual_wielding and/or give the user a choice of what to use in the main hand and off hand. Then compute combinations based on this.
     - Extend previous point to give users a rag doll with configurable item types for each, if they so choose, otherwise fall back to the wiki restrictions where applicable (and considering all items otherwise).
-7. Implement a "Settings" form where users can change (and save in a config file) various parameters, such as:
-   - Max number of combinations to store in memory
-   - Toggle to save configured tiers
-   - Toggle to save rag doll configuration for item types
-8. Editing the initial item list within the program itself (add/remove items, adding custom flags, etc).
-9. UI redesign to improve the general flow (if possible).
+6. Implement a "Settings" form where users can change (and save in a config file) various parameters, such as: max number of combinations to store in memory.
+7. Editing the initial item list within the program itself (add/remove items, adding custom flags, etc).
+8. UI redesign to improve the general flow (if possible).
+9. Better flow for saving and loading user configurations. 
 10. Extensive testing.
+
+(**WIP dependent on Path of Exile 2 Trade Item Exporter browser extension:**): 
+1. Implement flags and tier/validation logic for different item stat types (rune, fractured, desecrated, etc).
+2. Make use of the number of sockets (as an item stat).

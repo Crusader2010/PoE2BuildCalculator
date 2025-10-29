@@ -849,7 +849,7 @@ namespace PoE2BuildCalculator
 
 		private void ButtonLoadConfig_Click(object sender, EventArgs e)
 		{
-			if (!_configManager.HasConfigData(ConfigSections.Tiers))
+			if (!_configManager.JSONHasConfigData(ConfigSections.Tiers))
 			{
 				CustomMessageBox.Show(
 					"No tier configuration data available in memory.\r\n\r\nPlease load a configuration file from the main window first.",

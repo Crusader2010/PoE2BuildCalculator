@@ -4,6 +4,7 @@ using Domain.Enums;
 using Domain.Main;
 using Domain.Serialization;
 using Domain.Validation;
+using Domain.Static;
 
 namespace Manager
 {
@@ -13,10 +14,9 @@ namespace Manager
 	/// </summary>
 	public sealed class ConfigurationManager
 	{
-		private const string CURRENT_VERSION = "1.0.0";
-		private static readonly Version _currentVersion = new(CURRENT_VERSION);
+		private static readonly Version _currentVersion = new(Constants.CURRENT_VERSION);
 
-		private SaveData _configData = new() { Version = CURRENT_VERSION };
+		private SaveData _configData = new() { Version = Constants.CURRENT_VERSION };
 		private readonly Dictionary<string, Action<SaveData>> _migrationHandlers = [];
 
 		public ConfigurationManager()
@@ -27,7 +27,7 @@ namespace Manager
 		/// <summary>
 		/// Checks if a configuration section has data in memory.
 		/// </summary>
-		public bool HasConfigData(ConfigSections section) => section switch
+		public bool JSONHasConfigData(ConfigSections section) => section switch
 		{
 			ConfigSections.Tiers => _configData.Tiers?.Count > 0,
 			ConfigSections.Validator => _configData.Groups?.Count > 0 || _configData.Operations?.Count > 0,
@@ -73,7 +73,7 @@ namespace Manager
 		/// </summary>
 		public void ClearAllConfig()
 		{
-			_configData = new SaveData { Version = CURRENT_VERSION };
+			_configData = new SaveData { Version = Constants.CURRENT_VERSION };
 		}
 
 		/// <summary>
@@ -97,7 +97,7 @@ namespace Manager
 				}
 
 				// Update metadata
-				_configData.Version = CURRENT_VERSION;
+				_configData.Version = Constants.CURRENT_VERSION;
 				_configData.SavedAt = DateTime.Now;
 
 				// Write to temp file (async)
@@ -142,8 +142,7 @@ namespace Manager
 		{
 			ArgumentException.ThrowIfNullOrWhiteSpace(filePath);
 
-			if (!File.Exists(filePath))
-				return (false, "Configuration file not found.", null);
+			if (!File.Exists(filePath)) return (false, "Configuration file not found.", null);
 
 			try
 			{
@@ -183,7 +182,7 @@ namespace Manager
 						// Attempt migration
 						migratedFrom = saveData.Version;
 						MigrateData(saveData, fileVersion);
-						saveData.Version = CURRENT_VERSION;
+						saveData.Version = Constants.CURRENT_VERSION;
 						break;
 
 					case VersionComparison.Exact:

@@ -4,6 +4,8 @@ namespace Domain.Static
 {
 	public static class Constants
 	{
+		public const string CURRENT_VERSION = "1.0.0";
+
 		public const string ITEM_IS_MINE_TAG = "(MINE)";
 		public const string ITEM_HAS_POTENTIAL_TAG = "(POTENTIAL)";
 		public const string ITEM_CLASS_TAG = "Item Class:";
@@ -46,11 +48,6 @@ namespace Domain.Static
 			"Flask",
 			"Ring"
 		];
-
-		//public static readonly ImmutableArray<string> MATH_OPERATORS = ["+", "-", "*", "/"];
-		//public static readonly ImmutableArray<string> LOGICAL_OPERATORS = ["AND", "OR", "XOR"];
-		//public static readonly ImmutableArray<string> GROUP_VALUES_OPERATORS = [">=", ">", "=", "<", "<="];
-		//public static readonly ImmutableArray<string> GROUP_MIN_MAX_LOGICAL_OPERATORS = ["AND", "OR"];
 
 		public const string VALIDATOR_HELP_TEXT = @"=== CUSTOM VALIDATOR INFORMATION ===
 
@@ -108,19 +105,6 @@ CONSTRAINTS:
 - Each group operation must have at least the Min or Max checkbox set;
 - When 'as percentage' checkbox is set, for the 'At least' and 'At most' validation types, 
   the value for the number of items must be between 0 and 100.
-";
-
-		public const string COMBINATIONS_DISPLAY_HELP_TEXT = @"=== COMBINATIONS DISPLAY INFORMATION ===
-
-- Press CTRL+Click on a combination row (upper table) to compare it with other selected ones (lower table).
-
-- Double click an item stat value, in the lower table, to open the breakdown of that stat for that combination.
-
-- Item stats are ordered like this: 
-	FIRST: stats that were chosen in the custom tiers, then ordered by their total weight contribution (highest to lowest).
-	SECOND: stats chosen in the custom validator
-	THIRD: all other stats present on any item in the combination, that are not already in the other two categories.
-
 ";
 	}
 }

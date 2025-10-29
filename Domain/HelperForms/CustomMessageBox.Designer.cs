@@ -44,7 +44,7 @@
 			MainPanel.Margin = new Padding(0);
 			MainPanel.Name = "MainPanel";
 			MainPanel.Padding = new Padding(12, 8, 12, 8);
-			MainPanel.Size = new Size(439, 355);
+			MainPanel.Size = new Size(434, 360);
 			MainPanel.TabIndex = 0;
 			// 
 			// BorderPanel
@@ -53,7 +53,7 @@
 			BorderPanel.Dock = DockStyle.Fill;
 			BorderPanel.Location = new Point(12, 8);
 			BorderPanel.Name = "BorderPanel";
-			BorderPanel.Size = new Size(415, 339);
+			BorderPanel.Size = new Size(410, 344);
 			BorderPanel.TabIndex = 0;
 			// 
 			// RichTextBoxMessage
@@ -66,18 +66,18 @@
 			RichTextBoxMessage.Location = new Point(0, 0);
 			RichTextBoxMessage.Name = "RichTextBoxMessage";
 			RichTextBoxMessage.ReadOnly = true;
-			RichTextBoxMessage.ScrollBars = RichTextBoxScrollBars.Both;
-			RichTextBoxMessage.Size = new Size(415, 339);
+			RichTextBoxMessage.Size = new Size(410, 344);
 			RichTextBoxMessage.TabIndex = 0;
+			RichTextBoxMessage.Text = "";
 			RichTextBoxMessage.WordWrap = false;
 			// 
 			// PanelBottom
 			// 
 			PanelBottom.Controls.Add(BottomTablePanel);
 			PanelBottom.Dock = DockStyle.Bottom;
-			PanelBottom.Location = new Point(0, 355);
+			PanelBottom.Location = new Point(0, 360);
 			PanelBottom.Name = "PanelBottom";
-			PanelBottom.Size = new Size(439, 51);
+			PanelBottom.Size = new Size(434, 51);
 			PanelBottom.TabIndex = 1;
 			// 
 			// BottomTablePanel
@@ -93,7 +93,7 @@
 			BottomTablePanel.Name = "BottomTablePanel";
 			BottomTablePanel.RowCount = 1;
 			BottomTablePanel.RowStyles.Add(new RowStyle(SizeType.Percent, 100F));
-			BottomTablePanel.Size = new Size(439, 51);
+			BottomTablePanel.Size = new Size(434, 51);
 			BottomTablePanel.TabIndex = 0;
 			// 
 			// FlowPanelButtons
@@ -105,7 +105,7 @@
 			FlowPanelButtons.Controls.Add(Button2);
 			FlowPanelButtons.Controls.Add(CheckboxWrapText);
 			FlowPanelButtons.Controls.Add(PictureBoxIcon);
-			FlowPanelButtons.Location = new Point(30, 3);
+			FlowPanelButtons.Location = new Point(28, 3);
 			FlowPanelButtons.Margin = new Padding(20, 0, 0, 0);
 			FlowPanelButtons.Name = "FlowPanelButtons";
 			FlowPanelButtons.Size = new Size(398, 45);
@@ -170,7 +170,7 @@
 			// 
 			AutoScaleDimensions = new SizeF(96F, 96F);
 			AutoScaleMode = AutoScaleMode.Dpi;
-			ClientSize = new Size(439, 406);
+			ClientSize = new Size(434, 411);
 			Controls.Add(MainPanel);
 			Controls.Add(PanelBottom);
 			DoubleBuffered = true;

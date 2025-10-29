@@ -21,7 +21,14 @@ namespace Domain.Helpers
 		/// <param name="caption">Optional caption for the message box.</param>
 		public static void ShowError(string message, string caption = "Error")
 		{
-			CustomMessageBox.Show(message, caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
+			CustomMessageBox.ShowFormatted(x =>
+			{
+				x.AppendColored(@"Application error:", Color.DarkRed, true, true);
+				x.AppendSeparator(Color.DarkRed, FontStyle.Bold, '-', 20);
+				x.AppendNewLine();
+				x.AppendFormatted(message, Color.DarkBlue, FontStyle.Regular, false);
+			}
+			, caption, MessageBoxButtons.OK, MessageBoxIcon.Error);
 		}
 	}
 }

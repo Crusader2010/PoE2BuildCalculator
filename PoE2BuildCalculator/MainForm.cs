@@ -98,6 +98,9 @@ namespace PoE2BuildCalculator
 			MenuStrip.Items.Insert(0, new ToolStripSeparator());
 			MenuStrip.Items.Insert(2, new ToolStripSeparator());
 			MenuStrip.Items.Insert(4, new ToolStripSeparator());
+			MenuStrip.Items.Insert(6, new ToolStripSeparator());
+
+			SetupTextBoxJSONConfigLoading(false, string.Empty);
 
 			// Enable double buffering for smoother rendering
 			SetStyle(ControlStyles.OptimizedDoubleBuffer |
@@ -210,28 +213,16 @@ namespace PoE2BuildCalculator
 				StatusBarLabel.Text = "Loading configuration...";
 
 				// Load into memory
-				var (success, errorMessage, migratedFrom) = await _configManager.LoadAllAsync(ofd.FileName, CancellationToken.None).ConfigureAwait(true);
-
+				var (success, errorMessage, _) = await _configManager.LoadAllAsync(ofd.FileName, CancellationToken.None).ConfigureAwait(true);
 				if (!success)
 				{
-					CustomMessageBox.Show(errorMessage, "Load Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
 					StatusBarLabel.Text = "Load failed.";
+					ErrorHelper.ShowError(errorMessage, "JSON Loading Failed");
 					return;
 				}
 
-				// Show migration message
-				if (migratedFrom != null)
-				{
-					CustomMessageBox.Show(
-						$"Configuration migrated from version {migratedFrom} to current version.\r\n\r\n" +
-						"Please verify your settings and save to persist the migration.",
-						"Configuration Migrated",
-						MessageBoxButtons.OK,
-						MessageBoxIcon.Information);
-				}
-
 				// Ask user if they want to apply config to forms immediately
-				bool hasData = _configManager.HasConfigData(ConfigSections.Tiers) || _configManager.HasConfigData(ConfigSections.Validator);
+				bool hasData = _configManager.JSONHasConfigData(ConfigSections.Tiers) || _configManager.JSONHasConfigData(ConfigSections.Validator);
 				if (hasData)
 				{
 					var result = CustomMessageBox.Show(
@@ -248,7 +239,9 @@ namespace PoE2BuildCalculator
 					}
 				}
 
-				StatusBarLabel.Text = $"Loaded: {Path.GetFileName(ofd.FileName)}";
+				string fileName = Path.GetFileName(ofd.FileName) + (hasData ? @"" : string.Empty);
+				SetupTextBoxJSONConfigLoading(true, fileName);
+				StatusBarLabel.Text = $"Loaded: {fileName}";
 			}
 			catch (Exception ex)
 			{
@@ -266,7 +259,7 @@ namespace PoE2BuildCalculator
 			lock (_lockObject)
 			{
 				// Apply to TierManager
-				if (_configManager.HasConfigData(ConfigSections.Tiers))
+				if (_configManager.JSONHasConfigData(ConfigSections.Tiers))
 				{
 					if (_tierManager == null || _tierManager.IsDisposed)
 					{
@@ -291,7 +284,7 @@ namespace PoE2BuildCalculator
 				}
 
 				// Apply to CustomValidator
-				if (_configManager.HasConfigData(ConfigSections.Validator))
+				if (_configManager.JSONHasConfigData(ConfigSections.Validator))
 				{
 					if (_customValidator == null || _customValidator.IsDisposed)
 						_customValidator = new CustomValidator(this, _configManager);
@@ -957,6 +950,21 @@ namespace PoE2BuildCalculator
 			}
 		}
 
+		private void SetupTextBoxJSONConfigLoading(bool visible, string finalText)
+		{
+			TextBoxLoadedJsonMenuItem.Visible = visible;
+			TextBoxLoadedJsonMenuItem.AutoSize = false;
+			TextBoxLoadedJsonMenuItem.Text = @"Last loaded JSON config: " + finalText;
+
+			Size textSize = TextRenderer.MeasureText(
+				TextBoxLoadedJsonMenuItem.Text,
+				TextBoxLoadedJsonMenuItem.Font
+			);
+
+			TextBoxLoadedJsonMenuItem.Width = Math.Min(textSize.Width, MenuStrip.Width / 2 - 5);
+			TextBoxLoadedJsonMenuItem.Height = MenuStrip.Height;
+		}
+
 		private void ShowItemsDataButton_Click(object sender, EventArgs e)
 		{
 			if (_fileParser == null || _fileParser.GetParsedItems().Count == 0)
@@ -1068,6 +1076,33 @@ namespace PoE2BuildCalculator
 		private void ShowScoredCombinationsButton_Click(object sender, EventArgs e)
 		{
 			ShowCombinationDisplay();
+		}
+
+		private void HelpMenuButton_Click(object sender, EventArgs e)
+		{
+			CustomMessageBox.ShowFormatted(x =>
+			{
+				x.AppendColored(@"=== HOW TO USE ===", Color.Blue, true, true);
+				x.AppendSeparator(Color.Blue, null, '=', 25);
+				x.AppendNewLine();
+				x.AppendColored(@"1. Load and parse a file containing PoE2 items. Use buttons (1) and (2).", Color.DarkGreen, false, true);
+				x.AppendNewLine();
+				x.AppendColored(@"2. Create custom validation rules and item stats tiers. Use buttons (3) and (4).", Color.DarkGreen, false, true);
+				x.AppendColored(@"- After setting up your desired rules, minimize or hide the configuration windows and use the ", Color.DarkGreen, false, false);
+				x.AppendColored(@"Save config ", Color.DarkRed, true, false);
+				x.AppendColored(@"menu item on the main window. ", Color.DarkGreen, false, true);
+				x.AppendColored(@"- After this, you will be able to load them into the configuration windows by using the ", Color.DarkGreen, false, false);
+				x.AppendColored(@"Load config ", Color.DarkRed, true, false);
+				x.AppendColored(@"menu item from the main window, or the ", Color.DarkGreen, false, false);
+				x.AppendColored(@"Load from JSON ", Color.Green, true, false);
+				x.AppendColored(@"button from each of the configuration windows.", Color.DarkGreen, false, true);
+				x.AppendNewLine();
+				x.AppendColored(@"3. Press the (5) button to compute all the combinations that pass the validation rules, and their score based on the defined tiers and weights.", Color.DarkGreen, false, true);
+				x.AppendColored(@"- If you make any changes in the configuration windows, you will need to recompute the combinations.", Color.DarkGreen, false, true);
+				x.AppendNewLine();
+				x.AppendColored(@"4. Press the (6) button to display the scored combinations and compare them.", Color.DarkGreen, false, true);
+
+			}, @"Help & Info", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
 		}
 	}
 }

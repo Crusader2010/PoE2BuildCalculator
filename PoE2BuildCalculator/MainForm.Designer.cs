@@ -38,6 +38,8 @@
 			MenuStrip = new MenuStrip();
 			LoadConfigMenuButton = new ToolStripMenuItem();
 			SaveConfigMenuButton = new ToolStripMenuItem();
+			HelpMenuButton = new ToolStripMenuItem();
+			TextBoxLoadedJsonMenuItem = new ToolStripTextBox();
 			StatusBar.SuspendLayout();
 			PanelButtons.SuspendLayout();
 			GroupBoxStrategy.SuspendLayout();
@@ -101,11 +103,11 @@
 			// 
 			// ShowItemsDataButton
 			// 
-			ShowItemsDataButton.Location = new Point(78, 13);
+			ShowItemsDataButton.Location = new Point(12, 13);
 			ShowItemsDataButton.Name = "ShowItemsDataButton";
 			ShowItemsDataButton.Size = new Size(126, 58);
 			ShowItemsDataButton.TabIndex = 4;
-			ShowItemsDataButton.Text = "Display items data";
+			ShowItemsDataButton.Text = "Display parsed items";
 			ShowItemsDataButton.UseVisualStyleBackColor = true;
 			ShowItemsDataButton.Click += ShowItemsDataButton_Click;
 			// 
@@ -250,7 +252,7 @@
 			// MenuStrip
 			// 
 			MenuStrip.BackColor = Color.LightBlue;
-			MenuStrip.Items.AddRange(new ToolStripItem[] { LoadConfigMenuButton, SaveConfigMenuButton });
+			MenuStrip.Items.AddRange(new ToolStripItem[] { LoadConfigMenuButton, SaveConfigMenuButton, HelpMenuButton, TextBoxLoadedJsonMenuItem });
 			MenuStrip.Location = new Point(0, 0);
 			MenuStrip.Name = "MenuStrip";
 			MenuStrip.Size = new Size(741, 27);
@@ -279,6 +281,32 @@
 			SaveConfigMenuButton.Text = "Save config";
 			SaveConfigMenuButton.ToolTipText = "Save the configured tiers and validation groups/operations";
 			SaveConfigMenuButton.Click += SaveConfigMenuButton_Click;
+			// 
+			// HelpMenuButton
+			// 
+			HelpMenuButton.AutoToolTip = true;
+			HelpMenuButton.Font = new Font("Nirmala UI", 10F, FontStyle.Bold, GraphicsUnit.Point, 0);
+			HelpMenuButton.ForeColor = Color.DodgerBlue;
+			HelpMenuButton.Name = "HelpMenuButton";
+			HelpMenuButton.Size = new Size(108, 23);
+			HelpMenuButton.Text = "HELP && INFO";
+			HelpMenuButton.ToolTipText = "Information on how to use the main window";
+			HelpMenuButton.Click += HelpMenuButton_Click;
+			// 
+			// TextBoxLoadedJsonMenuItem
+			// 
+			TextBoxLoadedJsonMenuItem.Alignment = ToolStripItemAlignment.Right;
+			TextBoxLoadedJsonMenuItem.AutoSize = false;
+			TextBoxLoadedJsonMenuItem.BackColor = Color.Beige;
+			TextBoxLoadedJsonMenuItem.CausesValidation = false;
+			TextBoxLoadedJsonMenuItem.Font = new Font("Nirmala UI", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
+			TextBoxLoadedJsonMenuItem.ForeColor = Color.DarkRed;
+			TextBoxLoadedJsonMenuItem.Name = "TextBoxLoadedJsonMenuItem";
+			TextBoxLoadedJsonMenuItem.ReadOnly = true;
+			TextBoxLoadedJsonMenuItem.ShortcutsEnabled = false;
+			TextBoxLoadedJsonMenuItem.Size = new Size(100, 23);
+			TextBoxLoadedJsonMenuItem.Text = "load config first";
+			TextBoxLoadedJsonMenuItem.Visible = false;
 			// 
 			// MainForm
 			// 
@@ -335,5 +363,7 @@
 		private ToolStripMenuItem LoadConfigMenuButton;
 		private ToolStripMenuItem SaveConfigMenuButton;
 		private Button ShowScoredCombinationsButton;
+		private ToolStripMenuItem HelpMenuButton;
+		private ToolStripTextBox TextBoxLoadedJsonMenuItem;
 	}
 }
