@@ -1,0 +1,608 @@
+﻿using System.Collections.Immutable;
+
+using Domain.HelperForms;
+using Domain.Helpers;
+using Domain.Main;
+using Domain.Validation;
+
+namespace PoE2BuildCalculator
+{
+	public partial class CombinationDisplay : BaseForm
+	{
+		private sealed class CombinationViewModel
+		{
+			public int Rank { get; init; }
+			public double Score { get; init; }
+			public List<Item> Items { get; init; }
+			public Dictionary<string, double> AggregatedStats { get; init; }
+			public string ItemNamesCache { get; init; }
+			public List<ImmutableDictionary<string, object>> ItemStatsDictsCache { get; init; }
+		}
+
+		private readonly List<Tier> _tiers;
+		private readonly List<Group> _validatorGroups;
+		private readonly HashSet<string> _tieredStats = [];
+		private readonly HashSet<string> _validatorStats = [];
+		private readonly Dictionary<string, (double StatWeight, double TierWeight, int TierIndex)> _tieredStatWeights = [];
+		private Dictionary<string, ItemStatsHelper.StatDescriptor> _statDescriptorsByName;
+		private ImmutableList<CombinationViewModel> _combinationsToDisplay = [];
+		private Dictionary<int, CombinationViewModel> _combinationsByRank;
+		private HashSet<string> _relevantStatsCache;
+		private readonly List<(List<Item> Combination, double Score)> _scoredCombinations;
+
+		public CombinationDisplay(
+			List<(List<Item> Combination, double Score)> scoredCombinations,
+			List<Tier> tiers = null,
+			List<Group> validatorGroups = null)
+		{
+			InitializeComponent();
+			this.Load += CombinationDisplay_Load;
+
+			_tiers = tiers ?? [];
+			_validatorGroups = validatorGroups ?? [];
+			_scoredCombinations = scoredCombinations ?? [];
+			_statDescriptorsByName = ItemStatsHelper.GetStatDescriptors().ToDictionary(d => d.PropertyName, d => d, StringComparer.OrdinalIgnoreCase);
+
+			ExtractRelevantStats(tiers, validatorGroups);
+			BuildTieredStatWeights(tiers);
+		}
+
+		private void BuildTieredStatWeights(List<Tier> tiers)
+		{
+			if (tiers == null) return;
+
+			for (int tierIndex = 0; tierIndex < tiers.Count; tierIndex++)
+			{
+				var tier = tiers[tierIndex];
+				foreach (var (statName, statWeight) in tier.StatWeights)
+				{
+					if (statWeight > 0)
+					{
+						// Effective weight = (statWeight / totalStatWeight) * (tierWeight / 100)
+						double normalizedStatWeight = tier.TotalStatWeight > 0
+							? statWeight / tier.TotalStatWeight
+							: 0;
+						double effectiveWeight = normalizedStatWeight * (tier.TierWeight / 100.0);
+
+						_tieredStatWeights[statName] = (statWeight, effectiveWeight, tierIndex);
+					}
+				}
+			}
+		}
+
+		private void ExtractRelevantStats(List<Tier> tiers, List<Group> validatorGroups)
+		{
+			if (tiers != null)
+			{
+				foreach (var tier in tiers)
+				{
+					foreach (var statName in tier.StatWeights.Keys.Where(k => tier.StatWeights[k] > 0))
+					{
+						_tieredStats.Add(statName);
+					}
+				}
+			}
+
+			if (validatorGroups != null)
+			{
+				foreach (var group in validatorGroups)
+				{
+					if (group.Stats != null)
+					{
+						foreach (var stat in group.Stats)
+						{
+							_validatorStats.Add(stat.PropertyName);
+						}
+					}
+				}
+			}
+
+			_relevantStatsCache = [.. _tieredStats.Union(_validatorStats)];
+		}
+
+		private static Dictionary<string, double> ComputeAggregatedStats(List<ImmutableDictionary<string, object>> itemStatsDicts)
+		{
+			var result = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+			var allStatNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+			// Collect all stat names from all items
+			foreach (var itemStatsDict in itemStatsDicts)
+			{
+				allStatNames.UnionWith(itemStatsDict.Keys);
+			}
+
+			// Compute sum for each stat
+			foreach (var statName in allStatNames)
+			{
+				double sum = 0;
+				foreach (var itemStatsDict in itemStatsDicts)
+				{
+					if (itemStatsDict.TryGetValue(statName, out var value) && value is not string)
+					{
+						sum += Convert.ToDouble(value);
+					}
+				}
+
+				if (sum != 0.0d) // Only store non-zero stats
+				{
+					result[statName] = sum;
+				}
+			}
+
+			return result;
+		}
+
+		private async void CombinationDisplay_Load(object sender, EventArgs e)
+		{
+			this.SuspendLayout();
+			SplitContainerMain.SuspendLayout();
+
+			ConfigureForm();
+			SetupMasterGrid();
+			SetupDetailGrid();
+
+			this.ResumeLayout(true);
+			SplitContainerMain.ResumeLayout(true);
+
+			SplitContainerMain.Visible = false;
+			StatusBarLabel.Text = "Loading combinations...";
+			StatusBar.Refresh();
+
+			await Task.Yield();
+			await LoadCombinationsAsync();
+
+			SplitContainerMain.Visible = true;
+		}
+
+		private async Task LoadCombinationsAsync()
+		{
+			if (_scoredCombinations == null || _scoredCombinations.Count == 0)
+			{
+				StatusBarLabel.Text = "No combinations to display";
+				return;
+			}
+
+			this.Cursor = Cursors.WaitCursor;
+
+			try
+			{
+				await Task.Run(PrepareCombinationData);
+
+				DataGridViewMaster.RowCount = _combinationsToDisplay.Count;
+				DataGridViewMaster.AutoResizeColumns(DataGridViewAutoSizeColumnsMode.AllCells);
+				DataGridViewMaster.AutoResizeRows(DataGridViewAutoSizeRowsMode.AllCells);
+
+				StatusBarLabel.Text = $"Loaded {_combinationsToDisplay.Count:N0} combinations - Select rows to compare";
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, $"{nameof(CombinationDisplay)} - {nameof(LoadCombinationsAsync)}");
+				StatusBarLabel.Text = "Error loading combinations";
+			}
+			finally
+			{
+				this.Cursor = Cursors.Default;
+			}
+		}
+
+		private void PrepareCombinationData()
+		{
+			var totalCount = _scoredCombinations.Count;
+			var viewModels = new List<CombinationViewModel>(totalCount);
+
+			for (int i = 0; i < totalCount; i++)
+			{
+				var (combination, score) = _scoredCombinations[i];
+
+				var itemStatsDicts = new List<ImmutableDictionary<string, object>>(combination.Count);
+				foreach (var item in combination) itemStatsDicts.Add(ItemStatsHelper.ToDictionary(item.ItemStats));
+
+				var aggregatedStats = ComputeAggregatedStats(itemStatsDicts);
+				var itemNames = string.Join(", ", combination.Select(item => item.Name));
+
+				viewModels.Add(new CombinationViewModel
+				{
+					Rank = i + 1,
+					Score = score,
+					Items = combination,
+					AggregatedStats = aggregatedStats,
+					ItemNamesCache = itemNames,
+					ItemStatsDictsCache = itemStatsDicts
+				});
+			}
+
+			_combinationsToDisplay = [.. viewModels];
+			_combinationsByRank = _combinationsToDisplay.ToDictionary(vm => vm.Rank, vm => vm);
+		}
+
+		private void ConfigureForm()
+		{
+			this.AutoSize = false;
+			this.AutoSizeMode = AutoSizeMode.GrowOnly;
+			this.StartPosition = FormStartPosition.CenterScreen;
+
+			SetStyle(ControlStyles.OptimizedDoubleBuffer |
+					 ControlStyles.AllPaintingInWmPaint |
+					 ControlStyles.UserPaint, true);
+			UpdateStyles();
+		}
+
+		protected override void Dispose(bool disposing)
+		{
+			if (disposing)
+			{
+				components?.Dispose();
+			}
+			base.Dispose(disposing);
+		}
+
+		protected override void OnFormClosing(FormClosingEventArgs e)
+		{
+			base.OnFormClosing(e);
+		}
+
+
+
+		private void SetupMasterGrid()
+		{
+			DataGridViewMaster.SuspendLayout();
+
+			DataGridViewMaster.VirtualMode = true;
+			DataGridViewMaster.ReadOnly = true;
+			DataGridViewMaster.AllowUserToAddRows = false;
+			DataGridViewMaster.AllowUserToDeleteRows = false;
+			DataGridViewMaster.AllowUserToResizeRows = false;
+			DataGridViewMaster.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+			DataGridViewMaster.MultiSelect = true;
+			DataGridViewMaster.AutoSizeColumnsMode = DataGridViewAutoSizeColumnsMode.None;
+			DataGridViewMaster.AutoSizeRowsMode = DataGridViewAutoSizeRowsMode.None;
+			DataGridViewMaster.RowHeadersVisible = false;
+			DataGridViewMaster.Dock = DockStyle.Fill;
+
+			DataGridViewMaster.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(240, 248, 255);
+			DataGridViewMaster.RowsDefaultCellStyle.BackColor = Color.White;
+
+			DataGridViewMaster.CellValueNeeded += MasterGrid_CellValueNeeded;
+			DataGridViewMaster.SelectionChanged += MasterGrid_SelectionChanged;
+
+			BuildMasterColumns();
+
+			DataGridViewMaster.ResumeLayout();
+		}
+
+		private void BuildMasterColumns()
+		{
+			DataGridViewMaster.Columns.Clear();
+
+			DataGridViewMaster.Columns.Add(new DataGridViewTextBoxColumn
+			{
+				Name = "Rank",
+				HeaderText = "#",
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+				ValueType = typeof(int),
+				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter }
+			});
+
+			DataGridViewMaster.Columns.Add(new DataGridViewTextBoxColumn
+			{
+				Name = "Score",
+				HeaderText = "Score",
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+				ValueType = typeof(double),
+				DefaultCellStyle = new DataGridViewCellStyle
+				{
+					Alignment = DataGridViewContentAlignment.MiddleCenter,
+					Format = "F2"
+				}
+			});
+
+			DataGridViewMaster.Columns.Add(new DataGridViewTextBoxColumn
+			{
+				Name = "Items",
+				HeaderText = "Item Names",
+				Width = 600,
+				ValueType = typeof(string),
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleLeft }
+			});
+		}
+
+		private void MasterGrid_CellValueNeeded(object sender, DataGridViewCellValueEventArgs e)
+		{
+			if (e.RowIndex < 0 || e.RowIndex >= _combinationsToDisplay.Count) return;
+
+			var viewModel = _combinationsToDisplay[e.RowIndex];
+
+			e.Value = DataGridViewMaster.Columns[e.ColumnIndex].Name switch
+			{
+				"Rank" => viewModel.Rank,
+				"Score" => viewModel.Score,
+				"Items" => viewModel.ItemNamesCache,
+				_ => null
+			};
+		}
+
+		private void MasterGrid_SelectionChanged(object sender, EventArgs e)
+		{
+			DataGridViewDetail.SuspendLayout();
+			RebuildDetailGrid();
+			DataGridViewDetail.ResumeLayout();
+		}
+
+		private void RebuildDetailGrid()
+		{
+			DataGridViewDetail.SuspendLayout();
+
+			var selectedRows = DataGridViewMaster.SelectedRows;
+			if (selectedRows.Count == 0)
+			{
+				DataGridViewDetail.Rows.Clear();
+				DataGridViewDetail.Columns.Clear();
+				StatusBarLabel.Text = "Select combinations to compare";
+				DataGridViewDetail.ResumeLayout();
+				return;
+			}
+
+			var selectedIndices = new List<int>(selectedRows.Count);
+			foreach (DataGridViewRow row in selectedRows)
+			{
+				if (row.Index >= 0 && row.Index < _combinationsToDisplay.Count) selectedIndices.Add(row.Index);
+			}
+
+			if (selectedIndices.Count == 0)
+			{
+				DataGridViewDetail.Rows.Clear();
+				DataGridViewDetail.Columns.Clear();
+				StatusBarLabel.Text = "Select combinations to compare";
+				DataGridViewDetail.ResumeLayout();
+				return;
+			}
+
+			selectedIndices.Sort();
+
+			// Collect all stats (UNION)
+			var allStats = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+			foreach (var index in selectedIndices)
+			{
+				allStats.UnionWith(_combinationsToDisplay[index].AggregatedStats.Keys);
+			}
+
+			var orderedStats = OrderStatsByImportance(allStats);
+
+			BuildDetailColumns(orderedStats);
+			PopulateDetailRows(selectedIndices, orderedStats);
+
+			StatusBarLabel.Text = $"Comparing {selectedIndices.Count} combination(s)";
+			DataGridViewDetail.ResumeLayout();
+		}
+
+		private List<string> OrderStatsByImportance(HashSet<string> allStats)
+		{
+			var result = new List<string>(allStats.Count);
+			var tieredStats = new List<(string StatName, double EffectiveWeight, int TierIndex)>();
+			var validatorStats = new List<string>();
+			var otherStats = new List<string>();
+
+			// Single pass categorization
+			foreach (var statName in allStats)
+			{
+				if (_tieredStatWeights.TryGetValue(statName, out var tierInfo))
+					tieredStats.Add((statName, tierInfo.StatWeight * tierInfo.TierWeight, tierInfo.TierIndex));
+				else if (_validatorStats.Contains(statName))
+					validatorStats.Add(statName);
+				else
+					otherStats.Add(statName);
+			}
+
+			// Sort and add tiered stats
+			if (tieredStats.Count > 0)
+			{
+				tieredStats.Sort((a, b) =>
+				{
+					int tierCompare = a.TierIndex.CompareTo(b.TierIndex);
+					return tierCompare != 0 ? tierCompare : b.EffectiveWeight.CompareTo(a.EffectiveWeight);
+				});
+
+				result.Capacity = tieredStats.Count + validatorStats.Count + otherStats.Count;
+				foreach (var (statName, _, _) in tieredStats)
+				{
+					result.Add(statName);
+				}
+			}
+
+			// Sort and add validator stats
+			if (validatorStats.Count > 0)
+			{
+				validatorStats.Sort(StringComparer.OrdinalIgnoreCase);
+				result.AddRange(validatorStats);
+			}
+
+			// Sort and add other stats
+			if (otherStats.Count > 0)
+			{
+				otherStats.Sort(StringComparer.OrdinalIgnoreCase);
+				result.AddRange(otherStats);
+			}
+
+			return result;
+		}
+
+		private void BuildDetailColumns(List<string> orderedStats)
+		{
+			DataGridViewDetail.Columns.Clear();
+
+			// Rank column - fixed width
+			DataGridViewDetail.Columns.Add(new DataGridViewTextBoxColumn
+			{
+				Name = "Rank",
+				HeaderText = "#",
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.None,
+				Width = 50,
+				ValueType = typeof(int),
+				DefaultCellStyle = new DataGridViewCellStyle { Alignment = DataGridViewContentAlignment.MiddleCenter },
+				Frozen = true
+			});
+
+			// Score column - auto-size to content
+			DataGridViewDetail.Columns.Add(new DataGridViewTextBoxColumn
+			{
+				Name = "Score",
+				HeaderText = "Score",
+				AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+				MinimumWidth = 70,
+				ValueType = typeof(double),
+				DefaultCellStyle = new DataGridViewCellStyle
+				{
+					Alignment = DataGridViewContentAlignment.MiddleCenter,
+					Format = "F2"
+				},
+				Frozen = true
+			});
+
+			// Stat columns - auto-size to content with minimum width
+			foreach (var statName in orderedStats)
+			{
+				var descriptor = _statDescriptorsByName.TryGetValue(statName, out var dictDescriptor) ? dictDescriptor : null;
+				string headerText = descriptor?.Header ?? statName;
+
+				if (_tieredStatWeights.ContainsKey(statName))
+				{
+					headerText = $"★ {headerText}";
+				}
+
+				DataGridViewDetail.Columns.Add(new DataGridViewTextBoxColumn
+				{
+					Name = $"Stat_{statName}",
+					HeaderText = headerText,
+					AutoSizeMode = DataGridViewAutoSizeColumnMode.AllCells,
+					MinimumWidth = 60,
+					ValueType = typeof(double),
+					DefaultCellStyle = new DataGridViewCellStyle
+					{
+						Alignment = DataGridViewContentAlignment.MiddleCenter,
+						Format = "F2"
+					},
+					Tag = statName
+				});
+			}
+
+			DataGridViewDetail.AllowUserToOrderColumns = false;
+			DataGridViewDetail.AutoGenerateColumns = false;
+			DataGridViewDetail.ReadOnly = true;
+			DataGridViewDetail.SelectionMode = DataGridViewSelectionMode.FullRowSelect;
+			DataGridViewDetail.MultiSelect = false;
+			DataGridViewDetail.Dock = DockStyle.Fill;
+		}
+
+		private void PopulateDetailRows(List<int> selectedIndices, List<string> orderedStats)
+		{
+			DataGridViewDetail.Rows.Clear();
+
+			var columnCount = 2 + orderedStats.Count;
+
+			foreach (var index in selectedIndices)
+			{
+				var vm = _combinationsToDisplay[index];
+				var rowValues = new object[columnCount];
+
+				rowValues[0] = vm.Rank;
+				rowValues[1] = vm.Score;
+
+				for (int i = 0; i < orderedStats.Count; i++)
+				{
+					rowValues[2 + i] = vm.AggregatedStats.GetValueOrDefault(orderedStats[i], 0.0);
+				}
+
+				DataGridViewDetail.Rows.Add(rowValues);
+			}
+
+			// Default sort by Score DESC
+			if (DataGridViewDetail.Rows.Count > 0)
+			{
+				DataGridViewDetail.Sort(DataGridViewDetail.Columns["Score"], System.ComponentModel.ListSortDirection.Descending);
+			}
+		}
+
+		private void SetupDetailGrid()
+		{
+			DataGridViewDetail.CellDoubleClick += DetailGrid_CellDoubleClick;
+
+			DataGridViewDetail.AlternatingRowsDefaultCellStyle.BackColor = Color.FromArgb(240, 248, 255);
+			DataGridViewDetail.RowsDefaultCellStyle.BackColor = Color.White;
+		}
+
+		private void DetailGrid_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
+		{
+			// Ignore header and non-stat columns
+			if (e.RowIndex < 0 || e.ColumnIndex < 2) return;
+
+			var column = DataGridViewDetail.Columns[e.ColumnIndex];
+			if (!column.Name.StartsWith("Stat_", StringComparison.OrdinalIgnoreCase)) return;
+
+			var statName = column.Tag as string;
+			var rank = (int)DataGridViewDetail.Rows[e.RowIndex].Cells["Rank"].Value;
+
+			ShowStatBreakdown(rank, statName);
+		}
+
+		private void ShowStatBreakdown(int rank, string statName)
+		{
+			if (!_combinationsByRank.TryGetValue(rank, out var vm)) return;
+
+			var descriptor = _statDescriptorsByName.TryGetValue(statName, out var dictDescriptor) ? dictDescriptor : null;
+			string displayName = descriptor?.Header ?? statName;
+
+			if (!vm.AggregatedStats.TryGetValue(statName, out double totalValue)) return;
+
+			var breakdown = new System.Text.StringBuilder();
+			breakdown.AppendLine($"Combination #{rank} - {displayName} Breakdown");
+			breakdown.AppendLine($"Total: {totalValue:F2}");
+			breakdown.AppendLine();
+			breakdown.AppendLine("Item Contributions:");
+
+			double sum = 0;
+			for (int i = 0; i < vm.Items.Count; i++)
+			{
+				var itemStatsDict = vm.ItemStatsDictsCache[i];
+				if (itemStatsDict.TryGetValue(statName, out var value) && value is not string)
+				{
+					double val = Convert.ToDouble(value);
+					if (val != 0)
+					{
+						breakdown.AppendLine($"  {vm.Items[i].Name}: {val:F2}");
+						sum += val;
+					}
+				}
+			}
+
+			breakdown.AppendLine();
+			breakdown.AppendLine($"Computed Total: {sum:F2}");
+
+			CustomMessageBox.Show(breakdown.ToString(), "Stat Breakdown", MessageBoxButtons.OK, MessageBoxIcon.Information);
+		}
+
+		private void ButtonClose_Click(object sender, EventArgs e)
+		{
+			this.Close();
+			this.Dispose();
+		}
+
+		private void ButtonHelp_Click(object sender, EventArgs e)
+		{
+			CustomMessageBox.ShowFormatted(x =>
+			{
+				x.AppendColored(@"=== COMBINATIONS DISPLAY INFORMATION ===", Color.Blue, true, true);
+				x.AppendNewLine();
+				x.AppendColored(@"- Press CTRL+Click on a combination row (upper table) to compare it with other selected ones (lower table).", Color.DarkGreen, false, true);
+				x.AppendNewLine();
+				x.AppendColored(@"- Double click an item stat value, in the lower table, to open the breakdown of that stat for that combination.", Color.DarkGreen, false, true);
+				x.AppendNewLine();
+				x.AppendColored(@"- Item stats are ordered like this:", Color.DarkGreen, false, true);
+				x.AppendColored("\t\tFIRST: stats that were chosen in the custom tiers, then ordered by their total weight contribution (highest to lowest).", Color.DarkGreen, false, true);
+				x.AppendColored("\t\tSECOND: stats chosen in the custom validator.", Color.DarkGreen, false, true);
+				x.AppendColored("\t\tTHIRD: all other stats present on any item in the combination, that are not already in the other two categories.", Color.DarkGreen, false, false);
+
+			}, "Combinations Display Help", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
+		}
+	}
+}

@@ -1,4 +1,7 @@
-﻿using System.Numerics;
+﻿using System.Collections.Immutable;
+using System.ComponentModel;
+using System.Numerics;
+using System.Reflection;
 
 namespace Domain.Helpers
 {
@@ -33,6 +36,30 @@ namespace Domain.Helpers
 				if (taken >= count)
 					yield break;
 			}
+		}
+
+		public static string GetDescription(this Enum value)
+		{
+			var field = value.GetType().GetField(value.ToString());
+			var attribute = (DescriptionAttribute)Attribute.GetCustomAttribute(field, typeof(DescriptionAttribute));
+			return attribute?.Description ?? value.ToString();
+		}
+
+		public static ImmutableDictionary<string, TEnum> GetAllDescriptions<TEnum>() where TEnum : Enum
+		{
+			var type = typeof(TEnum);
+			var fields = type.GetFields(BindingFlags.Public | BindingFlags.Static);
+			var result = ImmutableDictionary.CreateBuilder<string, TEnum>(StringComparer.OrdinalIgnoreCase);
+
+			foreach (var field in fields)
+			{
+				var value = (TEnum)field.GetValue(null);
+				var attribute = (DescriptionAttribute)Attribute.GetCustomAttribute(field, typeof(DescriptionAttribute));
+				var desc = attribute?.Description ?? value.ToString();
+				result[desc] = value;
+			}
+
+			return result.ToImmutable();
 		}
 	}
 }

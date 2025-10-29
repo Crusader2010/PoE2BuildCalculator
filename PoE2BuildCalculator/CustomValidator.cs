@@ -1,399 +1,1016 @@
-﻿using Domain.Main;
+﻿using System.Collections.Immutable;
+using System.ComponentModel;
+using System.Reflection;
+using System.Text;
+
+using Domain.Enums;
+using Domain.HelperForms;
+using Domain.Helpers;
+using Domain.Main;
+using Domain.Serialization;
 using Domain.Static;
 using Domain.UserControls;
 using Domain.Validation;
 
-using System.ComponentModel;
+using Manager;
 
 namespace PoE2BuildCalculator
 {
-    public partial class CustomValidator : Form
-    {
-        private Func<List<Item>, bool> _masterValidator = x => true;
-        private readonly BindingList<ValidationGroupModel> _groups = [];
-        private readonly MainForm _ownerForm;
-        private int _nextGroupId = 1;
-        private Point _dragStartPoint;
-        private ItemStatGroupValidatorUserControl _draggedControl;
+	public partial class CustomValidator : BaseForm, IConfiguration
+	{
+		private Func<List<Item>, bool> _masterValidator = x => true;
+		public bool _customValidatorCreated { get; private set; } = false;
 
-        // Cached layout calculations
-        private int _lastContainerWidth = -1;
-        private int _cachedColumnsPerRow = -1;
+		private readonly BindingList<Group> _groups = [];
+		private readonly BindingList<GroupOperationsUserControl> _operationControls = [];
 
-        private const int GROUP_MARGIN = 10;
-        private const int GROUP_CONTROL_WIDTH = 350;
-        private const int GROUP_CONTROL_HEIGHT = 350;
+		private readonly MainForm _ownerForm;
+		private readonly ConfigurationManager _configManager;
+		private int _nextGroupId = 1;
 
-        public CustomValidator(MainForm ownerForm)
-        {
-            ArgumentNullException.ThrowIfNull(ownerForm);
-            InitializeComponent();
-            _ownerForm = ownerForm;
+		// Cached layout calculations
+		private readonly (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) _cachedSizes;
+		private const int GROUP_ITEMSTATSROWS_VISIBLE = 5;
 
-            // Enable double buffering for smoother rendering
-            SetStyle(ControlStyles.OptimizedDoubleBuffer |
-                     ControlStyles.AllPaintingInWmPaint |
-                     ControlStyles.UserPaint, true);
-            UpdateStyles();
-        }
+		private ImmutableDictionary<int, string> _immutableGroupDescriptions
+		{
+			get
+			{
+				field ??= _groups.Count == 0
+						? ImmutableDictionary<int, string>.Empty
+						: _groups.ToImmutableDictionary(g => g.GroupId, g => g.GroupName);
 
-        private void BtnHelp_Click(object sender, EventArgs e)
-        {
-            using var helpForm = new Form
-            {
-                Text = "Validator Help - Order of Operations",
-                Size = new Size(650, 600),
-                StartPosition = FormStartPosition.CenterParent,
-                FormBorderStyle = FormBorderStyle.FixedDialog,
-                MaximizeBox = false,
-                MinimizeBox = false
-            };
+				return field;
+			}
 
-            var txtHelp = new TextBox
-            {
-                Multiline = true,
-                ReadOnly = true,
-                ScrollBars = ScrollBars.Vertical,
-                Dock = DockStyle.Fill,
-                Font = new Font("Consolas", 9.5f),
-                Text = Constants.VALIDATOR_HELP_TEXT,
-                Padding = new Padding(10)
-            };
+			set;
+		}
 
-            txtHelp.Select(0, 0);
-            txtHelp.GotFocus += (s, e) => txtHelp.Select(0, 0);
+		public CustomValidator(MainForm ownerForm, ConfigurationManager configManager)
+		{
+			ArgumentNullException.ThrowIfNull(ownerForm);
+			ArgumentNullException.ThrowIfNull(configManager);
+			InitializeComponent();
 
-            var btnOk = new Button
-            {
-                Text = "OK",
-                DialogResult = DialogResult.OK,
-                Dock = DockStyle.Bottom,
-                Height = 40,
-                Font = new Font("Segoe UI", 10, FontStyle.Bold)
-            };
+			_ownerForm = ownerForm;
+			_configManager = configManager;
+			_groups.ListChanged += (s, e) => _immutableGroupDescriptions = null;
+			_cachedSizes = GetUserControlSizes();
 
-            helpForm.Controls.Add(txtHelp);
-            helpForm.Controls.Add(btnOk);
-            helpForm.ShowDialog(this);
-        }
+			// Enable double buffering for smoother rendering
+			SetStyle(ControlStyles.OptimizedDoubleBuffer |
+					 ControlStyles.AllPaintingInWmPaint |
+					 ControlStyles.UserPaint, true);
+			UpdateStyles();
+		}
 
-        private void BtnAddGroup_Click(object sender, EventArgs e)
-        {
-            var group = new ValidationGroupModel
-            {
-                GroupId = _nextGroupId++,
-                GroupName = $"Group {_groups.Count + 1}",
-                IsMinEnabled = true,
-                MinValue = 0.00
-            };
+		public List<Group> GetGroups()
+		{
+			return [.. _groups];
+		}
 
-            _groups.Add(group);
+		#region JSON import - export
 
-            groupsContainer.SuspendLayout();
-            try
-            {
-                CreateGroupControl(group);
-                ArrangeGroupsInGrid();
-                RevalidateAllGroups();
-            }
-            finally
-            {
-                groupsContainer.ResumeLayout(true);
-            }
-        }
+		public bool HasData => _groups.Count > 0 || _operationControls.Count > 0;
 
-        private void CreateGroupControl(ValidationGroupModel group)
-        {
-            var control = new ItemStatGroupValidatorUserControl
-            {
-                Group = group,
-                Width = GROUP_CONTROL_WIDTH,
-                Height = GROUP_CONTROL_HEIGHT,
-                Tag = group,
-                AllowDrop = true
-            };
+		public object ExportConfig() => ExportData();
 
-            control.DeleteRequested += (s, e) => DeleteGroup(group, control);
-            control.ValidationChanged += (s, e) => RevalidateAllGroups();
-            control.MouseDown += GroupControl_MouseDown;
-            control.MouseMove += GroupControl_MouseMove;
-            control.DragOver += (s, e) => e.Effect = DragDropEffects.Move;
-            control.DragDrop += GroupControl_DragDrop;
+		public void ImportConfig(object data)
+		{
+			if (data is not (List<GroupDto> groups, List<ValidationModel> operations)) return;
+			ImportData(groups, operations);
+		}
 
-            groupsContainer.Controls.Add(control);
-        }
+		public (List<GroupDto>, List<ValidationModel>) ExportData()
+		{
+			var groups = _groups.Select(g => new GroupDto
+			{
+				GroupId = g.GroupId,
+				GroupName = g.GroupName,
+				Stats = g.Stats?.Select(s => new GroupStatDto
+				{
+					PropertyName = s.PropertyName,
+					Operator = s.Operator
+				}).ToList() ?? []
+			}).ToList();
 
-        private void RevalidateAllGroups()
-        {
-            btnAddGroup.Enabled = _groups.Count == 0 || ValidateLastGroup();
-            UpdateAllGroupOperatorVisibility();
-        }
+			var operations = _operationControls.Select(c => c.GetValidationModel()).ToList();
+			return (groups, operations);
+		}
 
-        private bool ValidateLastGroup()
-        {
-            var lastGroup = _groups[^1];
-            bool hasConstraint = lastGroup.IsMinEnabled || lastGroup.IsMaxEnabled;
-            bool hasStats = lastGroup.Stats.Count > 0;
-            bool isValid = !(lastGroup.IsMinEnabled && lastGroup.IsMaxEnabled &&
-                           lastGroup.MinValue.HasValue && lastGroup.MaxValue.HasValue &&
-                           lastGroup.MinValue.Value > lastGroup.MaxValue.Value);
+		public void ImportData(List<GroupDto> groupDtos, List<ValidationModel> operations)
+		{
+			_groups.Clear();
+			_operationControls.Clear();
+			_immutableGroupDescriptions = null;
 
-            return hasConstraint && hasStats && isValid;
-        }
+			FlowPanelGroups.SuspendLayout();
+			FlowPanelOperations.SuspendLayout();
 
-        private void UpdateAllGroupOperatorVisibility()
-        {
-            for (int i = 0; i < _groups.Count; i++)
-            {
-                var group = _groups[i];
-                var control = FindControlForGroup(group);
-                if (control == null) continue;
+			try
+			{
+				foreach (var control in FlowPanelGroups.Controls.OfType<ItemStatGroupValidatorUserControl>())
+					control.Dispose();
+				foreach (var control in FlowPanelOperations.Controls.OfType<GroupOperationsUserControl>())
+					control.Dispose();
 
-                bool currentHasConstraint = group.IsMinEnabled || group.IsMaxEnabled;
-                bool currentHasStats = group.Stats.Count > 0;
-                bool hasNextValidGroup = HasNextValidGroup(i);
+				FlowPanelGroups.Controls.Clear();
+				FlowPanelOperations.Controls.Clear();
 
-                control.UpdateOperatorVisibility(currentHasConstraint && currentHasStats && hasNextValidGroup);
-            }
-        }
+				// Rebuild groups
+				foreach (var dto in groupDtos)
+				{
+					var control = new ItemStatGroupValidatorUserControl(dto.GroupId, dto.GroupName)
+					{
+						Width = _cachedSizes.widthStat + 25,
+						Height = _cachedSizes.heightGroupTop + (_cachedSizes.heightStat * GROUP_ITEMSTATSROWS_VISIBLE) + 5
+					};
 
-        private bool HasNextValidGroup(int currentIndex)
-        {
-            for (int j = currentIndex + 1; j < _groups.Count; j++)
-            {
-                var nextGroup = _groups[j];
-                if ((nextGroup.IsMinEnabled || nextGroup.IsMaxEnabled) && nextGroup.Stats.Count > 0)
-                    return true;
-            }
-            return false;
-        }
+					control.LoadStatsFromConfig(dto.Stats);
+					control.GroupDeleted += (s, e) => DeleteGroup(control);
 
-        private ItemStatGroupValidatorUserControl FindControlForGroup(ValidationGroupModel group)
-        {
-            return groupsContainer.Controls.OfType<ItemStatGroupValidatorUserControl>()
-                .FirstOrDefault(c => c.Tag == group);
-        }
+					_groups.Add(control._group);
+					FlowPanelGroups.Controls.Add(control);
+				}
 
-        private void GroupControl_MouseDown(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left && e.Y < 32)
-            {
-                _dragStartPoint = e.Location;
-                _draggedControl = sender as ItemStatGroupValidatorUserControl;
-            }
-        }
+				// Rebuild operations
+				foreach (var op in operations)
+				{
+					var control = new GroupOperationsUserControl(_immutableGroupDescriptions, this)
+					{
+						BackColor = _operationControls.Count % 2 == 0 ? Color.LightGray : Color.LightSlateGray
+					};
 
-        private void GroupControl_MouseMove(object sender, MouseEventArgs e)
-        {
-            if (e.Button == MouseButtons.Left && _draggedControl != null &&
-                (Math.Abs(e.X - _dragStartPoint.X) > 5 || Math.Abs(e.Y - _dragStartPoint.Y) > 5))
-            {
-                _draggedControl.DoDragDrop(_draggedControl, DragDropEffects.Move);
-            }
-        }
+					control.LoadFromValidationModel(op);
+					control.GroupOperationDeleted += OperationControl_GroupOperationDeleted;
 
-        private void GroupControl_DragDrop(object sender, DragEventArgs e)
-        {
-            if (sender is not ItemStatGroupValidatorUserControl targetControl ||
-                e.Data.GetData(typeof(ItemStatGroupValidatorUserControl)) is not ItemStatGroupValidatorUserControl sourceControl ||
-                targetControl == sourceControl)
-                return;
+					_operationControls.Add(control);
+					FlowPanelOperations.Controls.Add(control);
+				}
 
-            var sourceGroup = sourceControl.Tag as ValidationGroupModel;
-            var targetGroup = targetControl.Tag as ValidationGroupModel;
+				_nextGroupId = _groups.Any() ? _groups.Max(g => g.GroupId) + 1 : 1;
+				_masterValidator = x => true; // reset
 
-            int sourceIndex = _groups.IndexOf(sourceGroup);
-            int targetIndex = _groups.IndexOf(targetGroup);
+				var validatorFunction = CreateValidatorFunction(true);
+				if (!validatorFunction.Created)
+				{
+					// Reset to safe state
+					_groups.Clear();
+					_operationControls.Clear();
+					FlowPanelGroups.Controls.Clear();
+					FlowPanelOperations.Controls.Clear();
+					CustomMessageBox.Show($"Configuration loaded but validator recreation failed:\r\n\r\n{validatorFunction.Message}\r\n\r\nGroups and operations have been cleared. Please reconfigure.", "Unable to recreate validator function", MessageBoxButtons.OK, MessageBoxIcon.Error, this);
+				}
+			}
+			finally
+			{
+				FlowPanelGroups.ResumeLayout(true);
+				FlowPanelOperations.ResumeLayout(true);
 
-            _groups.RemoveAt(sourceIndex);
-            _groups.Insert(targetIndex, sourceGroup);
+			}
+		}
 
-            groupsContainer.SuspendLayout();
-            try
-            {
-                ArrangeGroupsInGrid();
-                RevalidateAllGroups();
-            }
-            finally
-            {
-                groupsContainer.ResumeLayout(true);
-            }
-        }
+		#endregion
 
-        private void DeleteGroup(ValidationGroupModel group, ItemStatGroupValidatorUserControl control)
-        {
-            _groups.Remove(group);
+		private void BtnHelp_Click(object sender, EventArgs e)
+		{
+			CustomMessageBox.Show(Constants.VALIDATOR_HELP_TEXT, "Validation Help", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
+		}
 
-            groupsContainer.SuspendLayout();
-            try
-            {
-                groupsContainer.Controls.Remove(control);
-                control.Dispose();
-                ArrangeGroupsInGrid();
-                RevalidateAllGroups();
-            }
-            finally
-            {
-                groupsContainer.ResumeLayout(true);
-            }
-        }
+		private void BtnAddOperation_Click(object sender, EventArgs e)
+		{
+			FlowPanelOperations.SuspendLayout();
+			try
+			{
+				var operationControl = new GroupOperationsUserControl(_immutableGroupDescriptions, this)
+				{
+					BackColor = _operationControls.Count % 2 == 0 ? Color.LightGray : Color.LightSlateGray
+				};
 
-        private void ArrangeGroupsInGrid()
-        {
-            if (groupsContainer == null || _groups.Count == 0) return;
+				FlowPanelOperations.Controls.Add(operationControl);
 
-            int containerWidth = groupsContainer.ClientSize.Width - 5;
+				if (_operationControls.Count > 0) _operationControls[^1].SetComboBoxGroupLevelOperatorEnabled(true);
+				operationControl.GroupOperationDeleted += OperationControl_GroupOperationDeleted;
 
-            // Use cached calculation if width hasn't changed
-            int columnsPerRow;
-            if (containerWidth == _lastContainerWidth && _cachedColumnsPerRow > 0)
-            {
-                columnsPerRow = _cachedColumnsPerRow;
-            }
-            else
-            {
-                columnsPerRow = Math.Max(1, (containerWidth - GROUP_MARGIN) / (GROUP_CONTROL_WIDTH + GROUP_MARGIN));
-                _lastContainerWidth = containerWidth;
-                _cachedColumnsPerRow = columnsPerRow;
-            }
+				_operationControls.Add(operationControl);
+			}
+			catch (Exception ex)
+			{
+				CustomMessageBox.Show($"Error creating group operation control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+			finally
+			{
+				FlowPanelOperations.ResumeLayout();
+			}
+		}
 
-            int currentRow = 0, currentCol = 0;
+		private void OperationControl_GroupOperationDeleted(object sender, EventArgs e)
+		{
+			this.SuspendLayout();
+			FlowPanelOperations.SuspendLayout();
+			try
+			{
+				if (sender is not null and GroupOperationsUserControl operationControl)
+				{
+					_operationControls.Remove(operationControl);
+					RefreshGroupOperationsAfterDelete();
+				}
+			}
+			catch (Exception ex)
+			{
+				CustomMessageBox.Show($"Error when deleting a group operation control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+			finally
+			{
+				FlowPanelOperations.ResumeLayout();
+				this.ResumeLayout();
+			}
+		}
 
-            foreach (var group in _groups)
-            {
-                var control = FindControlForGroup(group);
-                if (control != null)
-                {
-                    control.Location = new Point(
-                        GROUP_MARGIN + currentCol * (GROUP_CONTROL_WIDTH + GROUP_MARGIN),
-                        GROUP_MARGIN + currentRow * (GROUP_CONTROL_HEIGHT + GROUP_MARGIN)
-                    );
+		private void BtnAddGroup_Click(object sender, EventArgs e)
+		{
+			FlowPanelGroups.SuspendLayout();
+			try
+			{
+				var control = new ItemStatGroupValidatorUserControl(_nextGroupId++, $"Group {_groups.Count + 1}")
+				{
+					Width = _cachedSizes.widthStat + 25, // account for scrollbar
+					Height = _cachedSizes.heightGroupTop + (_cachedSizes.heightStat * GROUP_ITEMSTATSROWS_VISIBLE) + 5,
+					AllowDrop = false
+				};
 
-                    if (++currentCol >= columnsPerRow)
-                    {
-                        currentCol = 0;
-                        currentRow++;
-                    }
-                }
-            }
+				control.GroupDeleted += (s, e) => DeleteGroup(control);
+				FlowPanelGroups.Controls.Add(control);
 
-            int totalRows = (int)Math.Ceiling((double)_groups.Count / columnsPerRow);
-            groupsContainer.AutoScrollMinSize = new Size(0, totalRows * (GROUP_CONTROL_HEIGHT + GROUP_MARGIN) + GROUP_MARGIN);
-        }
+				_groups.Add(control._group);
+				RefreshGroupOperationsAfterGroupsChanged();
+			}
+			catch (Exception ex)
+			{
+				CustomMessageBox.Show($"Error creating group control: {ex}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+			}
+			finally
+			{
+				FlowPanelGroups.ResumeLayout(true);
+			}
+		}
 
-        private void BtnCreateValidator_Click(object sender, EventArgs e)
-        {
-            try
-            {
-                var validatorFunction = BuildValidatorFunction([.. _groups]);
-                if (validatorFunction == null)
-                {
-                    MessageBox.Show("No validation function can be computed based on the existing groups.\n\nKeeping default logic -> all combinations are valid.", "No usable groups", MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                    return;
-                }
+		private void DeleteGroup(ItemStatGroupValidatorUserControl control)
+		{
+			_groups.Remove(control._group);
 
-                _masterValidator = validatorFunction;
-                _ownerForm._itemValidatorFunction = _masterValidator;
-                MessageBox.Show($"Validator created with {_groups.Count(x => x.IsActive)} ACTIVE group(s)!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show($"Error creating validator: {ex.Message}", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-            }
-        }
+			FlowPanelGroups.SuspendLayout();
+			try
+			{
+				FlowPanelGroups.Controls.Remove(control);
+				control.Dispose();
 
-        private static Func<List<Item>, bool> BuildValidatorFunction(List<ValidationGroupModel> groups)
-        {
-            if (groups == null || groups.Count == 0) return null;
+				RefreshGroupOperationsAfterGroupsChanged();
+			}
+			finally
+			{
+				FlowPanelGroups.ResumeLayout(true);
+			}
+		}
 
-            var activeGroups = groups.Where(g => g.IsActive).ToList();
-            if (groups.Count == activeGroups.Count) return null;
+		private void BtnCreateValidator_Click(object sender, EventArgs e)
+		{
+			CreateValidatorFunction(false);
+		}
 
-            return items =>
-            {
-                bool result = EvaluateGroup(activeGroups[0], items);
+		private void ButtonTranslateValidationFunction_Click(object sender, EventArgs e)
+		{
+			var item = new Item() { Class = "TestItem", Id = -1, Name = "Test1", ItemStats = new() };
 
-                for (int i = 1; i < activeGroups.Count; i++)
-                {
-                    bool nextResult = EvaluateGroup(activeGroups[i], items);
-                    string op = activeGroups[i - 1].GroupOperator ?? "AND";
+			// Get validation message
+			var (isValid, message) = TestValidationFunctionTranslation([item]);
+			if (!isValid)
+			{
+				CustomMessageBox.Show("Error during validation function translation:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Error);
+				return;
+			}
 
-                    result = op switch
-                    {
-                        "AND" => result && nextResult,
-                        "OR" => result || nextResult,
-                        "XOR" => result ^ nextResult,
-                        _ => result && nextResult
-                    };
-                }
+			message = message.Replace("\r\n\t\t => true", string.Empty)
+							 .Replace("\r\n\t\t => false", string.Empty)
+							 .Replace("\r\n\r\n => true", string.Empty)
+							 .Replace("\r\n\r\n => false", string.Empty);
+			CustomMessageBox.Show("Validation function translation:\r\n\r\n" + message, "Validation function sample", MessageBoxButtons.OK, MessageBoxIcon.Information);
+		}
 
-                return result;
-            };
-        }
+		private static (int widthStat, int heightStat, int heightGroupTop, int widthGroup, int widthGroupOperation) GetUserControlSizes()
+		{
+			using var tempGroupOperation = new GroupOperationsUserControl(ImmutableDictionary<int, string>.Empty, new Form());
+			using var tempGroup = new ItemStatGroupValidatorUserControl(int.MaxValue, string.Empty);
+			using var tempRow = new ItemStatRow(int.MaxValue, string.Empty);
+			{
+				tempGroup.Width = tempRow.Width + 25; // account for scrollbar
+			}
 
-        private static bool EvaluateGroup(ValidationGroupModel group, List<Item> items)
-        {
-            if (group.Stats.Count == 0) return true;
+			return (tempRow.Width + 2, tempRow.Height, tempGroup.GetTopRowsHeight(), tempGroup.Width + 2, tempGroupOperation.Width);
+		}
 
-            /*
-             * TO DO:
-             * Evaluated expression = item stats within the same group, with applied value operators.
-             * Currently, this only allows for summing the evaluated expression across all items, then checking if it's between min and max group constraints.
-             * Need to add the following for SINGLE STAT groups only:
-             *      - Any of the items has the evaluated expression between min and max (OR logic)
-             *      - All items have the evaluated expression between min and max (AND logic)
-             *      - At least X items have the evaluated expression between min and max
-             *      - At most Y items have the evaluated expression between min and max
-             */
-            double sum = items.Sum(item => EvaluateExpression(group.Stats, item.ItemStats));
+		private void CustomValidator_Load(object sender, EventArgs e)
+		{
+			this.SuspendLayout();
 
-            if (group.IsMinEnabled && group.MinValue.HasValue && sum < group.MinValue.Value)
-                return false;
+			FlowPanelOperations.Padding = new Padding(0, 0, 1, 0);
+			FlowPanelOperations.Width = _cachedSizes.widthGroupOperation + 20;
 
-            if (group.IsMaxEnabled && group.MaxValue.HasValue && sum > group.MaxValue.Value)
-                return false;
+			Panel delimiter = new()
+			{
+				Width = 2,
+				Dock = DockStyle.Left,
+				BackColor = Color.YellowGreen
+			};
+			panel1.Controls.Add(delimiter);
 
-            return true;
-        }
+			FlowPanelOperations.BringToFront();
+			delimiter.BringToFront();
+			FlowPanelGroups.BringToFront();
 
-        private static double EvaluateExpression(List<GroupStatModel> stats, ItemStats itemStats)
-        {
-            if (stats.Count == 0) return 0;
+			typeof(Panel).InvokeMember("DoubleBuffered", BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic, null, FlowPanelGroups, [true]);
+			typeof(Panel).InvokeMember("DoubleBuffered", BindingFlags.SetProperty | BindingFlags.Instance | BindingFlags.NonPublic, null, FlowPanelOperations, [true]);
 
-            double result = Convert.ToDouble(stats[0].PropInfo.GetValue(itemStats));
+			this.AutoSize = false;
+			this.Width = FlowPanelOperations.Width + FlowPanelOperations.Padding.Left + FlowPanelOperations.Padding.Right
+							+ mainPanel.Padding.Left + mainPanel.Padding.Right + delimiter.Width
+							+ panel1.Padding.Left + panel1.Padding.Right + _cachedSizes.widthGroup * 2 + 45;
+			this.CenterToScreen();
 
-            for (int i = 1; i < stats.Count; i++)
-            {
-                double nextValue = Convert.ToDouble(stats[i].PropInfo.GetValue(itemStats));
+			this.ResumeLayout(true);
+		}
 
-                result = stats[i].Operator switch
-                {
-                    "+" => result + nextValue,
-                    "-" => result - nextValue,
-                    "*" => result * nextValue,
-                    "/" => nextValue != 0 ? result / nextValue : result,
-                    _ => result + nextValue
-                };
-            }
+		private void ButtonCloseAndDispose_Click(object sender, EventArgs e)
+		{
+			ButtonCloseAndDispose.CausesValidation = false;
+			components?.Dispose();
+			this.Dispose();
+		}
 
-            return result;
-        }
+		private void ButtonHide_Click(object sender, EventArgs e)
+		{
+			ButtonHide.CausesValidation = true;
+			this.Hide();
+			this.Owner?.BringToFront();
+		}
 
-        private void GroupsContainer_Resize(object sender, EventArgs e)
-        {
-            // Invalidate cache on resize
-            _lastContainerWidth = -1;
-            _cachedColumnsPerRow = -1;
+		private void CustomValidator_FormClosing(object sender, FormClosingEventArgs e)
+		{
+			if (e.CloseReason == CloseReason.UserClosing)
+			{
+				e.Cancel = true;
+				this.Hide();
+				this.Owner?.BringToFront();
+			}
+		}
 
-            groupsContainer.SuspendLayout();
-            try
-            {
-                ArrangeGroupsInGrid();
-            }
-            finally
-            {
-                groupsContainer.ResumeLayout(true);
-            }
-        }
-    }
+
+		private void RefreshGroupOperationsAfterDelete()
+		{
+			for (int i = 0; i < _operationControls.Count; i++)
+			{
+				_operationControls[i].RefreshGroupOperationAfterDelete(_operationControls.Count, i);
+			}
+		}
+
+		private void RefreshGroupOperationsAfterGroupsChanged()
+		{
+			for (int i = 0; i < _operationControls.Count; i++)
+			{
+				_operationControls[i].UpdateGroups(_immutableGroupDescriptions);
+			}
+		}
+
+		private (bool isValid, string message) CheckInvalidSelectedGroupsOrOperations()
+		{
+			var grpMsg = string.Empty;
+			var operMsg = string.Empty;
+			bool isValid = true;
+
+			var inactiveGroups = _groups.Where(x => x == null || !x.IsActive).ToList();
+			if (inactiveGroups.Count > 0)
+			{
+				grpMsg = $"The following groups are inactive: {string.Join(",", inactiveGroups.Select(x => x.GroupName))}. Make sure they have at least one item stat selected.";
+				isValid = false;
+			}
+
+			var inactiveGroupIds = inactiveGroups.Select(x => x.GroupId).ToHashSet();
+			var validationModels = _operationControls.Select(x => x.GetValidationModel());
+
+			int inactiveOperations = validationModels.Count(x => x == null || !x.IsActive || x.GroupId == -1 || inactiveGroupIds.Contains(x.GroupId));
+			if (inactiveOperations > 0)
+			{
+				operMsg = $"There are currently {inactiveOperations} group operations that are either inactive or have an inactive or no group selected. Make sure the groups have at least one item stat selected, " +
+							$"and that each operation has a group selected and at least the MIN or the MAX checkboxes set.";
+				isValid = false;
+			}
+
+			var invalidOperations = validationModels.Where(x => x.IsActive && x.MinValue.HasValue && x.MaxValue.HasValue && x.MinValue > x.MaxValue).Select(x => x.GroupId).ToHashSet();
+			if (invalidOperations.Count > 0)
+			{
+				var groupNames = _immutableGroupDescriptions.Where(x => invalidOperations.Contains(x.Key)).Select(x => x.Value).ToList();
+				operMsg = $"At least some of the operations linked to group names {string.Join(",", groupNames)} are invalid. Make sure the MAX value is greater or equal to the MIN value.";
+				isValid = false;
+			}
+
+			return (isValid, string.Join("\r\n", grpMsg, operMsg, "\r\nBefore a validation function can be created, you must remove or edit the inactive or invalid groups and operations."));
+		}
+
+		private (bool Created, string Message) CreateValidatorFunction(bool suppressMessageBoxes)
+		{
+			try
+			{
+				var (isValid, message) = CheckInvalidSelectedGroupsOrOperations();
+				if (!isValid)
+				{
+					if (!suppressMessageBoxes) CustomMessageBox.Show(message, "Inactive/invalid groups or operations", MessageBoxButtons.OK, MessageBoxIcon.Warning, this);
+					return (false, message);
+				}
+
+				var operations = BuildValidationModels();
+				var validatorFunction = BuildValidatorFunction(operations);
+
+				if (validatorFunction == null)
+				{
+					string msg = "No validation function can be computed based on the existing groups and/or operations.\r\n\r\nKeeping default logic -> all combinations are valid.";
+					if (!suppressMessageBoxes) CustomMessageBox.Show(msg, "No active/valid groups/operations", MessageBoxButtons.OK, MessageBoxIcon.Warning, this);
+					return (false, msg);
+				}
+
+				_masterValidator = validatorFunction;
+				_ownerForm._itemValidatorFunction = _masterValidator;
+				_customValidatorCreated = validatorFunction.Target != null;
+
+				if (!suppressMessageBoxes) CustomMessageBox.Show($"Validator created successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
+				return (true, $"Validator created successfully!");
+			}
+			catch (Exception ex)
+			{
+				if (!suppressMessageBoxes) ErrorHelper.ShowError(ex, $"{nameof(CustomValidator)} - {nameof(CreateValidatorFunction)}");
+				return (false, $"Error: {ex}");
+			}
+		}
+
+		#region Validation and parsing methods
+
+		/// <summary>
+		/// Builds the validator function from validation models(operations) and groups.
+		/// Shows a message box with the validation logic for the FIRST combination only.
+		/// All subsequent calls use optimized validation (no message building).
+		/// </summary>
+		private Func<List<Item>, bool> BuildValidatorFunction(List<ValidationModel> operations)
+		{
+			var groups = _groups.ToDictionary(g => g.GroupId, g => g); // all groups presumed active due to CheckInactiveSelectedGroupsOrOperations() method
+			if (groups.Count == 0 || operations.Count == 0) return null;
+
+			return items =>
+			{
+				return EvaluateValidationModels(operations, items, groups, messageBuilder: null);
+			};
+		}
+
+		private List<ValidationModel> BuildValidationModels()
+		{
+			var result = _operationControls.Select(x => x.GetValidationModel()).ToList(); // all are presumed active!
+			return result;
+		}
+
+		/// <summary>
+		/// Evaluates all validation operations and combines their results using GroupLevelOperators.
+		/// Main entry point for the validation function.
+		/// Optionally builds a detailed message showing the evaluation process if StringBuilder is provided.
+		/// Pass NULL for messageBuilder during batch validation for maximum performance.
+		/// </summary>
+		private static bool EvaluateValidationModels(List<ValidationModel> activeOperations, List<Item> items, Dictionary<int, Group> activeGroups, StringBuilder messageBuilder = null)
+		{
+			if (items is not { Count: > 0 }) return true;
+			if (activeOperations is not { Count: > 0 }) return true;
+
+			// Evaluate first operation to initialize result
+			var firstOperation = activeOperations[0];
+			if (!activeGroups.TryGetValue(firstOperation.GroupId, out var firstGroup) || firstGroup == null)
+			{
+				// Invalid group - should not happen if validation passed, but handle gracefully
+				return true;
+			}
+
+			bool result = EvaluateSingleOperation(firstOperation, items, firstGroup, messageBuilder);
+
+			// Process remaining operations, combining results with GroupLevelOperators
+			for (int i = 1; i < activeOperations.Count; i++)
+			{
+				var currentOperation = activeOperations[i];
+				var previousOperation = activeOperations[i - 1];
+
+				// Get the group for current operation
+				if (!activeGroups.TryGetValue(currentOperation.GroupId, out var currentGroup) || currentGroup == null)
+				{
+					continue; // Skip operations with invalid groups
+				}
+
+				// Add operator to message before evaluating next operation
+				if (messageBuilder != null && previousOperation.GroupLevelOperator.HasValue)
+				{
+					messageBuilder.Append(' ');
+					messageBuilder.Append(previousOperation.GroupLevelOperator.Value.GetDescription());
+					messageBuilder.Append("\r\n\r\n");
+				}
+
+				// Evaluate current operation
+				bool currentResult = EvaluateSingleOperation(currentOperation, items, currentGroup, messageBuilder);
+
+				// Combine with accumulated result using operator from PREVIOUS operation
+				// (operator is stored on the operation that comes before the next one)
+				result = CombineOperationResults(result, previousOperation.GroupLevelOperator, currentResult);
+			}
+
+			// Add final result to message
+			if (messageBuilder != null)
+			{
+				messageBuilder.Append("\r\n\r\n");
+				messageBuilder.Append(" => ");
+				messageBuilder.Append(result ? "true" : "false");
+			}
+
+			return result;
+		}
+
+		private static bool EvaluateArithmeticOperation(MinMaxOperatorsEnum? arithOperator, double existingValue, double testValue)
+		{
+			return arithOperator switch
+			{
+				MinMaxOperatorsEnum.Greater => existingValue > testValue,
+				MinMaxOperatorsEnum.GreaterEqual => existingValue >= testValue,
+				MinMaxOperatorsEnum.Equal => existingValue == testValue,
+				MinMaxOperatorsEnum.Less => existingValue < testValue,
+				MinMaxOperatorsEnum.LessEqual => existingValue <= testValue,
+				_ => false,
+			};
+		}
+
+		/// <summary>
+		/// Evaluates the arithmetic expression for a group across a single item's stats.
+		/// Example: If group has [MaxLife, Armour, Spirit] with operators [*, +], 
+		/// this computes: MaxLife * Armour + Spirit
+		/// </summary>
+		private static double EvaluateGroupExpression(Group group, ImmutableDictionary<string, object> itemStats)
+		{
+			if (group?.Stats is not { Count: > 0 }) return 0.0;
+
+			// Start with first stat value (defaults to 0 if missing)
+			double result = itemStats.TryGetValue(group.Stats[0].PropertyName, out var initialStat)
+				? Convert.ToDouble(initialStat)
+				: 0.0;
+
+			// Apply each operator successively to build the expression result
+			for (int i = 1; i < group.Stats.Count; i++)
+			{
+				double nextValue = itemStats.TryGetValue(group.Stats[i].PropertyName, out var nextStat)
+					? Convert.ToDouble(nextStat)
+					: 0.0;
+
+				result = group.Stats[i - 1].Operator switch
+				{
+					ArithmeticOperationsEnum.Sum => result + nextValue,
+					ArithmeticOperationsEnum.Diff => result - nextValue,
+					ArithmeticOperationsEnum.Mult => result * nextValue,
+					ArithmeticOperationsEnum.Div => nextValue != 0.0 ? result / nextValue : result,
+					_ => result
+				};
+			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Checks if a computed value satisfies the Min/Max constraints of a validation operation.
+		/// </summary>
+		private static bool CheckValueAgainstConstraints(ValidationModel validation, double value)
+		{
+			bool minSatisfied = true;
+			bool maxSatisfied = true;
+
+			// Check minimum constraint if present
+			if (validation.MinValue.HasValue && validation.MinOperator.HasValue)
+			{
+				minSatisfied = EvaluateArithmeticOperation(
+					validation.MinOperator.Value,
+					value,
+					validation.MinValue.Value);
+			}
+
+			// Check maximum constraint if present
+			if (validation.MaxValue.HasValue && validation.MaxOperator.HasValue)
+			{
+				maxSatisfied = EvaluateArithmeticOperation(
+					validation.MaxOperator.Value,
+					value,
+					validation.MaxValue.Value);
+			}
+
+			// Combine min and max results if both are present
+			if (validation.MinValue.HasValue && validation.MaxValue.HasValue && validation.MinMaxOperator.HasValue)
+			{
+				return validation.MinMaxOperator.Value switch
+				{
+					MinMaxCombinedOperatorsEnum.AND => minSatisfied && maxSatisfied,
+					MinMaxCombinedOperatorsEnum.OR => minSatisfied || maxSatisfied,
+					_ => minSatisfied && maxSatisfied // Default to AND
+				};
+			}
+
+			// If only one constraint present, return that result
+			return minSatisfied && maxSatisfied;
+		}
+
+		/// <summary>
+		/// Evaluates a single validation operation against the item list.
+		/// Dispatches to the appropriate validation type handler.
+		/// Optionally builds a detailed message if StringBuilder is provided.
+		/// </summary>
+		private static bool EvaluateSingleOperation(ValidationModel operation, List<Item> items, Group group, StringBuilder messageBuilder)
+		{
+			if (group?.Stats is not { Count: > 0 }) return true;
+			if (items is not { Count: > 0 }) return true;
+
+			// Pre-compute all item stat dictionaries once for efficiency
+			var itemStatsDicts = items
+				.Select(item => ItemStatsHelper.ToDictionary(item.ItemStats))
+				.ToList();
+
+			// Perform evaluation
+			bool result = operation.ValidationType switch
+			{
+				ValidationTypeEnum.EachItem => EvaluateEachItem(operation, itemStatsDicts, group),
+				ValidationTypeEnum.SumALL => EvaluateSumAll(operation, itemStatsDicts, group),
+				ValidationTypeEnum.AtLeast => EvaluateAtLeast(operation, itemStatsDicts, group, items.Count),
+				ValidationTypeEnum.AtMost => EvaluateAtMost(operation, itemStatsDicts, group, items.Count),
+				_ => true
+			};
+
+			// Build message if requested
+			if (messageBuilder != null)
+			{
+				messageBuilder.Append("((");
+				messageBuilder.Append(FormatGroupExpression(group));
+				messageBuilder.Append(") ");
+				messageBuilder.Append(FormatConstraints(operation));
+				messageBuilder.Append(" for ");
+				messageBuilder.Append(FormatValidationType(operation));
+				messageBuilder.Append("\r\n\t\t => ");
+				messageBuilder.Append(result ? "true" : "false");
+				messageBuilder.Append(')');
+			}
+
+			return result;
+		}
+
+		/// <summary>
+		/// Validates that EVERY item in the list satisfies the constraints.
+		/// Returns false as soon as one item fails (early exit optimization).
+		/// </summary>
+		private static bool EvaluateEachItem(ValidationModel operation, List<ImmutableDictionary<string, object>> itemStatsDicts, Group group)
+		{
+			foreach (var itemStats in itemStatsDicts)
+			{
+				double value = EvaluateGroupExpression(group, itemStats);
+				if (!CheckValueAgainstConstraints(operation, value))
+				{
+					return false; // Early exit on first failure
+				}
+			}
+			return true;
+		}
+
+		/// <summary>
+		/// Validates that the SUM of all items' computed values satisfies the constraints.
+		/// </summary>
+		private static bool EvaluateSumAll(ValidationModel operation, List<ImmutableDictionary<string, object>> itemStatsDicts, Group group)
+		{
+			double sum = 0.0;
+			foreach (var itemStats in itemStatsDicts)
+			{
+				sum += EvaluateGroupExpression(group, itemStats);
+			}
+			return CheckValueAgainstConstraints(operation, sum);
+		}
+
+		/// <summary>
+		/// Validates that AT LEAST N (or N%) items satisfy the constraints.
+		/// Optimized for common cases: 0% always true, 100% delegates to EachItem, early exit when threshold met.
+		/// </summary>
+		private static bool EvaluateAtLeast(ValidationModel operation, List<ImmutableDictionary<string, object>> itemStatsDicts, Group group, int totalItemCount)
+		{
+			if (totalItemCount == 0) return true;
+
+			// Calculate threshold (handling both absolute count and percentage)
+			double threshold;
+			if (operation.NumberOfItemsAsPercentage)
+			{
+				// Clamp percentage to valid range for safety
+				double percentage = Math.Clamp(operation.NumberOfItems, 0, 100);
+				threshold = totalItemCount * percentage / 100.0;
+			}
+			else
+			{
+				threshold = operation.NumberOfItems;
+			}
+
+			// Optimize: 0 threshold means "at least 0 items" - always true
+			if (threshold <= 0.0) return true;
+
+			// Optimize: threshold >= total means all items must satisfy
+			if (threshold >= totalItemCount)
+			{
+				return EvaluateEachItem(operation, itemStatsDicts, group);
+			}
+
+			// Count items satisfying constraints
+			int satisfyingCount = 0;
+			foreach (var itemStats in itemStatsDicts)
+			{
+				double value = EvaluateGroupExpression(group, itemStats);
+				if (CheckValueAgainstConstraints(operation, value))
+				{
+					satisfyingCount++;
+					// Early exit optimization: once threshold met, no need to check remaining
+					if (satisfyingCount >= threshold)
+					{
+						return true;
+					}
+				}
+			}
+
+			return satisfyingCount >= threshold;
+		}
+
+		/// <summary>
+		/// Validates that AT MOST N (or N%) items satisfy the constraints.
+		/// Optimized for common cases: 100% always true, 0% means no items can satisfy, early exit when threshold exceeded.
+		/// </summary>
+		private static bool EvaluateAtMost(ValidationModel operation, List<ImmutableDictionary<string, object>> itemStatsDicts, Group group, int totalItemCount)
+		{
+			if (totalItemCount == 0) return true;
+
+			// Calculate threshold (handling both absolute count and percentage)
+			double threshold;
+			if (operation.NumberOfItemsAsPercentage)
+			{
+				// Clamp percentage to valid range for safety
+				double percentage = Math.Clamp(operation.NumberOfItems, 0, 100);
+				threshold = totalItemCount * percentage / 100.0;
+			}
+			else
+			{
+				threshold = operation.NumberOfItems;
+			}
+
+			// Optimize: threshold >= total means all items can satisfy - always true
+			if (threshold >= totalItemCount) return true;
+
+			// Optimize: 0 threshold means no items should satisfy
+			if (threshold <= 0)
+			{
+				foreach (var itemStats in itemStatsDicts)
+				{
+					double value = EvaluateGroupExpression(group, itemStats);
+					if (CheckValueAgainstConstraints(operation, value))
+					{
+						return false; // Found one that satisfies - fails "at most 0"
+					}
+				}
+				return true;
+			}
+
+			// Count items satisfying constraints
+			int satisfyingCount = 0;
+			foreach (var itemStats in itemStatsDicts)
+			{
+				double value = EvaluateGroupExpression(group, itemStats);
+				if (CheckValueAgainstConstraints(operation, value))
+				{
+					satisfyingCount++;
+					// Early exit optimization: once exceeded, no need to check remaining
+					if (satisfyingCount > threshold)
+					{
+						return false;
+					}
+				}
+			}
+
+			return satisfyingCount <= threshold;
+		}
+
+		/// <summary>
+		/// Combines two boolean results using the specified logical operator (AND/OR/XOR).
+		/// </summary>
+		private static bool CombineOperationResults(bool leftResult, GroupLevelOperatorsEnum? op, bool rightResult)
+		{
+			if (!op.HasValue) return leftResult;
+
+			return op.Value switch
+			{
+				GroupLevelOperatorsEnum.AND => leftResult && rightResult,
+				GroupLevelOperatorsEnum.OR => leftResult || rightResult,
+				GroupLevelOperatorsEnum.XOR => leftResult ^ rightResult,
+				_ => leftResult
+			};
+		}
+
+		#endregion
+
+		#region Validation Function Text Output
+
+		/// <summary>
+		/// Formats a group's arithmetic expression as a human-readable string.
+		/// Example: "MaxLife * Armour + Spirit"
+		/// </summary>
+		private static string FormatGroupExpression(Group group)
+		{
+			if (group?.Stats is not { Count: > 0 }) return "EMPTY_GROUP";
+
+			var parts = new List<string> { group.Stats[0].PropertyName };
+
+			for (int i = 1; i < group.Stats.Count; i++)
+			{
+				string operatorSymbol = group.Stats[i - 1].Operator?.GetDescription() ?? "+";
+				parts.Add(operatorSymbol);
+				parts.Add(group.Stats[i].PropertyName);
+			}
+
+			return string.Join(" ", parts);
+		}
+
+		/// <summary>
+		/// Formats a validation type with its parameters as a human-readable string.
+		/// Examples: "AT_LEAST 50% ITEMS", "SUM_ALL", "EACH_ITEM"
+		/// </summary>
+		private static string FormatValidationType(ValidationModel operation)
+		{
+			return operation.ValidationType switch
+			{
+				ValidationTypeEnum.EachItem => "EACH_ITEM",
+				ValidationTypeEnum.SumALL => "SUM_ALL",
+				ValidationTypeEnum.AtLeast when operation.NumberOfItemsAsPercentage
+					=> $"AT_LEAST {operation.NumberOfItems}% ITEMS",
+				ValidationTypeEnum.AtLeast
+					=> $"AT_LEAST {operation.NumberOfItems} ITEMS",
+				ValidationTypeEnum.AtMost when operation.NumberOfItemsAsPercentage
+					=> $"AT_MOST {operation.NumberOfItems}% ITEMS",
+				ValidationTypeEnum.AtMost
+					=> $"AT_MOST {operation.NumberOfItems} ITEMS",
+				_ => "UNKNOWN"
+			};
+		}
+
+		/// <summary>
+		/// Formats the Min/Max constraints as a human-readable string.
+		/// Handles BETWEEN, NOT BETWEEN, and single constraints.
+		/// Examples: "BETWEEN 10.00 AND 50.00", "NOT BETWEEN 10.00 AND 50.00", ">= 50.00", "< 100.00"
+		/// </summary>
+		private static string FormatConstraints(ValidationModel operation)
+		{
+			bool hasMin = operation.MinValue.HasValue && operation.MinOperator.HasValue;
+			bool hasMax = operation.MaxValue.HasValue && operation.MaxOperator.HasValue;
+
+			// Single constraint cases
+			if (hasMin && !hasMax)
+			{
+				return $"{operation.MinOperator.Value.GetDescription()} {operation.MinValue.Value:F2}";
+			}
+
+			if (!hasMin && hasMax)
+			{
+				return $"{operation.MaxOperator.Value.GetDescription()} {operation.MaxValue.Value:F2}";
+			}
+
+			if (!hasMin && !hasMax)
+			{
+				return "NO_CONSTRAINTS";
+			}
+
+			// Both min and max present - check for BETWEEN/NOT BETWEEN patterns
+			var minOp = operation.MinOperator.Value;
+			var maxOp = operation.MaxOperator.Value;
+			var minVal = operation.MinValue.Value;
+			var maxVal = operation.MaxValue.Value;
+			var combinedOp = operation.MinMaxOperator ?? MinMaxCombinedOperatorsEnum.AND;
+
+			// Detect if min/max operators form a range (for BETWEEN)
+			bool minIsLowerBound = minOp is MinMaxOperatorsEnum.Greater or MinMaxOperatorsEnum.GreaterEqual;
+			bool maxIsUpperBound = maxOp is MinMaxOperatorsEnum.Less or MinMaxOperatorsEnum.LessEqual;
+
+			// AND operator with range operators → BETWEEN
+			if (combinedOp == MinMaxCombinedOperatorsEnum.AND && minIsLowerBound && maxIsUpperBound)
+			{
+				// Determine if inclusive or exclusive
+				bool minInclusive = minOp == MinMaxOperatorsEnum.GreaterEqual;
+				bool maxInclusive = maxOp == MinMaxOperatorsEnum.LessEqual;
+
+				if (minInclusive && maxInclusive)
+				{
+					return $"BETWEEN {minVal:F2} AND {maxVal:F2}";
+				}
+				else if (!minInclusive && !maxInclusive)
+				{
+					return $"BETWEEN {minVal:F2} AND {maxVal:F2} (exclusive)";
+				}
+				else if (minInclusive && !maxInclusive)
+				{
+					return $"BETWEEN {minVal:F2} AND {maxVal:F2} (exclusive max)";
+				}
+				else // !minInclusive && maxInclusive
+				{
+					return $"BETWEEN {minVal:F2} AND {maxVal:F2} (exclusive min)";
+				}
+			}
+
+			// OR operator with opposite range operators → NOT BETWEEN
+			// Pattern: (X <= minVal OR X >= maxVal) means "not between minVal and maxVal"
+			bool minIsUpperBound = minOp is MinMaxOperatorsEnum.Less or MinMaxOperatorsEnum.LessEqual;
+			bool maxIsLowerBound = maxOp is MinMaxOperatorsEnum.Greater or MinMaxOperatorsEnum.GreaterEqual;
+
+			if (combinedOp == MinMaxCombinedOperatorsEnum.OR && minIsUpperBound && maxIsLowerBound)
+			{
+				// For NOT BETWEEN, we need to swap the values (min becomes max, max becomes min)
+				bool minInclusive = minOp == MinMaxOperatorsEnum.LessEqual;
+				bool maxInclusive = maxOp == MinMaxOperatorsEnum.GreaterEqual;
+
+				if (minInclusive && maxInclusive)
+				{
+					return $"NOT BETWEEN {minVal:F2} AND {maxVal:F2}";
+				}
+				else if (!minInclusive && !maxInclusive)
+				{
+					return $"NOT BETWEEN {minVal:F2} AND {maxVal:F2} (exclusive)";
+				}
+				else
+				{
+					// Mixed inclusive/exclusive for NOT BETWEEN is unusual, show explicitly
+					return $"{minOp.GetDescription()} {minVal:F2} OR {maxOp.GetDescription()} {maxVal:F2}";
+				}
+			}
+
+			// Not a standard BETWEEN/NOT BETWEEN pattern, show both constraints explicitly
+			string minPart = $"{minOp.GetDescription()} {minVal:F2}";
+			string maxPart = $"{maxOp.GetDescription()} {maxVal:F2}";
+			string opStr = combinedOp.GetDescription();
+			return $"{minPart} {opStr} {maxPart}";
+		}
+
+		/// <summary>
+		/// Tests the validation logic on a single combination and returns both the result and a detailed message.
+		/// Useful for debugging and understanding what the validator does.
+		/// </summary>
+		public (bool IsValid, string Message) TestValidationFunctionTranslation(List<Item> items)
+		{
+			if (items == null || items.Count == 0) return (false, "There are no items present.");
+
+			var (isValid, message) = CheckInvalidSelectedGroupsOrOperations();
+			if (!isValid) return (false, message);
+
+			var groups = _groups.ToDictionary(g => g.GroupId, g => g); // all groups presumed active due to CheckInactiveSelectedGroupsOrOperations() method
+			var operations = BuildValidationModels();
+
+			if (groups.Count == 0 || operations.Count == 0) return (true, "NO_CONSTRAINTS");
+
+			var messageBuilder = new StringBuilder();
+			bool result = EvaluateValidationModels(operations, items, groups, messageBuilder);
+			return (true, messageBuilder.ToString());
+		}
+
+		#endregion
+
+		private void ButtonLoadConfig_Click(object sender, EventArgs e)
+		{
+			if (!_configManager.JSONHasConfigData(ConfigSections.Validator))
+			{
+				CustomMessageBox.Show(
+					"No validator configuration data available in memory.\r\n\r\nPlease load a configuration file from the main window first.",
+					"No Data",
+					MessageBoxButtons.OK,
+					MessageBoxIcon.Information);
+				return;
+			}
+
+			var validatorConfig = _configManager.GetConfigData(ConfigSections.Validator);
+			if (validatorConfig == null) return;
+
+			// Prevent flicker by hiding form during import
+			bool wasVisible = this.Visible;
+			try
+			{
+				if (wasVisible) this.Visible = false;
+				ImportConfig(validatorConfig);
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, "Load Validator Configuration");
+			}
+			finally
+			{
+				if (wasVisible) this.Visible = true;
+			}
+		}
+	}
 }

@@ -4,6 +4,8 @@ namespace Domain.Static
 {
 	public static class Constants
 	{
+		public const string CURRENT_VERSION = "1.0.0";
+
 		public const string ITEM_IS_MINE_TAG = "(MINE)";
 		public const string ITEM_HAS_POTENTIAL_TAG = "(POTENTIAL)";
 		public const string ITEM_CLASS_TAG = "Item Class:";
@@ -13,7 +15,8 @@ namespace Domain.Static
 		public const string DEFAULT_DESCRIPTION = "NONE";
 		public const string TOTAL_TIERS_WEIGHT_SUFFIX = @" %";
 		public const string DOUBLE_NUMBER_FORMAT = "0.00";
-		public readonly static ImmutableList<string> ITEM_CLASSES =
+
+		public static readonly ImmutableList<string> ITEM_CLASSES =
 		[
 			"Claw",
 			"Dagger",
@@ -46,48 +49,62 @@ namespace Domain.Static
 			"Ring"
 		];
 
-		public static readonly ImmutableArray<string> MATH_OPERATORS = ["+", "-", "*", "/"];
-		public static readonly ImmutableArray<string> LOGICAL_OPERATORS = ["AND", "OR", "XOR"];
+		public const string VALIDATOR_HELP_TEXT = @"=== CUSTOM VALIDATOR INFORMATION ===
 
-		public const string VALIDATOR_HELP_TEXT = @"=== ORDER OF OPERATIONS ===
+---------------------------------------------------------------------------
+WITHIN A GROUP (list of item stats with operators):
+---------------------------------------------------------------------------
 
-WITHIN A GROUP (Stats):
 Stats are evaluated LEFT-TO-RIGHT in the order they appear.
 Example: If you have:
-  • MaxLife (+)
-  • Armour% (-)
-  • Spirit (*)
-  • next_stat
+	• MaxLife (+)
+	• Armour% (-)
+	• Spirit (*)
+	• next_stat
 
-Calculation: ((MaxLife + Armour%) - Spirit) * next_stat
+The computation will be: ((MaxLife + Armour%) - Spirit) * next_stat
 This is LEFT-ASSOCIATIVE evaluation.
 
-To control order:
-1. Reorder stats using ▲▼ buttons
-2. First stat evaluated first
-3. Each operator applies between result and next stat
+To control order of item stats' evaluation:
+	1. Reorder stats using ▲▼ buttons
+	2. First stat evaluated first
+	3. Each operator applies between result and next stat
 
-BETWEEN GROUPS:
-Groups evaluated in grid order (left→right, top→bottom).
-Each group produces TRUE/FALSE based on Min/Max constraints.
+---------------------------------------------------------------------------
+OPERATIONS BETWEEN GROUPS:
+---------------------------------------------------------------------------
 
-Results combined using group operators (AND/OR/XOR):
-  • AND: Both groups must pass
-  • OR: At least one group must pass  
-  • XOR: Exactly one group must pass
+Group operations are evaluated in order, top to bottom.
+Each operation must have one group selected, to be applied to.
+You can have more operations, thus using some of the groups multiple times.
+
+Group-level operators are used to link operations (AND/OR/XOR):
+	• AND: Both group operations must pass
+	• OR: At least one group operation must pass  
+	• XOR: Exactly one group operation must pass
 
 Example with 3 groups:
-  Group1 (TRUE) → AND
-  Group2 (FALSE) → OR
-  Group3 (TRUE)
+	Group1 (TRUE) → AND
+	Group2 (FALSE) → OR
+	Group3 (TRUE)
 
-Evaluation: (TRUE AND FALSE) OR TRUE = FALSE OR TRUE = TRUE
+The group operations' evaluation is also left-associative: (TRUE AND FALSE) OR TRUE = FALSE OR TRUE = TRUE
 
+To control the order of group operations (if you need to swap operations X and Y and don't care to remember their values):
+	1. Create a new operation, Z, identical to X.
+	2. Change the values and group of X to match Y.
+	3. Change Y to match Z.
+	4. Delete Z.
+	4. Each group-level operator applies between one operation's result and next's.
+
+---------------------------------------------------------------------------
 CONSTRAINTS:
-Each group sums all item stats per its expression,
-then checks if sum is within Min/Max bounds.
-
-Min/Max can be 0 or negative.
-At least one constraint (Min OR Max) must be enabled.";
+---------------------------------------------------------------------------
+- Each group must have at least one item stat chosen;
+- Each group operation must have a valid group selected;
+- Each group operation must have at least the Min or Max checkbox set;
+- When 'as percentage' checkbox is set, for the 'At least' and 'At most' validation types, 
+  the value for the number of items must be between 0 and 100.
+";
 	}
 }

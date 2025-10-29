@@ -1,18 +1,24 @@
-﻿using Domain.Helpers;
+﻿using System.ComponentModel;
+using System.Data;
+using System.Reflection;
+
+using Domain.Enums;
+using Domain.HelperForms;
+using Domain.Helpers;
 using Domain.Main;
 using Domain.Static;
 
-using System.ComponentModel;
-using System.Data;
-using System.Reflection;
+using Manager;
 
 using TextBox = System.Windows.Forms.TextBox;
 using Timer = System.Windows.Forms.Timer;
 
 namespace PoE2BuildCalculator
 {
-	public partial class TierManager : Form
+	public partial class TierManager : BaseForm, IConfiguration
 	{
+		public event EventHandler TiersChanged;
+
 		private double _totalTierWeight => _bindingTiers.Sum(t => t.TierWeight);
 
 		private Color _validationBackColorSuccess;
@@ -30,8 +36,11 @@ namespace PoE2BuildCalculator
 		private readonly Color _tierWeightTextColor = Color.Blue;
 		private readonly Color _tierWeightBackColor = Color.Wheat;
 
+		private readonly ConfigurationManager _configManager;
 		private readonly BindingList<Tier> _bindingTiers = [];
 		private readonly IReadOnlyList<ItemStatsHelper.StatDescriptor> _itemStatsDescriptors;
+		private Dictionary<string, int> _statToTierMapping = new(StringComparer.OrdinalIgnoreCase);
+		private readonly object _validationLock = new();
 
 		private readonly StringFormat _cellPaintingStringFormat = new()
 		{
@@ -55,16 +64,45 @@ namespace PoE2BuildCalculator
 			FormatProvider = System.Globalization.CultureInfo.InvariantCulture
 		};
 
-		public TierManager()
+		public TierManager(ConfigurationManager configManager)
 		{
+			ArgumentNullException.ThrowIfNull(configManager);
+			_configManager = configManager;
 			_itemStatsDescriptors = ItemStatsHelper.GetStatDescriptors();
 			InitializeComponent();
 		}
 
 		public List<Tier> GetTiers()
 		{
-			return [.. _bindingTiers.OrderBy(t => t.TierId)];
+			return [.. _bindingTiers];
 		}
+
+		#region JSON import - export
+
+		public bool HasData => _bindingTiers.Count > 0;
+
+		public object ExportConfig() => ExportTiers();
+
+		public void ImportConfig(object data)
+		{
+			if (data is not List<Tier> tiers) return;
+			ImportTiers(tiers);
+		}
+
+		public List<Tier> ExportTiers() => [.. _bindingTiers];
+
+		public void ImportTiers(List<Tier> tiers)
+		{
+			_bindingTiers.Clear();
+			foreach (var tier in tiers) _bindingTiers.Add(tier);
+
+			RefreshTierIds();
+			SetTotalTierWeights();
+			TiersChanged?.Invoke(this, EventArgs.Empty);
+		}
+
+		#endregion
+
 		private void TierManager_Load(object sender, EventArgs e)
 		{
 			this.AutoSize = false; // Turn off AutoSize so the form can be sized by code.
@@ -81,6 +119,12 @@ namespace PoE2BuildCalculator
 			this.TextboxTotalTierWeights.ForeColor = this.TextboxTotalTierWeights.ForeColor;
 
 			SetTotalTierWeights();
+
+			// Enable double buffering for smoother rendering
+			SetStyle(ControlStyles.OptimizedDoubleBuffer |
+					 ControlStyles.AllPaintingInWmPaint |
+					 ControlStyles.UserPaint, true);
+			UpdateStyles();
 		}
 		private void AddTierButton_Click(object sender, EventArgs e)
 		{
@@ -102,6 +146,8 @@ namespace PoE2BuildCalculator
 			SetTotalTierWeights();
 
 			if (TableTiers.RowCount > 0) TableTiers.FirstDisplayedScrollingRowIndex = TableTiers.RowCount - 1;
+
+			TiersChanged?.Invoke(this, EventArgs.Empty);
 		}
 		private void RemoveTierButton_Click(object sender, EventArgs e)
 		{
@@ -116,6 +162,14 @@ namespace PoE2BuildCalculator
 				_flashTimer?.Dispose();
 			}
 			catch { }
+
+			if (e.CloseReason == CloseReason.UserClosing)
+			{
+				e.Cancel = true;
+				this.Hide();
+				this.Owner?.BringToFront();
+				return;
+			}
 
 			// Detach handlers that Designer may have attached in InitializeComponent
 			try
@@ -139,7 +193,18 @@ namespace PoE2BuildCalculator
 		{
 			StartFlashingIfNeeded();
 		}
-
+		private void ButtonHide_Click(object sender, EventArgs e)
+		{
+			ButtonHide.CausesValidation = true;
+			this.Hide();
+			this.Owner?.BringToFront();
+		}
+		private void ButtonClose_Click(object sender, EventArgs e)
+		{
+			ButtonClose.CausesValidation = false;
+			components?.Dispose();
+			this.Dispose();
+		}
 
 
 
@@ -150,9 +215,7 @@ namespace PoE2BuildCalculator
 			var grid = (DataGridView)sender;
 			if (!grid.IsCurrentCellDirty || e.ColumnIndex <= 1 || e.ColumnIndex >= grid.Columns.Count || e.RowIndex < 0 || e.RowIndex >= _bindingTiers.Count || e.RowIndex >= grid.Rows.Count) return; // Skip validation if the cell is not dirty or for non-editable columns
 
-			//var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
 			var (isValid, errorMessage) = ValidateAndCommitTierData(e.RowIndex, e.ColumnIndex, e.FormattedValue);
-
 			if (!isValid)
 			{
 				grid.Rows[e.RowIndex].ErrorText = errorMessage;
@@ -201,7 +264,7 @@ namespace PoE2BuildCalculator
 
 		private void TableTiers_KeyDown(object sender, KeyEventArgs e)
 		{
-			if (e.KeyCode == Keys.Enter || e.KeyCode == Keys.Return)
+			if (e.KeyCode is Keys.Enter or Keys.Return)
 			{
 				// This is the key change: we use BeginInvoke to ensure the edit starts after the KeyDown event has been fully processed.
 				// This is a more robust way to trigger edit mode manually.
@@ -232,7 +295,7 @@ namespace PoE2BuildCalculator
 			var grid = (DataGridView)sender;
 			var cell = grid.Rows[e.RowIndex].Cells[e.ColumnIndex];
 			bool isCurrentCell = grid.CurrentCell != null && grid.CurrentCell.RowIndex == e.RowIndex && grid.CurrentCell.ColumnIndex == e.ColumnIndex;
-			bool isTierWeightColumn = string.Equals(grid.Columns[e.ColumnIndex].Name, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase);
+			bool isTierWeightColumn = string.Equals(grid.Columns[e.ColumnIndex].DataPropertyName, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase);
 
 			Color backColor = Color.Empty;
 			bool isColorSet = false;
@@ -358,42 +421,46 @@ namespace PoE2BuildCalculator
 				return (false, "Please enter a valid floating point number.");
 			}
 
-			if (value < 0.00d || value > 100.00d)
+			if (value is < 0.00d or > 100.00d)
 			{
 				return (false, "The value of the weight needs to be between 0.00 and 100.00");
 			}
 
-			var tier = _bindingTiers[rowIndex];
-			var columnName = TableTiers.Columns[colIndex].Name;
-
-			if (string.Equals(columnName, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase))
+			lock (_validationLock)
 			{
-				if (_totalTierWeight - tier.TierWeight + value > 100.00d)
+				var tier = _bindingTiers[rowIndex];
+				var columnName = TableTiers.Columns[colIndex].DataPropertyName;
+
+				if (string.Equals(columnName, nameof(Tier.TierWeight), StringComparison.OrdinalIgnoreCase))
 				{
-					return (false, $"The total value of tier weights cannot exceed 100%. Attempted value: {_totalTierWeight - tier.TierWeight + value}");
+					if (_totalTierWeight - tier.TierWeight + value > 100.00d)
+					{
+						return (false, $"The total value of tier weights cannot exceed 100%. Attempted value: {_totalTierWeight - tier.TierWeight + value}");
+					}
+
+					tier.TierWeight = value;
+					SetTotalTierWeights();
+					TableStatsWeightSum.Refresh();
+				}
+				else // It's a StatWeight
+				{
+					if (tier.TotalStatWeight - tier.StatWeights[columnName] + value > 100.00d)
+					{
+						return (false, $"The total value of stats' weights for '{tier.TierName}' (ID: {tier.TierId}) cannot exceed 100%. Attempted value: {tier.TotalStatWeight - tier.StatWeights[columnName] + value}");
+					}
+					else if (value > 0.0d)
+					{
+						var (isValid, rowIndexOther) = ValidateNoStatWeightDuplication(rowIndex, columnName);
+						if (!isValid) return (false, $"You cannot set the weight, for the same stat, in more than one tier. Stat name: {columnName}; Other tier: {_bindingTiers[rowIndexOther].TierName}");
+					}
+
+					tier.SetStatWeight(columnName, value);
+					if (value > 0.0d) _statToTierMapping[columnName] = rowIndex; else _statToTierMapping.Remove(columnName);
+					TableStatsWeightSum.Refresh();
 				}
 
-				tier.TierWeight = value;
-				SetTotalTierWeights();
-				TableStatsWeightSum.Refresh();
+				return (true, string.Empty); // Validation and commit successful 
 			}
-			else // It's a StatWeight
-			{
-				if (tier.TotalStatWeight - tier.StatWeights[columnName] + value > 100.00d)
-				{
-					return (false, $"The total value of stats' weights for '{tier.TierName}' (ID: {tier.TierId}) cannot exceed 100%. Attempted value: {tier.TotalStatWeight - tier.StatWeights[columnName] + value}");
-				}
-				else
-				{
-					var (isValid, rowIndexOther) = ValidateNoStatWeightDuplication(rowIndex, columnName);
-					if (!isValid) return (false, $"You cannot set the weight, for the same stat, in more than one tier. Stat name: {columnName}; Other tier: {_bindingTiers[rowIndexOther].TierName}");
-				}
-
-				tier.SetStatWeight(columnName, value);
-				TableStatsWeightSum.Refresh();
-			}
-
-			return (true, string.Empty); // Validation and commit successful
 		}
 
 		private Color GetCellEditBackColor(DataGridView grid, int rowIndex, bool isEditing, bool isSelected)
@@ -549,6 +616,7 @@ namespace PoE2BuildCalculator
 
 				RefreshTierIds();
 				SetTotalTierWeights();
+				TiersChanged?.Invoke(this, EventArgs.Empty);
 			}
 		}
 
@@ -645,10 +713,7 @@ namespace PoE2BuildCalculator
 				RemoveSelectedGridRows();
 			};
 
-			addItem.Click += (s, e) =>
-			{
-				AddTierButton_Click(s, e);
-			};
+			addItem.Click += AddTierButton_Click;
 
 			contextMenu.Items.AddRange([addItem, deleteItem]);
 			TableTiers.ContextMenuStrip = contextMenu;
@@ -713,6 +778,7 @@ namespace PoE2BuildCalculator
 
 			if (!double.TryParse(raw, out double value) || value <= 80.00d) return;
 
+			// ✅ Only create timer if it doesn't exist
 			if (_flashTimer == null)
 			{
 				_originalBackColor = TextboxTotalTierWeights.BackColor;
@@ -724,8 +790,14 @@ namespace PoE2BuildCalculator
 				_flashTimer.Tick += FlashTimer_Tick;
 			}
 
+			// ✅ Always reset start time and restart (whether new or existing timer)
 			_flashStartTime = DateTime.Now;
-			_flashTimer.Start();
+
+			// ✅ Restart the timer (safe to call even if already running)
+			if (!_flashTimer.Enabled)
+			{
+				_flashTimer.Start();
+			}
 		}
 
 		private void FlashTimer_Tick(object sender, EventArgs e)
@@ -747,13 +819,7 @@ namespace PoE2BuildCalculator
 
 		private (bool isValid, int rowIndexOther) ValidateNoStatWeightDuplication(int rowIndexToExclude, string statName)
 		{
-			for (int i = 0; i < _bindingTiers.Count; i++)
-			{
-				if (i != rowIndexToExclude && _bindingTiers[i].StatWeights.TryGetValue(statName, out double value) && value > 0.0d)
-				{
-					return (false, i);
-				}
-			}
+			if (_statToTierMapping.TryGetValue(statName, out int existingRow) && existingRow != rowIndexToExclude) return (false, existingRow);
 
 			return (true, -1);
 		}
@@ -780,5 +846,37 @@ namespace PoE2BuildCalculator
 		}
 
 		#endregion
+
+		private void ButtonLoadConfig_Click(object sender, EventArgs e)
+		{
+			if (!_configManager.JSONHasConfigData(ConfigSections.Tiers))
+			{
+				CustomMessageBox.Show(
+					"No tier configuration data available in memory.\r\n\r\nPlease load a configuration file from the main window first.",
+					"No Data",
+					MessageBoxButtons.OK,
+					MessageBoxIcon.Information);
+				return;
+			}
+
+			var tiersConfig = _configManager.GetConfigData(ConfigSections.Tiers);
+			if (tiersConfig == null) return;
+
+			// Prevent flicker by hiding form during import
+			bool wasVisible = this.Visible;
+			try
+			{
+				if (wasVisible) this.Visible = false;
+				ImportConfig(tiersConfig);
+			}
+			catch (Exception ex)
+			{
+				ErrorHelper.ShowError(ex, "Load Tier Configuration");
+			}
+			finally
+			{
+				if (wasVisible) this.Visible = true;
+			}
+		}
 	}
 }
