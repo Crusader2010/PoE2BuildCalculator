@@ -17,9 +17,10 @@
 7. Choose how many item combinations you want to retrieve. Current memory storage hard limit is 10 million for untiered combinations. Tiered combinations can be set in the UI (default = first 100).
 8. Compute and display the item combinations and score for each (based on the tiers you've set before).
 
-**Sample PoE 2 items file - large number of combinations possible:** [poe 2 items v2.txt](https://github.com/user-attachments/files/22846810/poe.2.items.v2.txt)
-**Sample PoE 2 items file - small number of combinations possible:** [poe 2 items.txt](https://github.com/user-attachments/files/23246634/poe.2.items.txt)
-**Sample json config file to load in the program:** [test config.json](https://github.com/user-attachments/files/23246635/test.config.json)
+**File samples - modify at will:**
+- Sample PoE2 items file 1 - large number of possible combinations: [poe 2 items v2.txt](https://github.com/user-attachments/files/22846810/poe.2.items.v2.txt)
+- Sample PoE2 items file 2 - small number of possible combinations: [poe 2 items.txt](https://github.com/user-attachments/files/23246634/poe.2.items.txt)
+- Sample json config file to load in the program: [test config.json](https://github.com/user-attachments/files/23246635/test.config.json)
 
 (**WIP:**): 
 1. Parsing enchant mods (and other similar ones) when computing the item lists, for certain stats (i.e. also account for the "+18% chaos resistance" enchant for body armour and add it to any existing explicit mod).
