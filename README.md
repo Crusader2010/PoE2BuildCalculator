@@ -1,4 +1,6 @@
-﻿**Project goal:** providing a way to compute the best item combinations, from a provided list, that match user defined validations and weighted tiers for the item stats.
+**Dependencies:** Download .NET 8 Desktop Runtimes (**x64 required**) from https://dotnet.microsoft.com/en-us/download/dotnet/8.0
+ 
+**Project goal:** providing a way to compute the best item combinations, from a provided list, that match user defined validations and weighted tiers for the item stats.
 
 **Steps:**
 1. Manually create a list (.txt file) with items from Path of Exile 2. I recommend using the browser extension "**PoE2 Trade Item Exporter**" on the ([official PoE2 trading website](https://www.pathofexile.com/trade2/search/poe2)).
