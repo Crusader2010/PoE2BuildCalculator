@@ -815,7 +815,7 @@ namespace PoE2BuildCalculator
 						_progressHelper.Token);
 				}, _progressHelper.Token);
 
-				if (tiers != null && tiers.Count > 0 && result.ValidCombinationsCollection.Count > 0)
+				if (tiers?.Count > 0 && result.ValidCombinationsCollection.Count > 0)
 				{
 					StatusBarLabel.Text = "Scoring combinations...";
 
@@ -912,6 +912,7 @@ namespace PoE2BuildCalculator
 				}
 
 				_combinations = result.ValidCombinationsCollection;
+				StatusBarLabel.Text = $"Complete! {result.ValidCombinations} valid combinations found" + (tiers?.Count > 0 ? " and scored." : ".");
 			}
 			catch (OperationCanceledException)
 			{
@@ -1035,9 +1036,7 @@ namespace PoE2BuildCalculator
 				summary.AppendLine($"NOTE: Only the first {_maxCombinationsToStore:N0} valid combinations were stored.");
 			}
 
-			// ✅ RESTORE THESE
 			TextboxDisplay.Text = summary.ToString();
-			StatusBarLabel.Text = $"Complete! {result.ValidCombinations} valid combinations found.";
 			this.ResumeLayout();
 
 			//CustomMessageBox.Show(summary.ToString(), "Generation Complete", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -1103,6 +1102,17 @@ namespace PoE2BuildCalculator
 				x.AppendColored(@"4. Press the (6) button to display the scored combinations and compare them.", Color.DarkGreen, false, true);
 
 			}, @"Help & Info", MessageBoxButtons.OK, MessageBoxIcon.Information, this);
+		}
+
+		private void ButtonClose_Click(object sender, EventArgs e)
+		{
+			try
+			{
+				this.Close();
+				this.Dispose();
+			}
+			catch { }
+			finally { Application.Exit(); }
 		}
 	}
 }

@@ -15,13 +15,13 @@
     {
         "Entry"
         {
-        "MsmKey" = "8:_22C94091100640DA8E4CFEE2B1488582"
+        "MsmKey" = "8:_137C93E913D54045A2C2508AC0783E85"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
         "Entry"
         {
-        "MsmKey" = "8:_2A33D38E6F4A43F0A896193A4EBCC817"
+        "MsmKey" = "8:_22C94091100640DA8E4CFEE2B1488582"
         "OwnerKey" = "8:_UNDEFINED"
         "MsmSig" = "8:_UNDEFINED"
         }
@@ -84,10 +84,15 @@
             "ComponentsUrl" = "8:"
                 "Items"
                 {
-                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:.NETFramework,Version=v4.7.2"
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:Microsoft.NetCore.CoreRuntime.8.0.x64"
                     {
-                    "Name" = "8:Microsoft .NET Framework 4.7.2 (x86 and x64)"
-                    "ProductCode" = "8:.NETFramework,Version=v4.7.2"
+                    "Name" = "8:.NET Runtime 8.0.21 (x64)"
+                    "ProductCode" = "8:Microsoft.NetCore.CoreRuntime.8.0.x64"
+                    }
+                    "{EDC2488A-8267-493A-A98E-7D9C3B36CDF3}:Microsoft.NetCore.DesktopRuntime.8.0.x64"
+                    {
+                    "Name" = "8:.NET Desktop Runtime 8.0.21 (x64)"
+                    "ProductCode" = "8:Microsoft.NetCore.DesktopRuntime.8.0.x64"
                     }
                 }
             }
@@ -150,7 +155,7 @@
         {
             "{3C67513D-01DD-4637-8A68-80971EB9504F}:_A1B6740F7D314192B0E3A6A95FE43259"
             {
-            "DefaultLocation" = "8:[ProgramFiles64Folder][Manufacturer]\\[ProductName]"
+            "DefaultLocation" = "8:C:\\[ProductName]"
             "Name" = "8:#1925"
             "AlwaysCreate" = "11:FALSE"
             "Condition" = "8:"
@@ -198,20 +203,20 @@
         {
         "Name" = "8:Microsoft Visual Studio"
         "ProductName" = "8:PoE 2 Build Calculator"
-        "ProductCode" = "8:{D81FF7B1-739B-4F4D-B4C7-269057CE5126}"
-        "PackageCode" = "8:{B48BD909-DBF7-4064-8706-F568C06879A4}"
-        "UpgradeCode" = "8:{B24FE177-8B34-4933-83E6-ACDBDA82B505}"
+        "ProductCode" = "8:{B9989611-ECF5-4629-BD65-00380395E582}"
+        "PackageCode" = "8:{1CD716CD-191F-4916-BBE5-CCD291581E3D}"
+        "UpgradeCode" = "8:{3705F237-BDED-4AAC-96DD-530C8D5FCAAC}"
         "AspNetVersion" = "8:4.0.30319.0"
         "RestartWWWService" = "11:FALSE"
         "RemovePreviousVersions" = "11:TRUE"
-        "DetectNewerInstalledVersion" = "11:TRUE"
-        "InstallAllUsers" = "11:FALSE"
-        "ProductVersion" = "8:1.0.0"
+        "DetectNewerInstalledVersion" = "11:FALSE"
+        "InstallAllUsers" = "11:TRUE"
+        "ProductVersion" = "8:1.0.5"
         "Manufacturer" = "8:Crusader2010"
         "ARPHELPTELEPHONE" = "8:"
         "ARPHELPLINK" = "8:https://github.com/Crusader2010/PoE2BuildCalculator"
         "Title" = "8:PoE 2 Build Calculator Setup"
-        "Subject" = "8:"
+        "Subject" = "8:PoE 2 Build Calculator"
         "ARPCONTACT" = "8:Crusader2010"
         "Keywords" = "8:POE2"
         "ARPCOMMENTS" = "8:PoE 2 Build Calculator"
@@ -319,15 +324,15 @@
         }
         "Shortcut"
         {
-            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_D4BA0E95E6F346BDA68E454919AE7F25"
+            "{970C0BB2-C7D0-45D7-ABFA-7EC378858BC0}:_B95F99813C7544EF811B3415CB6280CC"
             {
-            "Name" = "8:PoE2BuildCalculator Shortcut"
+            "Name" = "8:PoE2 Build Calculator"
             "Arguments" = "8:"
-            "Description" = "8:Run PoE 2 Build Calculator"
+            "Description" = "8:"
             "ShowCmd" = "3:1"
             "IconIndex" = "3:0"
             "Transitive" = "11:FALSE"
-            "Target" = "8:_2A33D38E6F4A43F0A896193A4EBCC817"
+            "Target" = "8:_137C93E913D54045A2C2508AC0783E85"
             "Folder" = "8:_CEA95E76271F412F9F5D132E639B684F"
             "WorkingFolder" = "8:_A1B6740F7D314192B0E3A6A95FE43259"
             "Icon" = "8:_22C94091100640DA8E4CFEE2B1488582"
@@ -732,9 +737,9 @@
         }
         "ProjectOutput"
         {
-            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_2A33D38E6F4A43F0A896193A4EBCC817"
+            "{5259A561-127C-4D43-A0A1-72F10C7B3BF8}:_137C93E913D54045A2C2508AC0783E85"
             {
-            "SourcePath" = "8:..\\PoE2BuildCalculator\\obj\\Debug\\net8.0-windows\\apphost.exe"
+            "SourcePath" = "8:..\\PoE2BuildCalculator\\obj\\Release\\net8.0-windows\\apphost.exe"
             "TargetName" = "8:"
             "Tag" = "8:"
             "Folder" = "8:_A1B6740F7D314192B0E3A6A95FE43259"
@@ -752,14 +757,12 @@
             "IsDependency" = "11:FALSE"
             "IsolateTo" = "8:"
             "ProjectOutputGroupRegister" = "3:1"
-            "OutputConfiguration" = "8:"
+            "OutputConfiguration" = "8:Release|Any CPU"
             "OutputGroupCanonicalName" = "8:PublishItems"
             "OutputProjectGuid" = "8:{FE5D1F7F-6F1E-AA41-6C08-DD536A92C286}"
             "ShowKeyOutput" = "11:TRUE"
                 "ExcludeFilters"
                 {
-                "ExcludeFilter" = "8:*.json"
-                "ExcludeFilter" = "8:*.pdb"
                 }
             }
         }

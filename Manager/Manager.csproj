@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0-windows</TargetFramework>
+		<RollForward>LatestMinor</RollForward>
 		<Nullable>disable</Nullable>
 		<UseWindowsForms>true</UseWindowsForms>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -15,8 +16,18 @@
 		<Optimize>False</Optimize>
 	</PropertyGroup>
 
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<DebugType>none</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+	</PropertyGroup>
+
 	<ItemGroup>
 		<Compile Include="..\PoE2BuildCalculator\AssemblyInfo.cs" Link="AssemblyInfo.cs" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="System.CodeDom" Version="9.0.10" />
+		<PackageReference Include="System.Management" Version="9.0.10" />
 	</ItemGroup>
 
 	<ItemGroup>
