@@ -2,6 +2,7 @@
 
 	<PropertyGroup>
 		<TargetFramework>net8.0-windows</TargetFramework>
+		<RollForward>LatestMinor</RollForward>
 		<Nullable>disable</Nullable>
 		<UseWindowsForms>true</UseWindowsForms>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -19,16 +20,21 @@
 		<Compile Include="..\PoE2BuildCalculator\AssemblyInfo.cs" Link="AssemblyInfo.cs" />
 	</ItemGroup>
 
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<DebugType>none</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+	</PropertyGroup>
+
 	<ItemGroup>
-		<PackageReference Include="System.CodeDom" Version="9.0.9" />
-		<PackageReference Include="System.Management" Version="9.0.9" />
+		<PackageReference Include="System.CodeDom" Version="9.0.10" />
+		<PackageReference Include="System.Management" Version="9.0.10" />
 	</ItemGroup>
 
 	<ItemGroup>
-	  <Compile Update="HelperForms\BaseForm.cs">
-	    <SubType>Form</SubType>
-	  </Compile>
-	  <Compile Update="HelperForms\CustomMessageBox.cs" />
+		<Compile Update="HelperForms\BaseForm.cs">
+			<SubType>Form</SubType>
+		</Compile>
+		<Compile Update="HelperForms\CustomMessageBox.cs" />
 	</ItemGroup>
 
 </Project>

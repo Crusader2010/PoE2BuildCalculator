@@ -27,6 +27,7 @@
 			TextboxDisplay = new TextBox();
 			ButtonManageCustomValidator = new Button();
 			PanelButtons = new Panel();
+			ButtonClose = new Button();
 			ShowScoredCombinationsButton = new Button();
 			GroupBoxStrategy = new GroupBox();
 			RadioStrict = new RadioButton();
@@ -55,12 +56,16 @@
 			// 
 			// ButtonOpenItemListFile
 			// 
+			ButtonOpenItemListFile.BackColor = Color.White;
+			ButtonOpenItemListFile.FlatAppearance.BorderColor = Color.Silver;
+			ButtonOpenItemListFile.FlatAppearance.MouseOverBackColor = Color.Silver;
+			ButtonOpenItemListFile.FlatStyle = FlatStyle.Flat;
 			ButtonOpenItemListFile.Location = new Point(12, 77);
 			ButtonOpenItemListFile.Name = "ButtonOpenItemListFile";
-			ButtonOpenItemListFile.Size = new Size(126, 58);
+			ButtonOpenItemListFile.Size = new Size(126, 48);
 			ButtonOpenItemListFile.TabIndex = 0;
-			ButtonOpenItemListFile.Text = "(1) Choose File";
-			ButtonOpenItemListFile.UseVisualStyleBackColor = true;
+			ButtonOpenItemListFile.Text = "(1) Choose Item File";
+			ButtonOpenItemListFile.UseVisualStyleBackColor = false;
 			ButtonOpenItemListFile.Click += ButtonOpenItemListFile_Click;
 			// 
 			// StatusBar
@@ -83,42 +88,58 @@
 			// 
 			// ButtonParseItemListFile
 			// 
+			ButtonParseItemListFile.BackColor = Color.White;
+			ButtonParseItemListFile.FlatAppearance.BorderColor = Color.Silver;
+			ButtonParseItemListFile.FlatAppearance.MouseOverBackColor = Color.Silver;
+			ButtonParseItemListFile.FlatStyle = FlatStyle.Flat;
 			ButtonParseItemListFile.Location = new Point(144, 77);
 			ButtonParseItemListFile.Name = "ButtonParseItemListFile";
-			ButtonParseItemListFile.Size = new Size(126, 58);
+			ButtonParseItemListFile.Size = new Size(126, 48);
 			ButtonParseItemListFile.TabIndex = 2;
-			ButtonParseItemListFile.Text = "(2) Parse File";
-			ButtonParseItemListFile.UseVisualStyleBackColor = true;
+			ButtonParseItemListFile.Text = "(2) Parse Item File";
+			ButtonParseItemListFile.UseVisualStyleBackColor = false;
 			ButtonParseItemListFile.Click += ButtonParseItemListFile_Click;
 			// 
 			// TierManagerButton
 			// 
+			TierManagerButton.BackColor = Color.White;
+			TierManagerButton.FlatAppearance.BorderColor = Color.Silver;
+			TierManagerButton.FlatAppearance.MouseOverBackColor = Color.Silver;
+			TierManagerButton.FlatStyle = FlatStyle.Flat;
 			TierManagerButton.Location = new Point(144, 141);
 			TierManagerButton.Name = "TierManagerButton";
-			TierManagerButton.Size = new Size(126, 58);
+			TierManagerButton.Size = new Size(126, 48);
 			TierManagerButton.TabIndex = 3;
 			TierManagerButton.Text = "(4) Manage tiers and weights";
-			TierManagerButton.UseVisualStyleBackColor = true;
+			TierManagerButton.UseVisualStyleBackColor = false;
 			TierManagerButton.Click += TierManagerButton_Click;
 			// 
 			// ShowItemsDataButton
 			// 
+			ShowItemsDataButton.BackColor = Color.White;
+			ShowItemsDataButton.FlatAppearance.BorderColor = Color.Silver;
+			ShowItemsDataButton.FlatAppearance.MouseOverBackColor = Color.Silver;
+			ShowItemsDataButton.FlatStyle = FlatStyle.Flat;
 			ShowItemsDataButton.Location = new Point(12, 13);
 			ShowItemsDataButton.Name = "ShowItemsDataButton";
-			ShowItemsDataButton.Size = new Size(126, 58);
+			ShowItemsDataButton.Size = new Size(126, 48);
 			ShowItemsDataButton.TabIndex = 4;
 			ShowItemsDataButton.Text = "Display parsed items";
-			ShowItemsDataButton.UseVisualStyleBackColor = true;
+			ShowItemsDataButton.UseVisualStyleBackColor = false;
 			ShowItemsDataButton.Click += ShowItemsDataButton_Click;
 			// 
 			// ButtonComputeCombinations
 			// 
+			ButtonComputeCombinations.BackColor = Color.White;
+			ButtonComputeCombinations.FlatAppearance.BorderColor = Color.Silver;
+			ButtonComputeCombinations.FlatAppearance.MouseOverBackColor = Color.Silver;
+			ButtonComputeCombinations.FlatStyle = FlatStyle.Flat;
 			ButtonComputeCombinations.Location = new Point(12, 205);
 			ButtonComputeCombinations.Name = "ButtonComputeCombinations";
-			ButtonComputeCombinations.Size = new Size(126, 58);
+			ButtonComputeCombinations.Size = new Size(126, 48);
 			ButtonComputeCombinations.TabIndex = 5;
 			ButtonComputeCombinations.Text = "(5) Compute combinations";
-			ButtonComputeCombinations.UseVisualStyleBackColor = true;
+			ButtonComputeCombinations.UseVisualStyleBackColor = false;
 			ButtonComputeCombinations.Click += ButtonComputeCombinations_Click;
 			// 
 			// TextboxDisplay
@@ -136,17 +157,22 @@
 			// 
 			// ButtonManageCustomValidator
 			// 
+			ButtonManageCustomValidator.BackColor = Color.White;
+			ButtonManageCustomValidator.FlatAppearance.BorderColor = Color.Silver;
+			ButtonManageCustomValidator.FlatAppearance.MouseOverBackColor = Color.Silver;
+			ButtonManageCustomValidator.FlatStyle = FlatStyle.Flat;
 			ButtonManageCustomValidator.Location = new Point(12, 141);
 			ButtonManageCustomValidator.Name = "ButtonManageCustomValidator";
-			ButtonManageCustomValidator.Size = new Size(126, 58);
+			ButtonManageCustomValidator.Size = new Size(126, 48);
 			ButtonManageCustomValidator.TabIndex = 7;
 			ButtonManageCustomValidator.Text = "(3) Manage custom validator";
-			ButtonManageCustomValidator.UseVisualStyleBackColor = true;
+			ButtonManageCustomValidator.UseVisualStyleBackColor = false;
 			ButtonManageCustomValidator.Click += ButtonManageCustomValidator_Click;
 			// 
 			// PanelButtons
 			// 
 			PanelButtons.BorderStyle = BorderStyle.FixedSingle;
+			PanelButtons.Controls.Add(ButtonClose);
 			PanelButtons.Controls.Add(ShowScoredCombinationsButton);
 			PanelButtons.Controls.Add(ButtonOpenItemListFile);
 			PanelButtons.Controls.Add(ShowItemsDataButton);
@@ -160,14 +186,33 @@
 			PanelButtons.Size = new Size(296, 311);
 			PanelButtons.TabIndex = 9;
 			// 
+			// ButtonClose
+			// 
+			ButtonClose.BackColor = Color.FromArgb(255, 224, 192);
+			ButtonClose.FlatAppearance.BorderColor = Color.DarkGray;
+			ButtonClose.FlatAppearance.MouseOverBackColor = Color.FromArgb(255, 192, 192);
+			ButtonClose.FlatStyle = FlatStyle.Flat;
+			ButtonClose.Location = new Point(14, 259);
+			ButtonClose.Margin = new Padding(0);
+			ButtonClose.Name = "ButtonClose";
+			ButtonClose.Size = new Size(256, 37);
+			ButtonClose.TabIndex = 9;
+			ButtonClose.Text = "Close";
+			ButtonClose.UseVisualStyleBackColor = false;
+			ButtonClose.Click += ButtonClose_Click;
+			// 
 			// ShowScoredCombinationsButton
 			// 
+			ShowScoredCombinationsButton.BackColor = Color.White;
+			ShowScoredCombinationsButton.FlatAppearance.BorderColor = Color.Silver;
+			ShowScoredCombinationsButton.FlatAppearance.MouseOverBackColor = Color.Silver;
+			ShowScoredCombinationsButton.FlatStyle = FlatStyle.Flat;
 			ShowScoredCombinationsButton.Location = new Point(144, 205);
 			ShowScoredCombinationsButton.Name = "ShowScoredCombinationsButton";
-			ShowScoredCombinationsButton.Size = new Size(126, 58);
+			ShowScoredCombinationsButton.Size = new Size(126, 48);
 			ShowScoredCombinationsButton.TabIndex = 8;
 			ShowScoredCombinationsButton.Text = "(6) Display scored combinations";
-			ShowScoredCombinationsButton.UseVisualStyleBackColor = true;
+			ShowScoredCombinationsButton.UseVisualStyleBackColor = false;
 			ShowScoredCombinationsButton.Click += ShowScoredCombinationsButton_Click;
 			// 
 			// GroupBoxStrategy
@@ -187,7 +232,7 @@
 			RadioStrict.AutoSize = true;
 			RadioStrict.Location = new Point(6, 90);
 			RadioStrict.Name = "RadioStrict";
-			RadioStrict.Size = new Size(193, 19);
+			RadioStrict.Size = new Size(191, 19);
 			RadioStrict.TabIndex = 2;
 			RadioStrict.Text = "Strict (only tiered items, fastest)";
 			RadioStrict.UseVisualStyleBackColor = true;
@@ -199,7 +244,7 @@
 			RadioBalanced.Checked = true;
 			RadioBalanced.Location = new Point(6, 65);
 			RadioBalanced.Name = "RadioBalanced";
-			RadioBalanced.Size = new Size(250, 19);
+			RadioBalanced.Size = new Size(242, 19);
 			RadioBalanced.TabIndex = 1;
 			RadioBalanced.TabStop = true;
 			RadioBalanced.Text = "Balanced (≥1 tiered item, recommended)";
@@ -211,7 +256,7 @@
 			RadioComprehensive.AutoSize = true;
 			RadioComprehensive.Location = new Point(6, 40);
 			RadioComprehensive.Name = "RadioComprehensive";
-			RadioComprehensive.Size = new Size(209, 19);
+			RadioComprehensive.Size = new Size(204, 19);
 			RadioComprehensive.TabIndex = 0;
 			RadioComprehensive.Text = "Comprehensive (no filter, slowest)";
 			RadioComprehensive.UseVisualStyleBackColor = true;
@@ -234,7 +279,7 @@
 			NumericBestCombinationsCount.Location = new Point(463, 11);
 			NumericBestCombinationsCount.Maximum = new decimal(new int[] { 10000, 0, 0, 0 });
 			NumericBestCombinationsCount.Name = "NumericBestCombinationsCount";
-			NumericBestCombinationsCount.Size = new Size(85, 21);
+			NumericBestCombinationsCount.Size = new Size(85, 23);
 			NumericBestCombinationsCount.TabIndex = 2;
 			NumericBestCombinationsCount.TextAlign = HorizontalAlignment.Center;
 			NumericBestCombinationsCount.ValueChanged += NumericBestCombinationsCount_ValueChanged;
@@ -365,5 +410,6 @@
 		private Button ShowScoredCombinationsButton;
 		private ToolStripMenuItem HelpMenuButton;
 		private ToolStripTextBox TextBoxLoadedJsonMenuItem;
+		private Button ButtonClose;
 	}
 }
