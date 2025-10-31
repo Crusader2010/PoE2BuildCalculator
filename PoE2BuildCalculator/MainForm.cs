@@ -955,7 +955,7 @@ namespace PoE2BuildCalculator
 		{
 			TextBoxLoadedJsonMenuItem.Visible = visible;
 			TextBoxLoadedJsonMenuItem.AutoSize = false;
-			TextBoxLoadedJsonMenuItem.Text = @"Last loaded JSON config: " + finalText;
+			TextBoxLoadedJsonMenuItem.Text = @"Loaded JSON: " + finalText;
 
 			Size textSize = TextRenderer.MeasureText(
 				TextBoxLoadedJsonMenuItem.Text,
@@ -963,7 +963,6 @@ namespace PoE2BuildCalculator
 			);
 
 			TextBoxLoadedJsonMenuItem.Width = Math.Min(textSize.Width, MenuStrip.Width / 2 - 5);
-			TextBoxLoadedJsonMenuItem.Height = MenuStrip.Height;
 		}
 
 		private void ShowItemsDataButton_Click(object sender, EventArgs e)

@@ -340,12 +340,14 @@
 			// 
 			// TextBoxLoadedJsonMenuItem
 			// 
+			TextBoxLoadedJsonMenuItem.AccessibleRole = AccessibleRole.Text;
 			TextBoxLoadedJsonMenuItem.Alignment = ToolStripItemAlignment.Right;
 			TextBoxLoadedJsonMenuItem.AutoSize = false;
 			TextBoxLoadedJsonMenuItem.BackColor = Color.Beige;
 			TextBoxLoadedJsonMenuItem.CausesValidation = false;
 			TextBoxLoadedJsonMenuItem.Font = new Font("Nirmala UI", 8F, FontStyle.Regular, GraphicsUnit.Point, 0);
 			TextBoxLoadedJsonMenuItem.ForeColor = Color.DarkRed;
+			TextBoxLoadedJsonMenuItem.Margin = new Padding(2, 0, 2, 0);
 			TextBoxLoadedJsonMenuItem.Name = "TextBoxLoadedJsonMenuItem";
 			TextBoxLoadedJsonMenuItem.ReadOnly = true;
 			TextBoxLoadedJsonMenuItem.ShortcutsEnabled = false;
