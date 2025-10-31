@@ -3,6 +3,7 @@
 	<PropertyGroup>
 		<OutputType>WinExe</OutputType>
 		<TargetFramework>net8.0-windows</TargetFramework>
+		<RollForward>LatestMinor</RollForward>
 		<Nullable>disable</Nullable>
 		<UseWindowsForms>true</UseWindowsForms>
 		<ImplicitUsings>enable</ImplicitUsings>
@@ -13,15 +14,26 @@
 		<ApplicationVisualStyles>true</ApplicationVisualStyles>
 		<ApplicationUseCompatibleTextRendering>false</ApplicationUseCompatibleTextRendering>
 		<ApplicationHighDpiMode>SystemAware</ApplicationHighDpiMode>
-		<ApplicationDefaultFont>Microsoft Sans Serif, 9pt</ApplicationDefaultFont>
+		<ApplicationDefaultFont>Nirmala UI, 9pt</ApplicationDefaultFont>
 		<BaseOutputPath>$(SolutionDir)bin</BaseOutputPath>
-		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<AllowUnsafeBlocks>false</AllowUnsafeBlocks>
 		<StartupObject>PoE2BuildCalculator.Program</StartupObject>
+		<SupportedOSPlatformVersion>7.0</SupportedOSPlatformVersion>
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
 		<Optimize>False</Optimize>
 	</PropertyGroup>
+
+	<PropertyGroup Condition="'$(Configuration)' == 'Release'">
+		<DebugType>none</DebugType>
+		<DebugSymbols>false</DebugSymbols>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="System.CodeDom" Version="9.0.10" />
+		<PackageReference Include="System.Management" Version="9.0.10" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<ProjectReference Include="..\Domain\Domain.csproj" />
